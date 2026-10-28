@@ -1,10 +1,20 @@
-"""Local PC camera UI and bounded LAN snapshot relay. No extra dependencies."""
+"""Local PC camera UI and bounded LAN snapshot relay. Explicit captured-photo analysis."""
 import http.client
 import ipaddress
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit, parse_qs
 
+import sys
+import json
+import base64
+import binascii
+import threading
+from uuid import UUID
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'playground' / 'camera'))
+from analysis import AnalysisError
+from annotations import annotate_photo
+MODEL_LOCK = threading.Lock()
 NETWORKS = tuple(ipaddress.ip_network(n) for n in ('10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16'))
 
 
@@ -64,6 +74,47 @@ class Handler(BaseHTTPRequestHandler):
             code, mime, body = 502, 'text/plain', b'Cannot get a frame. Check Pi address, power, network, and camera service.'
         self.reply(code, body, mime, headers)
 
+    def do_POST(self):
+        self.connection.settimeout(10)
+        host = self.headers.get('Host')
+        if host not in ('localhost:5051', '127.0.0.1:5051') or self.headers.get('Origin') != 'http://' + host:
+            self.reply(403, b'{"error":"Use the local app page."}', 'application/json', {})
+            return
+        if self.path != '/api/analyze':
+            self.reply(404, b'{"error":"Not found"}', 'application/json', {})
+            return
+        acquired = False
+        try:
+            if self.headers.get('Content-Type') != 'application/json':
+                raise AnalysisError('Expected a JSON photo request.', 400)
+            length = int(self.headers.get('Content-Length', '0'))
+            if not 0 < length <= 8 * 1024 * 1024:
+                raise AnalysisError('Photo request is too large or empty.', 413)
+            payload = json.loads(self.rfile.read(length))
+            if not isinstance(payload, dict):
+                raise ValueError()
+            capture_id = str(UUID(payload.get('capture_id', '')))
+            question = payload.get('prompt', '')
+            if not isinstance(question, str) or len(question) > 2000:
+                raise AnalysisError('Keep the prompt under 2,000 characters.', 400)
+            jpeg = base64.b64decode(payload.get('image', ''), validate=True)
+            if not 0 < len(jpeg) <= 5 * 1024 * 1024:
+                raise AnalysisError('Photo must be under 5 MB.', 413)
+            acquired = MODEL_LOCK.acquire(blocking=False)
+            if not acquired:
+                raise AnalysisError('An analysis is already running. Wait and try again.', 409)
+            result = annotate_photo(jpeg, question)
+            body, code = {'capture_id': capture_id, **result}, 200
+        except AnalysisError as error:
+            body, code = {'error': str(error)}, error.status
+        except (ValueError, TypeError, AttributeError, binascii.Error):
+            body, code = {'error': 'Invalid photo request. Capture a new photo.'}, 400
+        except Exception:
+            body, code = {'error': 'Analysis failed. Check local configuration and try again.'}, 502
+        finally:
+            if acquired:
+                MODEL_LOCK.release()
+        self.reply(code, json.dumps(body).encode(), 'application/json', {})
     def reply(self, code, body, mime, headers):
         try:
             self.send_response(code)

@@ -6,10 +6,18 @@
 <button id="start">Connect</button><button id="stop" disabled>Disconnect</button><button id="capture" disabled>Capture photo</button>
 <p id="status" role="status">Ready to connect.</p><canvas id="preview" width="640" height="480"></canvas>
 <section id="result" hidden><h2>Captured photo</h2><img id="photo" alt="Captured Pi frame"><a id="download" download="pi-camera.jpg">Download JPEG</a></section>
-<p>Live camera · Local network · Model processing is not connected yet.</p>
+<section id="analysisPanel" hidden>
+<label for="prompt">What should Claude find or explain?</label>
+<textarea id="prompt" rows="3" maxlength="2000" placeholder="Draw boxes around my eyes, or find the cups and count them." style="box-sizing:border-box;width:100%;padding:12px;font:inherit;background:#202b39;color:white;border:1px solid #43536b;border-radius:8px"></textarea>
+<button id="analyze">Analyze and draw</button>
+<p>Only this captured photo and prompt are sent to Claude when you click Analyze. Boxes are approximate.</p>
+<p id="analysisStatus" role="status"></p>
+<div id="answerPanel" hidden><h2>Claude output</h2><p id="answer" style="white-space:pre-wrap"></p><p id="modelInfo"></p>
+<h2>Annotated photo</h2><canvas id="annotated"></canvas><a id="annotatedDownload" download="annotated-photo.png">Download annotated photo</a></div>
+</section>
 <script>
 const $ = id => document.getElementById(id);
-let active=false, generation=0, controller, latest, photoUrl;
+let active=false, generation=0, controller, latest, photoUrl; let capturedPhoto=null, captureId=null, analyzing=false, annotationUrl=null;
 function stop(){active=false;generation++;controller?.abort();$('start').disabled=false;$('stop').disabled=true;$('capture').disabled=true;$('status').textContent='Disconnected.';latest=null;$('address').disabled=false;$('preview').getContext('2d').clearRect(0,0,$('preview').width,$('preview').height);}
 $('stop').onclick=stop;
 $('start').onclick=async()=>{
@@ -22,13 +30,47 @@ $('start').onclick=async()=>{
       const blob=await response.blob();const bitmap=await createImageBitmap(blob);
       if(run!==generation){bitmap.close();break;}
       const canvas=$('preview');canvas.width=bitmap.width;canvas.height=bitmap.height;
-      canvas.getContext('2d').drawImage(bitmap,0,0);bitmap.close();latest=blob;$('capture').disabled=false;
+      canvas.getContext('2d').drawImage(bitmap,0,0);bitmap.close();latest=blob;$('capture').disabled=analyzing;
       $('status').textContent=`Connected · request + decode ${Math.round(performance.now()-began)} ms · Pi frame age ${response.headers.get('X-Frame-Age-Ms')} ms`;
     }catch(error){if(run!==generation)break;latest=null;$('preview').getContext('2d').clearRect(0,0,$('preview').width,$('preview').height);$('capture').disabled=true;$('status').textContent=error.name==='AbortError'?'Connection timed out. Retrying…':error.message;await new Promise(r=>setTimeout(r,1000));}
     finally{clearTimeout(timer);}
     await new Promise(r=>setTimeout(r,Math.max(0,50-(performance.now()-began))));
   }
 };
-$('capture').onclick=()=>{if(!latest)return;if(photoUrl)URL.revokeObjectURL(photoUrl);photoUrl=URL.createObjectURL(latest);$('photo').src=photoUrl;$('download').href=photoUrl;$('result').hidden=false;};
+$('capture').onclick=()=>{if(!latest || analyzing)return;capturedPhoto=latest;captureId=crypto.randomUUID();$('analysisPanel').hidden=false;$('answerPanel').hidden=true;$('analysisStatus').textContent='';if(annotationUrl){URL.revokeObjectURL(annotationUrl);annotationUrl=null;}if(photoUrl)URL.revokeObjectURL(photoUrl);photoUrl=URL.createObjectURL(latest);$('photo').src=photoUrl;$('download').href=photoUrl;$('result').hidden=false;};
 window.addEventListener('pagehide',()=>{stop();if(photoUrl)URL.revokeObjectURL(photoUrl);});
+function imageBase64(blob) {
+  return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result.split(',')[1]);reader.onerror=reject;reader.readAsDataURL(blob);});
+}
+$('analyze').onclick=async()=>{
+  if(!capturedPhoto || analyzing)return;
+  analyzing=true;const sentId=captureId, sentPhoto=capturedPhoto;
+  $('analyze').disabled=true;$('capture').disabled=true;$('prompt').disabled=true;$('answerPanel').hidden=true;
+  $('analysisStatus').textContent='Analyzing captured photo…';
+  const requestController=new AbortController();const timeout=setTimeout(()=>requestController.abort(),135000);
+  try {
+    const image=await imageBase64(sentPhoto);
+    const response=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},signal:requestController.signal,
+      body:JSON.stringify({capture_id:sentId,image,prompt:$('prompt').value})});
+    const data=await response.json();if(!response.ok)throw new Error(data.error || 'Analysis failed.');
+    if(data.capture_id!==captureId)return;
+    const bitmap=await createImageBitmap(sentPhoto);const canvas=$('annotated');canvas.width=bitmap.width;canvas.height=bitmap.height;
+    const ctx=canvas.getContext('2d');ctx.drawImage(bitmap,0,0);bitmap.close();
+    const sx=canvas.width/data.coordinate_width, sy=canvas.height/data.coordinate_height;
+    const fontSize=Math.max(14,canvas.width/60);ctx.font=`${fontSize}px system-ui`;ctx.lineWidth=Math.max(2,canvas.width/300);
+    for(const box of data.boxes){
+      const x=box.x1*sx,y=box.y1*sy,w=(box.x2-box.x1)*sx,h=(box.y2-box.y1)*sy;
+      ctx.strokeStyle='#00ff88';ctx.strokeRect(x,y,w,h);
+      const label=box.label;const labelWidth=Math.min(canvas.width,ctx.measureText(label).width+10);
+      const lx=Math.min(x,canvas.width-labelWidth), ly=Math.max(0,y-fontSize-8);
+      ctx.fillStyle='#00ff88';ctx.fillRect(lx,ly,labelWidth,fontSize+8);ctx.fillStyle='#10221c';ctx.fillText(label,lx+5,ly+fontSize+1,labelWidth-10);
+    }
+    if(annotationUrl)URL.revokeObjectURL(annotationUrl);
+    const outputBlob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
+    if(outputBlob){annotationUrl=URL.createObjectURL(outputBlob);$('annotatedDownload').href=annotationUrl;}
+    $('answer').textContent=data.answer;$('modelInfo').textContent=`${data.model} · ${data.elapsed_seconds}s · ${data.boxes.length} boxes`;
+    $('answerPanel').hidden=false;$('analysisStatus').textContent=data.boxes.length?'Analysis complete.':'Analysis complete. No requested objects were located.';
+  } catch(error){$('analysisStatus').textContent=error.name==='AbortError'?'Analysis timed out. Try again.':error.message;}
+  finally{clearTimeout(timeout);analyzing=false;$('analyze').disabled=false;$('prompt').disabled=false;$('capture').disabled=!latest;}
+};
 </script></html>

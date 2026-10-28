@@ -2,7 +2,7 @@
 
 A standalone industrial vision and supervisory vLock web application for SCADA developers.
 
-**Status: Pi 5 USB camera streaming and the main PC camera UI are implemented and confirmed working by the owner. Captured-photo Claude analysis exists in the playground. Connecting model services to the main UI is the next step; Muse, SAM, and SCADA integration remain unfinished.**
+**Status: Pi 5 USB camera streaming and the main PC camera UI are implemented and confirmed working by the owner. Prompted Claude photo analysis and labeled image output are connected to the main UI. Muse, SAM, and SCADA integration remain unfinished.**
 
 ## Vision
 
@@ -71,7 +71,7 @@ Official resources:
 
 ## Main camera app
 
-Run `python web/server.py` on your PC and open http://localhost:5051.
+Run `.\.venv\Scripts\python.exe web/server.py` on your PC and open http://localhost:5051.
 Enter the Pi IP address and click Connect. See [main UI guide](web/README.md)
 and [Pi installation](playground/pi_camera/README.md).
 

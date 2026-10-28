@@ -96,3 +96,11 @@ Future entries should record actual changes, verification evidence, limitations,
 - Local .env was transferred separately and remains ignored. No secrets or virtual environment are published.
 - The owner will handle old repository deletion. vLock-Digital-LOTO remains the separate background project.
 - Main UI model integration is the next implementation step; no new live inference was performed during migration.
+
+## 2026-10-28 - Prompted annotations in the main UI
+
+- Added explicit captured-photo Claude analysis to the main Pi camera UI.
+- Added general prompts, labeled rectangles, text results, and downloadable annotated images.
+- Preserved original captures, capture identity, local secrets, and continuous preview.
+- 27 offline tests and dependency checks passed. A generated red-rectangle live request returned matching coordinates in 4.73 seconds.
+- No camera photo was sent during development. Real target localization remains for owner review; SAM is the next experiment.
