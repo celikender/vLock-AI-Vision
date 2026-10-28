@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>vLock-AI Vision</title>
+<style>body{font:16px system-ui;max-width:900px;margin:32px auto;padding:0 20px;background:#131820;color:#eee}button,a{padding:10px;margin:8px 8px 8px 0}canvas,img{display:block;max-width:100%;height:auto;background:#222}p{color:#bac6d5}header{margin-bottom:32px}.badge{color:#69dfbc;font-size:12px;letter-spacing:2px}h1{font-size:38px;margin:12px 0}label{display:block;margin-bottom:10px}.source{display:flex;align-items:center;gap:16px;margin-bottom:16px}.source span{font-size:13px;color:#bac6d5}input{background:#202b39;border:1px solid #43536b;border-radius:8px;padding:13px;color:white;font:inherit;width:250px}button{background:#2b3c50;color:white;border:1px solid #43536b;border-radius:8px;cursor:pointer}button:first-of-type{background:#7ee4c2;color:#10221c;border:0}button:disabled{opacity:.45;cursor:default}canvas,img{border-radius:12px;width:100%}a{display:inline-block;color:#7ee4c2}section{margin-top:32px}body{max-width:1000px}#status{min-height:24px;font-size:14px}</style>
+<header><span class="badge">CAMERA WORKSPACE</span><h1>vLock-AI Vision</h1><p>Connect your Pi. See what your camera sees.</p></header><label for="address">Raspberry Pi IP address</label><div class="source"><input id="address" placeholder="192.168.1.50:8080" autocomplete="off" spellcheck="false"><span>Port 8080 by default</span></div>
+<button id="start">Connect</button><button id="stop" disabled>Disconnect</button><button id="capture" disabled>Capture photo</button>
+<p id="status" role="status">Ready to connect.</p><canvas id="preview" width="640" height="480"></canvas>
+<section id="result" hidden><h2>Captured photo</h2><img id="photo" alt="Captured Pi frame"><a id="download" download="pi-camera.jpg">Download JPEG</a></section>
+<p>Live camera · Local network · Model processing is not connected yet.</p>
+<script>
+const $ = id => document.getElementById(id);
+let active=false, generation=0, controller, latest, photoUrl;
+function stop(){active=false;generation++;controller?.abort();$('start').disabled=false;$('stop').disabled=true;$('capture').disabled=true;$('status').textContent='Disconnected.';latest=null;$('address').disabled=false;$('preview').getContext('2d').clearRect(0,0,$('preview').width,$('preview').height);}
+$('stop').onclick=stop;
+$('start').onclick=async()=>{
+  if(active)return;const address=$('address').value.trim();if(!address){$('status').textContent='Enter your Pi IP address.';return;}$('address').disabled=true;active=true;const run=++generation;$('start').disabled=true;$('stop').disabled=false;
+  while(active && run===generation){
+    const began=performance.now();controller=new AbortController();const timer=setTimeout(()=>controller.abort(),3000);
+    try{
+      const response=await fetch('/api/snapshot?address='+encodeURIComponent(address),{cache:'no-store',signal:controller.signal});
+      if(!response.ok)throw new Error(await response.text());
+      const blob=await response.blob();const bitmap=await createImageBitmap(blob);
+      if(run!==generation){bitmap.close();break;}
+      const canvas=$('preview');canvas.width=bitmap.width;canvas.height=bitmap.height;
+      canvas.getContext('2d').drawImage(bitmap,0,0);bitmap.close();latest=blob;$('capture').disabled=false;
+      $('status').textContent=`Connected · request + decode ${Math.round(performance.now()-began)} ms · Pi frame age ${response.headers.get('X-Frame-Age-Ms')} ms`;
+    }catch(error){if(run!==generation)break;latest=null;$('preview').getContext('2d').clearRect(0,0,$('preview').width,$('preview').height);$('capture').disabled=true;$('status').textContent=error.name==='AbortError'?'Connection timed out. Retrying…':error.message;await new Promise(r=>setTimeout(r,1000));}
+    finally{clearTimeout(timer);}
+    await new Promise(r=>setTimeout(r,Math.max(0,50-(performance.now()-began))));
+  }
+};
+$('capture').onclick=()=>{if(!latest)return;if(photoUrl)URL.revokeObjectURL(photoUrl);photoUrl=URL.createObjectURL(latest);$('photo').src=photoUrl;$('download').href=photoUrl;$('result').hidden=false;};
+window.addEventListener('pagehide',()=>{stop();if(photoUrl)URL.revokeObjectURL(photoUrl);});
+</script></html>
