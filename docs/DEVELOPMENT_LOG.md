@@ -82,3 +82,17 @@ Future entries should record actual changes, verification evidence, limitations,
   JavaScript syntax, and dependency consistency checks.
 - No personal photo or live Claude request was sent during development.
 - Actual eye localization accuracy requires the owner's photo test; SAM/tracking remain unimplemented.
+
+## 2026-10-28 - Pi camera, main UI, and repository migration
+
+- Added the Pi USB MJPEG capture service, latest-frame endpoint, viewer, and boot installer.
+- Added the main PC UI with Pi IP entry, JPEG relay, preview, capture, and reconnect handling.
+- Owner confirmed both the Pi viewer and the main PC connection work.
+- Two Pi-service tests and four main-UI relay tests passed; quantitative hardware latency and reboot testing remain open.
+- Created vLock-AI-Vision with a new root commit; no prior Git history was imported.
+- Audited every previous tracked and nonignored source/document: none are missing.
+- Preserved all README files, architecture and integration plans, workflow notes, experiment template, and historical log entries.
+- Preserved portable editor settings and added vLock-AI-Vision.code-workspace.
+- Local .env was transferred separately and remains ignored. No secrets or virtual environment are published.
+- The owner will handle old repository deletion. vLock-Digital-LOTO remains the separate background project.
+- Main UI model integration is the next implementation step; no new live inference was performed during migration.

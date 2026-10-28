@@ -2,7 +2,7 @@
 
 A standalone industrial vision and supervisory vLock web application for SCADA developers.
 
-**Status: Python environment and simple browser-local camera test implemented. Page checks passed; physical camera behavior and model inference remain unverified.**
+**Status: Pi 5 USB camera streaming and the main PC camera UI are implemented and confirmed working by the owner. Captured-photo Claude analysis exists in the playground. Connecting model services to the main UI is the next step; Muse, SAM, and SCADA integration remain unfinished.**
 
 ## Vision
 
@@ -42,7 +42,7 @@ See [the plan](docs/PLAN.md), [playground guide](playground/README.md), [integra
 - `playground/`: learning experiments and performance/limitation reports.
 - `services/vision/`: planned SAM/Muse service.
 - `services/vlock/`: planned independent vLock state service.
-- `web/`: planned standalone developer UI.
+- `web/`: main PC camera UI with Pi IP address connection, preview, and capture.
 - `integrations/ignition/`: planned reference SCADA integration.
 - `docs/`: architecture, roadmap, integration contract, and public progress.
 
@@ -68,3 +68,12 @@ Official resources:
 - [Muse Spark](https://dev.meta.ai/models/muse-spark)
 
 
+
+## Main camera app
+
+Run `python web/server.py` on your PC and open http://localhost:5051.
+Enter the Pi IP address and click Connect. See [main UI guide](web/README.md)
+and [Pi installation](playground/pi_camera/README.md).
+
+This repository is the active source of truth: https://github.com/celikender/vLock-AI-Vision.
+Open `vLock-AI-Vision.code-workspace` or the project folder in VS Code.

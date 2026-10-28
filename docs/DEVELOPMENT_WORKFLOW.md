@@ -38,9 +38,9 @@ video tracking will be a separate step.
 
 ## Next step to review
 
-The Python environment and camera playground are implemented. Test the single-camera
-UI on the PC before extending camera sources or connecting model inference.
-See playground/camera/README.md and docs/CAMERA_SOURCES.md.
+Pi streaming and the main UI connection have been confirmed by the owner.
+Next, integrate captured-photo model services into the main UI in web/.
+Continue all edits and commits in vLock-AI-Vision.
 
 ## Coding agent roles and review
 

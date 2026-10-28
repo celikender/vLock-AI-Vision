@@ -57,3 +57,11 @@ Demo 25%: one clear, complete working workflow.
 ## Open decisions
 
 Participant track; existing vLock behavior to preserve; Ignition version/modules; endpoint ownership; credentials and authorization; machine-state quality semantics; footage availability; hardware; model budget; exact latency target; final deployment packaging.
+
+## Current checkpoint — 2026-10-28
+
+The owner confirmed Pi 5 USB webcam streaming and the main UI IP-address connection work.
+Continue development only in vLock-AI-Vision. Existing phase goals above remain the roadmap.
+Next: bring explicit captured-photo analysis into the main UI, configure Meta access,
+then validate Muse/SAM using the captured frame. The Anthropic key exists locally;
+the Meta key is not configured. Do not treat local configuration as verified API access.

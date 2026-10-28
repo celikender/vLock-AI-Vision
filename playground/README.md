@@ -1,6 +1,6 @@
 # SAM 3.1 and Muse playground
 
-A learning area for small, repeatable experiments before production implementation. The camera playground is runnable; no model API calls are implemented. See [camera setup](camera/README.md) and [camera source roadmap](../docs/CAMERA_SOURCES.md).
+A learning area for small, repeatable experiments before production implementation. The camera playground supports explicit Claude photo analysis. The Pi camera playground supplies a network feed; Muse and SAM remain planned experiments. See [camera setup](camera/README.md) and [camera source roadmap](../docs/CAMERA_SOURCES.md).
 
 ## Learning sequence
 
