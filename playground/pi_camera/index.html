@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pi camera playground</title>
+<style>body{font:16px system-ui;max-width:900px;margin:32px auto;padding:0 20px;background:#131820;color:#eee}button,a{padding:10px;margin:8px 8px 8px 0}canvas,img{display:block;max-width:100%;height:auto;background:#222}p{color:#bac6d5}</style>
+<h1>Pi camera playground</h1><p>USB webcam → Pi → your PC</p>
+<button id="start">Connect</button><button id="stop" disabled>Disconnect</button><button id="capture" disabled>Capture photo</button>
+<p id="status" role="status">Ready to connect.</p><canvas id="preview" width="640" height="480"></canvas>
+<section id="result" hidden><h2>Captured photo</h2><img id="photo" alt="Captured Pi frame"><a id="download" download="pi-camera.jpg">Download JPEG</a></section>
+<p>Preview stays on your network. This experiment does not send images to a model.</p>
+<script>
+const $ = id => document.getElementById(id);
+let active=false, generation=0, controller, latest, photoUrl;
+function stop(){active=false;generation++;controller?.abort();$('start').disabled=false;$('stop').disabled=true;$('capture').disabled=true;$('status').textContent='Disconnected.';latest=null;}
+$('stop').onclick=stop;
+$('start').onclick=async()=>{
+  if(active)return;active=true;const run=++generation;$('start').disabled=true;$('stop').disabled=false;
+  while(active && run===generation){
+    const began=performance.now();controller=new AbortController();const timer=setTimeout(()=>controller.abort(),3000);
+    try{
+      const response=await fetch('/snapshot.jpg',{cache:'no-store',signal:controller.signal});
+      if(!response.ok)throw new Error('Camera unavailable. Retrying…');
+      const blob=await response.blob();const bitmap=await createImageBitmap(blob);
+      if(run!==generation){bitmap.close();break;}
+      const canvas=$('preview');canvas.width=bitmap.width;canvas.height=bitmap.height;
+      canvas.getContext('2d').drawImage(bitmap,0,0);bitmap.close();latest=blob;$('capture').disabled=false;
+      $('status').textContent=`Connected · request + decode ${Math.round(performance.now()-began)} ms · Pi frame age ${response.headers.get('X-Frame-Age-Ms')} ms`;
+    }catch(error){if(run!==generation)break;latest=null;$('capture').disabled=true;$('status').textContent=error.name==='AbortError'?'Connection timed out. Retrying…':error.message;await new Promise(r=>setTimeout(r,1000));}
+    finally{clearTimeout(timer);}
+    await new Promise(r=>setTimeout(r,Math.max(0,50-(performance.now()-began))));
+  }
+};
+$('capture').onclick=()=>{if(!latest)return;if(photoUrl)URL.revokeObjectURL(photoUrl);photoUrl=URL.createObjectURL(latest);$('photo').src=photoUrl;$('download').href=photoUrl;$('result').hidden=false;};
+window.addEventListener('pagehide',()=>{stop();if(photoUrl)URL.revokeObjectURL(photoUrl);});
+</script></html>

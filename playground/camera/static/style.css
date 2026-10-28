@@ -1,0 +1,29 @@
+:root { font-family: Arial, sans-serif; color: #20252b; background: #f5f6f8; }
+body { margin: 0; }
+main { max-width: 820px; margin: 35px auto; padding: 24px; }
+h1 { margin-top: 0; font-size: 27px; }
+p { line-height: 1.5; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px; margin: 22px 0; }
+button, a { font: inherit; }
+button { padding: 11px 17px; border: 1px solid #bcc4cd; border-radius: 6px; background: white; cursor: pointer; }
+#start { background: #2456c4; color: white; border-color: #2456c4; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button:focus-visible, a:focus-visible { outline: 3px solid #728dda; outline-offset: 3px; }
+video, img { display: block; width: 100%; border-radius: 8px; background: #18202b; }
+video { min-height: 180px; aspect-ratio: 4/3; object-fit: contain; max-height: 60vh; }
+img { height: auto; margin-bottom: 14px; }
+#status { min-height: 24px; }
+#result { margin-top: 28px; }
+a { color: #2456c4; }
+.note { color: #606a75; font-size: 13px; margin-top: 24px; }
+[hidden] { display: none !important; }
+.analysis { margin-top: 25px; border-top: 1px solid #d8dde4; padding-top: 22px; }
+.analysis label { display: block; margin-bottom: 10px; font-weight: 600; }
+textarea { display: block; box-sizing: border-box; width: 100%; resize: vertical; padding: 12px; font: inherit; border: 1px solid #bcc4cd; border-radius: 6px; }
+#analyze { background: #2456c4; color: white; border-color: #2456c4; }
+#answer { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; background: white; border: 1px solid #d8dde4; border-radius: 6px; padding: 18px; }
+#analysisStatus { min-height: 24px; }
+
+#annotatedPanel { margin-top: 25px; }
+#annotated { width: 100%; height: auto; display: block; border-radius: 8px; }
+#findEyes { margin-left: 8px; }

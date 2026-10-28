@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Local camera test</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/overlay.js" defer></script>
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <main>
+    <h1>Local camera test</h1>
+    <p>Start your PC camera, then capture one photo.</p>
+    <div class="controls">
+      <button id="start">Start camera</button>
+      <button id="stop" disabled>Stop camera</button>
+      <button id="capture" disabled>Capture photo</button>
+    </div>
+    <p id="status" role="status" aria-live="polite">Camera is off.</p>
+    <video id="preview" autoplay muted playsinline aria-label="Local camera preview"></video>
+    <section id="result" hidden>
+      <h2>Captured photo</h2>
+      <img id="photo" alt="Captured local camera photo">
+      <a id="download" download="camera-photo.jpg">Download photo</a>
+      <div class="analysis">
+        <label for="prompt">Question about this photo (optional)</label>
+        <textarea id="prompt" rows="3" maxlength="2000" placeholder="How many pens are in the photo?"></textarea>
+        <p class="note">Leave blank for a general description. Analyze sends this captured photo and your question to Anthropic Claude (cloud).</p>
+        <button id="analyze" disabled>Analyze photo</button>
+        <button id="findEyes" disabled>Box eyes</button>
+        <p class="note">Box eyes asks Claude to locate visible eyes. It uses a fixed eye-location prompt.</p>
+        <p id="analysisStatus" role="status" aria-live="polite"></p>
+        <div id="answerPanel" hidden>
+          <h2>Model output</h2>
+          <p id="analysisMeta" class="note"></p>
+          <div id="answer"></div>
+          <section id="annotatedPanel" hidden>
+            <h2>Annotated photo</h2>
+            <canvas id="annotated" aria-label="Captured photo with squares around eyes"></canvas>
+            <p class="note">Squares use Claude's approximate eye coordinates. Compare with the original photo above.</p>
+          </section>
+        </div>
+      </div>
+    </section>
+    <p class="note">Live video stays in your browser. Only a captured photo is sent when you click Analyze photo.</p>
+  </main>
+</body>
+</html>
+
+
+

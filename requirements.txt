@@ -1,0 +1,7 @@
+# API client, local environment loading, and SAM output parser.
+openai==3.40.0
+python-dotenv==1.2.4
+meta-sam-parser==0.1.0
+
+anthropic==2.3.0
+
