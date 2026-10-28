@@ -38,3 +38,15 @@ class AnalysisRouteTests(unittest.TestCase):
             self.assertEqual(self.post({'capture_id':str(uuid4()),'image':'aW1hZ2U='})[0],409)
         finally:
             server.MODEL_LOCK.release()
+class SegmentationRouteTests(AnalysisRouteTests):
+    def test_segment_backend_and_capture(self):
+        capture_id=str(uuid4())
+        connection=http.client.HTTPConnection('127.0.0.1',self.http.server_port)
+        with patch('server.segment_photo',return_value={'backend':'local','count':1}) as segmenter:
+            payload={'capture_id':capture_id,'image':'aW1hZ2U=','prompt':'monitor','backend':'local'}
+            connection.request('POST','/api/segment',json.dumps(payload),headers={'Host':'localhost:5051','Origin':'http://localhost:5051','Content-Type':'application/json'})
+            response=connection.getresponse();body=json.loads(response.read())
+            self.assertEqual(response.status,200)
+            self.assertEqual(body['capture_id'],capture_id)
+            segmenter.assert_called_once_with(b'image','monitor','local')
+        connection.close()

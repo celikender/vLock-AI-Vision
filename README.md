@@ -2,7 +2,7 @@
 
 A standalone industrial vision and supervisory vLock web application for SCADA developers.
 
-**Status: Pi 5 USB camera streaming and the main PC camera UI are implemented and confirmed working by the owner. Prompted Claude photo analysis and labeled image output are connected to the main UI. Muse, SAM, and SCADA integration remain unfinished.**
+**Status: Pi 5 USB camera streaming and the main PC camera UI are implemented and confirmed working by the owner. Prompted Claude photo analysis and labeled image output are connected to the main UI. SAM 3.1 local/cloud controls are implemented for experimentation; live SAM inference awaits account/weight setup. Muse and SCADA integration remain unfinished.**
 
 ## Vision
 

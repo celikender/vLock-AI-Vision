@@ -14,6 +14,9 @@ from uuid import UUID
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'playground' / 'camera'))
 from analysis import AnalysisError
 from annotations import annotate_photo
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'playground' / 'segmentation'))
+from backends import segment_photo, status as segmentation_status
+from masks import SegmentationError
 MODEL_LOCK = threading.Lock()
 NETWORKS = tuple(ipaddress.ip_network(n) for n in ('10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16'))
 
@@ -63,6 +66,9 @@ class Handler(BaseHTTPRequestHandler):
             if url.path == '/':
                 body = Path(__file__).with_name('index.html').read_bytes()
                 code, mime = 200, 'text/html; charset=utf-8'
+            elif url.path == '/api/segmentation-status':
+                body = json.dumps(segmentation_status()).encode()
+                code, mime = 200, 'application/json'
             elif url.path == '/api/snapshot':
                 body, headers = snapshot(parse_qs(url.query).get('address', [''])[0])
                 code, mime = 200, 'image/jpeg'
@@ -80,7 +86,7 @@ class Handler(BaseHTTPRequestHandler):
         if host not in ('localhost:5051', '127.0.0.1:5051') or self.headers.get('Origin') != 'http://' + host:
             self.reply(403, b'{"error":"Use the local app page."}', 'application/json', {})
             return
-        if self.path != '/api/analyze':
+        if self.path not in ('/api/analyze', '/api/segment'):
             self.reply(404, b'{"error":"Not found"}', 'application/json', {})
             return
         acquired = False
@@ -103,9 +109,10 @@ class Handler(BaseHTTPRequestHandler):
             acquired = MODEL_LOCK.acquire(blocking=False)
             if not acquired:
                 raise AnalysisError('An analysis is already running. Wait and try again.', 409)
-            result = annotate_photo(jpeg, question)
+            result = (segment_photo(jpeg, question, payload.get('backend'))
+                      if self.path == '/api/segment' else annotate_photo(jpeg, question))
             body, code = {'capture_id': capture_id, **result}, 200
-        except AnalysisError as error:
+        except (AnalysisError, SegmentationError) as error:
             body, code = {'error': str(error)}, error.status
         except (ValueError, TypeError, AttributeError, binascii.Error):
             body, code = {'error': 'Invalid photo request. Capture a new photo.'}, 400

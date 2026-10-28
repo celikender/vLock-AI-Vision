@@ -104,3 +104,19 @@ Future entries should record actual changes, verification evidence, limitations,
 - Preserved original captures, capture identity, local secrets, and continuous preview.
 - 27 offline tests and dependency checks passed. A generated red-rectangle live request returned matching coordinates in 4.73 seconds.
 - No camera photo was sent during development. Real target localization remains for owner review; SAM is the next experiment.
+
+## 2026-10-28 - SAM 3.1 local/cloud experiment
+
+- Added explicit Local GPU / Cloud API selection on the same captured photo.
+- Added colored masks, shape-following outlines, image download, backend timing,
+  setup status, and local peak allocated VRAM reporting.
+- Kept adapters and tests under playground/segmentation. No silent cloud fallback.
+- Twelve segmentation/worker tests and thirteen web tests passed using synthetic
+  masks and mocked model transport. JavaScript and Python syntax checks passed.
+- Installed an isolated Ubuntu/WSL CUDA runtime. CUDA detects the RTX 3070 Ti
+  Laptop GPU and the official SAM 3.1 builder imports successfully.
+- Started the loopback worker on port 5052 and verified PC-to-worker connectivity.
+- At handoff, the cloud key is missing and the local checkpoint is missing.
+  No real SAM inference, quality, speed, or 8 GB memory-fit result is claimed.
+- Local runtime source revision and dependency caveat are recorded in the
+  segmentation README. Owner is arranging Meta key and Hugging Face access.

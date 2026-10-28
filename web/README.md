@@ -47,3 +47,10 @@ The adapter remains in playground/camera/annotations.py while this behavior is t
 The local server allows one model request at a time and applies image/prompt limits,
 same-origin checks, bounded timeouts, and sanitized errors. No automatic paid retries.
 Offline tests: run unittest discovery in playground/camera and web separately.
+
+## SAM 3.1 local/cloud experiment
+
+After capturing, use the SAM section to select Local GPU or Cloud API, enter an
+object phrase such as monitor, and Segment captured photo. Check setup shows
+credential and local-runtime readiness. See [setup instructions](../playground/segmentation/README.md).
+Cloud requests send the capture to Meta; local requests stay on the laptop.

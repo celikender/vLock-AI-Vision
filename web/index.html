@@ -15,6 +15,17 @@
 <div id="answerPanel" hidden><h2>Claude output</h2><p id="answer" style="white-space:pre-wrap"></p><p id="modelInfo"></p>
 <h2>Annotated photo</h2><canvas id="annotated"></canvas><a id="annotatedDownload" download="annotated-photo.png">Download annotated photo</a></div>
 </section>
+<section id="samPanel" hidden>
+<h2>SAM 3.1 experiment</h2>
+<label for="samBackend">Run segmentation on</label>
+<select id="samBackend" style="padding:12px;font:inherit"><option value="local">Local GPU — stays on this laptop</option><option value="cloud">Cloud API — sends this photo to Meta</option></select>
+<button id="samCheck">Check setup</button><p id="samSetup" role="status"></p>
+<label for="samPrompt">Object to segment</label><input id="samPrompt" maxlength="200" placeholder="monitor" value="monitor">
+<button id="segment">Segment captured photo</button>
+<p>Uses the same captured photo. Colored masks and outlines follow the predicted object shape. First local run includes model loading.</p>
+<p id="samStatus" role="status"></p>
+<div id="samOutput" hidden><img id="samImage" alt="SAM segmentation masks and outlines"><p id="samMeta"></p><a id="samDownload" download="segmentation.png">Download segmentation</a></div>
+</section>
 <script>
 const $ = id => document.getElementById(id);
 let active=false, generation=0, controller, latest, photoUrl; let capturedPhoto=null, captureId=null, analyzing=false, annotationUrl=null;
@@ -37,7 +48,7 @@ $('start').onclick=async()=>{
     await new Promise(r=>setTimeout(r,Math.max(0,50-(performance.now()-began))));
   }
 };
-$('capture').onclick=()=>{if(!latest || analyzing)return;capturedPhoto=latest;captureId=crypto.randomUUID();$('analysisPanel').hidden=false;$('answerPanel').hidden=true;$('analysisStatus').textContent='';if(annotationUrl){URL.revokeObjectURL(annotationUrl);annotationUrl=null;}if(photoUrl)URL.revokeObjectURL(photoUrl);photoUrl=URL.createObjectURL(latest);$('photo').src=photoUrl;$('download').href=photoUrl;$('result').hidden=false;};
+$('capture').onclick=()=>{if(!latest || analyzing)return;capturedPhoto=latest;captureId=crypto.randomUUID();$('analysisPanel').hidden=false;$('samPanel').hidden=false;$('samOutput').hidden=true;$('samStatus').textContent='';$('answerPanel').hidden=true;$('analysisStatus').textContent='';if(annotationUrl){URL.revokeObjectURL(annotationUrl);annotationUrl=null;}if(photoUrl)URL.revokeObjectURL(photoUrl);photoUrl=URL.createObjectURL(latest);$('photo').src=photoUrl;$('download').href=photoUrl;$('result').hidden=false;};
 window.addEventListener('pagehide',()=>{stop();if(photoUrl)URL.revokeObjectURL(photoUrl);});
 function imageBase64(blob) {
   return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result.split(',')[1]);reader.onerror=reject;reader.readAsDataURL(blob);});
@@ -45,7 +56,7 @@ function imageBase64(blob) {
 $('analyze').onclick=async()=>{
   if(!capturedPhoto || analyzing)return;
   analyzing=true;const sentId=captureId, sentPhoto=capturedPhoto;
-  $('analyze').disabled=true;$('capture').disabled=true;$('prompt').disabled=true;$('answerPanel').hidden=true;
+  $('analyze').disabled=true;$('segment').disabled=true;$('capture').disabled=true;$('prompt').disabled=true;$('answerPanel').hidden=true;
   $('analysisStatus').textContent='Analyzing captured photo…';
   const requestController=new AbortController();const timeout=setTimeout(()=>requestController.abort(),135000);
   try {
@@ -71,6 +82,30 @@ $('analyze').onclick=async()=>{
     $('answer').textContent=data.answer;$('modelInfo').textContent=`${data.model} · ${data.elapsed_seconds}s · ${data.boxes.length} boxes`;
     $('answerPanel').hidden=false;$('analysisStatus').textContent=data.boxes.length?'Analysis complete.':'Analysis complete. No requested objects were located.';
   } catch(error){$('analysisStatus').textContent=error.name==='AbortError'?'Analysis timed out. Try again.':error.message;}
-  finally{clearTimeout(timeout);analyzing=false;$('analyze').disabled=false;$('prompt').disabled=false;$('capture').disabled=!latest;}
+  finally{clearTimeout(timeout);analyzing=false;$('analyze').disabled=false;$('segment').disabled=false;$('prompt').disabled=false;$('capture').disabled=!latest;}
+};
+$('samCheck').onclick=async()=>{
+  $('samSetup').textContent='Checking…';
+  try{const response=await fetch('/api/segmentation-status');const data=await response.json();
+    $('samSetup').textContent=`Cloud: ${data.cloud.configured?'key configured (access unverified)':'add META_API_KEY to .env'}. Local: ${data.local.ready?'runtime and weights ready (inference unverified)':data.local.weights===false?'weights missing; complete Hugging Face setup':data.local.message||'CUDA or weights unavailable'}.`;
+  }catch(error){$('samSetup').textContent='Cannot check setup. Is the app running?';}
+};
+$('segment').onclick=async()=>{
+  if(!capturedPhoto||analyzing)return;
+  const prompt=$('samPrompt').value.trim();if(!prompt){$('samStatus').textContent='Enter an object phrase.';return;}
+  analyzing=true;const sentId=captureId, backend=$('samBackend').value;
+  $('segment').disabled=true;$('analyze').disabled=true;$('capture').disabled=true;$('samBackend').disabled=true;$('samPrompt').disabled=true;
+  $('samOutput').hidden=true;$('samStatus').textContent=backend==='local'?'Running on local GPU… First run loads the model.':'Sending captured photo to Meta SAM…';
+  const abort=new AbortController(),timer=setTimeout(()=>abort.abort(),backend==='local'?315000:135000);
+  try{
+    const image=await imageBase64(capturedPhoto);
+    const response=await fetch('/api/segment',{method:'POST',headers:{'Content-Type':'application/json'},signal:abort.signal,body:JSON.stringify({capture_id:sentId,image,prompt,backend})});
+    const data=await response.json();if(!response.ok)throw new Error(data.error||'Segmentation failed.');
+    if(data.capture_id!==captureId)return;
+    $('samImage').src=data.annotated_image;$('samDownload').href=data.annotated_image;
+    $('samMeta').textContent=`${data.model} · ${data.backend} · ${data.count} objects · ${data.elapsed_seconds}s${data.peak_vram_mb!==undefined?' · '+data.peak_vram_mb+' MB peak VRAM':''}`;
+    $('samOutput').hidden=false;$('samStatus').textContent=data.count?'Segmentation complete.':'No matching objects. Try a different object phrase.';
+  }catch(error){$('samStatus').textContent=error.name==='AbortError'?'Segmentation timed out. The worker may still be finishing.':error.message;}
+  finally{clearTimeout(timer);analyzing=false;$('segment').disabled=false;$('analyze').disabled=false;$('capture').disabled=!latest;$('samBackend').disabled=false;$('samPrompt').disabled=false;}
 };
 </script></html>
