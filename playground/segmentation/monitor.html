@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>vLock-AI Vision — live experiment</title>
+<style>
+body{font:16px system-ui;background:#131820;color:#eee;max-width:1100px;margin:30px auto;padding:0 20px}p,small{color:#bac6d5}label{display:inline-block;margin:8px 16px 8px 0}input,button{font:inherit;padding:10px;border-radius:8px;border:1px solid #536077;background:#202b39;color:white}button{cursor:pointer}button:disabled{opacity:.4}main{display:grid;grid-template-columns:1fr 1fr;gap:24px}img,canvas{width:100%;background:#202b39;border-radius:10px}#state{font-size:28px;color:#7ee4c2}li{margin:10px 0}a{color:#7ee4c2}@media(max-width:750px){main{grid-template-columns:1fr}}
+</style>
+<h1>Pi camera → visual rules → events</h1>
+<p>Playground · Claude setup + local SAM · Experimental observations</p>
+<section><label for="intent">Describe the event you want</label><br>
+<textarea id="intent" rows="2" maxlength="2000" style="width:90%;font:inherit;padding:12px" placeholder="Trigger when both hands are above my head and moving."></textarea><br>
+<button id="interpret">Prepare rule with Claude</button>
+<p>Prepare rule sends only this description to Claude. Review the selected processing mode below before starting. You can also choose a rule manually.</p>
+<p id="proposal" role="status"></p></section>
+<label>Pi IP address<br><input id="address" placeholder="192.168.1.50:8080"></label>
+<label>Event rule<br><select id="rule"><option value="video_tracking">Prompted video tracking</option><option value="two_hands_moving">Move both hands</option><option value="presence">Prompted object is visible</option><option value="hands_above_head_moving">Both hands above head and moving</option></select></label>
+<label>Object phrase<br><input id="prompt" value="person" maxlength="200"></label>
+<button id="start">Start monitoring</button><button id="stop" disabled>Stop</button>
+<button id="applyPrompt" disabled>Apply video prompt</button>
+<p id="processing"></p>
+<p id="message" role="status">Connect the Pi and start the local SAM worker first.</p>
+<p>Move both hands: detects “hand,” compares the two largest masks, and triggers after both centers move at least 4% of the frame across two successive comparisons. Keep the camera fixed and move slowly. Object-visible mode uses your object phrase. Observations older than 10 seconds become unknown. Initial model loading may take about 90 seconds.</p>
+<p>Raised-hand rule: SAM segments hands, head, and person on the same sampled frame. One person, one head, and two hands must be visible. Entire hands must be above the head, and both centers must move relative to it across two comparisons. Missing or ambiguous masks mean unknown. Keep the camera fixed. Mask association is geometric, not identity verification.</p>
+<p>Video mode collects four original camera JPEGs at up to 4 FPS, then propagates the text prompt across that finite window. The loaded GPU model is reused. Object IDs persist within a window and reset at each new session. Apply video prompt while running to discard the previous window and begin with the new phrase. Other rules retain their sampled-frame behavior.</p>
+<p>Monitoring continues if this page closes. Use Stop to end monitoring; a GPU request already in progress may finish, but its result will be discarded.</p>
+<strong id="state">UNKNOWN</strong><p id="reason"></p>
+<main><section><h2>Live preview</h2><canvas id="preview" width="640" height="480"></canvas><p id="previewStatus">Not connected.</p></section>
+<section><h2>Last processed frame</h2><img id="result" alt="SAM masks on the sampled camera frame" hidden><p id="metrics">No result yet.</p></section></main>
+<h2>Experimental event history</h2><p>Latest 100 transitions, kept in memory. <a href="/api/status" target="_blank">Inspect JSON status and events</a> · <a href="/api/video/results" target="_blank">Per-frame video JSON with IDs, masks, boxes and scores</a></p><ol id="events"></ol>
+<script>
+const $=id=>document.getElementById(id);
+let running=false, address='', previewBusy=false, lastImage='', editing=false, interpreting=false, promptDirty=false;
+$('prompt').oninput=()=>{promptDirty=true;};
+$('interpret').onclick=async()=>{
+  interpreting=true;$('interpret').disabled=true;$('proposal').textContent='Interpreting event request…';
+  try{const r=await fetch('/api/interpret',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:$('intent').value}),signal:AbortSignal.timeout(50000)});
+    const d=await r.json();if(!r.ok)throw Error(d.error);
+    $('proposal').textContent=(d.rule==='unsupported'?'Not supported yet: ':'Proposed rule: ')+d.explanation+(d.sam_prompts?.length?' SAM concepts: '+d.sam_prompts.join(', '):'');
+    if(d.rule!=='unsupported'&&!running){$('rule').value=d.rule;$('prompt').value=d.prompt;$('rule').onchange();}
+  }catch(e){$('proposal').textContent=e.message;}
+  finally{interpreting=false;$('interpret').disabled=running;}
+};
+async function control(path,data){
+  editing=true;$('start').disabled=true;$('stop').disabled=true;
+  try{const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+    const d=await r.json();if(!r.ok)throw Error(d.error);promptDirty=false;show(d);$('message').textContent=path.endsWith('prompt')?'Video prompt updated. Old results are discarded; the next window uses “'+d.prompt+'”.':path.endsWith('start')?'Monitoring with the selected processing mode. Waiting for inference…':'Stopped. Any in-flight result will be discarded.';
+  }catch(e){$('message').textContent=e.message;}finally{editing=false;}
+}
+$('start').onclick=()=>control('/api/start',{address:$('address').value.trim(),prompt:$('prompt').value.trim(),rule:$('rule').value});
+function mode(){
+  const video=$('rule').value==='video_tracking';
+  $('prompt').disabled=(running&&!video)||!['presence','video_tracking'].includes($('rule').value);
+  $('applyPrompt').disabled=!running||!video||editing;
+  $('processing').textContent=$('rule').value==='hands_above_head_moving'?'LOCAL SAM: hand + head + person masks → above-head and motion comparisons → event. Claude receives only your setup text.':'LOCAL SAM: Camera images stay on this PC. Claude receives only your setup text.';
+  $('start').textContent='Start local SAM monitoring';
+}
+$('rule').onchange=mode;mode();
+$('stop').onclick=()=>control('/api/stop',{});
+$('applyPrompt').onclick=()=>control('/api/prompt',{prompt:$('prompt').value.trim()});
+function show(d){
+  running=d.running;address=d.address;
+  $('interpret').disabled=d.busy||interpreting;
+  $('start').disabled=d.busy;$('stop').disabled=!running;
+  $('address').disabled=d.busy;$('rule').disabled=d.busy;
+  if(d.busy){$('address').value=d.address;if(!promptDirty&&document.activeElement!==$('prompt'))$('prompt').value=d.prompt;$('rule').value=d.rule;}
+  mode();if(d.busy&&d.rule!=='video_tracking')$('prompt').disabled=true;
+  $('state').textContent=d.rule==='hands_above_head_moving'?({present:'BOTH HANDS RAISED AND MOVING',absent:'RULE INACTIVE',unknown:'UNKNOWN'}[d.state]):d.rule==='two_hands_moving'?({present:'TWO HANDS MOVING',absent:'NO TWO-HAND MOTION',unknown:'UNKNOWN'}[d.state]):d.state.toUpperCase();$('reason').textContent=d.reason;
+  if(d.result){const r=d.result;
+    if(lastImage!==r.annotated_image){$('result').src=r.annotated_image;lastImage=r.annotated_image;}
+    $('result').hidden=false;
+    $('metrics').textContent=`Frame ${r.frame_sequence} · ${r.count} object masks · ${r.elapsed_seconds}s inference · ${r.peak_vram_mb} MiB peak allocated GPU memory · observation age ${r.age_seconds}s${r.age_seconds>d.stale_seconds?' · STALE':''}${r.session_id?' · prompt “'+r.prompt+'” · session '+r.session_id.slice(0,8)+' · frame '+r.frame_index+' · IDs '+r.objects.map(o=>o.object_id).join(', '):''}${r.concepts?' · head masks '+r.concepts.head.length+' · person masks '+r.concepts.person.length+' · hand overlay shown':''}`;
+  }else{$('result').hidden=true;lastImage='';$('metrics').textContent='No current result.';}
+  $('events').replaceChildren(...d.events.slice().reverse().map(e=>{const li=document.createElement('li');li.textContent=`${new Date(e.time).toLocaleTimeString()} · ${e.type.toUpperCase()} · “${e.prompt}” · ${e.reason}`;return li;}));
+  if(!running){$('preview').getContext('2d').clearRect(0,0,$('preview').width,$('preview').height);$('previewStatus').textContent='Monitoring stopped.';}
+}
+async function poll(){
+  try{const r=await fetch('/api/status',{signal:AbortSignal.timeout(5000)});if(!r.ok)throw Error();const d=await r.json();if(!editing)show(d);}
+  catch(e){running=false;$('state').textContent='UNKNOWN';$('reason').textContent='Experiment server unavailable.';$('result').hidden=true;$('preview').getContext('2d').clearRect(0,0,$('preview').width,$('preview').height);}
+  setTimeout(poll,1000);
+}
+async function preview(){
+  if(running&&!previewBusy){previewBusy=true;const source=address;
+    try{const r=await fetch('/api/snapshot?address='+encodeURIComponent(source),{signal:AbortSignal.timeout(3000)});if(!r.ok)throw Error();const bitmap=await createImageBitmap(await r.blob());
+      if(running&&source===address){const c=$('preview');c.width=bitmap.width;c.height=bitmap.height;c.getContext('2d').drawImage(bitmap,0,0);$('previewStatus').textContent='Live preview · independent of SAM inference';}bitmap.close();
+    }catch(e){$('previewStatus').textContent='Camera unavailable.';$('preview').getContext('2d').clearRect(0,0,$('preview').width,$('preview').height);}
+    finally{previewBusy=false;}
+  }setTimeout(preview,150);
+}
+poll();preview();
+</script></html>

@@ -15,8 +15,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'playground' / 'cam
 from analysis import AnalysisError
 from annotations import annotate_photo
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'playground' / 'segmentation'))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from backends import segment_photo, status as segmentation_status
 from masks import SegmentationError
+from playground.monitoring.controller import Monitoring
+from playground.monitoring.camera_source import snapshot as monitoring_snapshot
 MODEL_LOCK = threading.Lock()
 NETWORKS = tuple(ipaddress.ip_network(n) for n in ('10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16'))
 
@@ -50,7 +53,57 @@ def snapshot(value):
         connection.close()
 
 
+monitoring = Monitoring(fetch=lambda camera: monitoring_snapshot(camera, snapshot))
+
+
 class Handler(BaseHTTPRequestHandler):
+    def json_reply(self, code, data):
+        self.reply(code,json.dumps(data,allow_nan=False).encode(),'application/json',{})
+
+    def monitoring_get(self, url):
+        try:
+            if url.path == '/api/monitoring/status':
+                self.json_reply(200,monitoring.status())
+            elif url.path == '/api/monitoring/results':
+                self.json_reply(200,monitoring.results(int(parse_qs(url.query).get('after',['0'])[0])))
+            elif url.path == '/api/monitoring/snapshot':
+                body,headers = monitoring.snapshot()
+                self.reply(200,body,'image/jpeg',headers)
+            else:
+                self.json_reply(404,{'error':'Not found.'})
+        except ValueError as error:
+            self.json_reply(400,{'error':str(error)})
+        except (OSError,http.client.HTTPException):
+            self.json_reply(502,{'error':'Camera unavailable. Check connection and credentials.'})
+
+    def monitoring_post(self):
+        try:
+            length=int(self.headers.get('Content-Length','0'))
+            if self.headers.get('Content-Type')!='application/json' or not 0<length<=16384:
+                raise ValueError('Use a small JSON monitoring configuration.')
+            data=json.loads(self.rfile.read(length))
+            if not isinstance(data,dict):
+                raise ValueError('Invalid monitoring request.')
+            if self.path == '/api/monitoring/connect':
+                monitoring.connect(data)
+            elif self.path == '/api/monitoring/save':
+                monitoring.save(data)
+            elif self.path == '/api/monitoring/start':
+                monitoring.start()
+            elif self.path == '/api/monitoring/stop':
+                monitoring.stop()
+            elif self.path == '/api/monitoring/prompt':
+                monitoring.change_prompt(data.get('sam_prompt'))
+            else:
+                return self.json_reply(404,{'error':'Not found.'})
+            self.json_reply(200,monitoring.status())
+        except ValueError as error:
+            self.json_reply(400,{'error':str(error)})
+        except (TypeError,KeyError):
+            self.json_reply(400,{'error':'Check the camera, polygon and rule settings.'})
+        except (OSError,http.client.HTTPException):
+            self.json_reply(502,{'error':'Cannot connect or save configuration. Check camera and local storage.'})
+
     def do_GET(self):
         self.connection.settimeout(5)
         headers = {}
@@ -63,9 +116,15 @@ class Handler(BaseHTTPRequestHandler):
                 self.reply(403, b'Use the local app page.', 'text/plain', {})
                 return
             url = urlsplit(self.path)
+            if url.path.startswith('/api/monitoring/'):
+                return self.monitoring_get(url)
             if url.path == '/':
                 body = Path(__file__).with_name('index.html').read_bytes()
                 code, mime = 200, 'text/html; charset=utf-8'
+            elif url.path in ('/monitoring','/monitoring.js','/monitoring.css'):
+                filename = 'monitoring.html' if url.path=='/monitoring' else url.path[1:]
+                body=Path(__file__).with_name(filename).read_bytes()
+                code,mime=200,{'html':'text/html; charset=utf-8','js':'text/javascript; charset=utf-8','css':'text/css; charset=utf-8'}[filename.rsplit('.',1)[1]]
             elif url.path == '/api/segmentation-status':
                 body = json.dumps(segmentation_status()).encode()
                 code, mime = 200, 'application/json'
@@ -86,6 +145,8 @@ class Handler(BaseHTTPRequestHandler):
         if host not in ('localhost:5051', '127.0.0.1:5051') or self.headers.get('Origin') != 'http://' + host:
             self.reply(403, b'{"error":"Use the local app page."}', 'application/json', {})
             return
+        if self.path.startswith('/api/monitoring/'):
+            return self.monitoring_post()
         if self.path not in ('/api/analyze', '/api/segment'):
             self.reply(404, b'{"error":"Not found"}', 'application/json', {})
             return
@@ -149,4 +210,5 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         pass
     finally:
+        monitoring.stop()
         server.server_close()

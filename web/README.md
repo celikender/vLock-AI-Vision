@@ -1,5 +1,18 @@
 # Main camera UI
 
+## Monitoring Setup
+
+Open http://localhost:5051/monitoring after starting the existing local GPU worker
+and `web/server.py`. Connect the Pi camera, enter a detection target, draw and
+adjust a polygon, configure the overlap/persistence rule, save it and start
+monitoring. Dynamic prompt changes preserve the saved zone. Actual SAM masks,
+boxes, scores, per-frame JSON, local warning events and Unknown/stale states are
+shown in the same application. Configuration and recent events survive restart;
+monitoring starts stopped. No LLM, new model or SCADA command is involved.
+
+See [monitoring behavior, limits and tests](../playground/monitoring/README.md).
+The original camera/photo tools below remain at http://localhost:5051/.
+
 Run on the PC with the project virtual environment:
 
 ```powershell

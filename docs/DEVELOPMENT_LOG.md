@@ -1,5 +1,67 @@
 # Development log
 
+## 2026-10-29 - Monitoring Setup MVP in the existing PC application
+
+- Added /monitoring to the existing localhost:5051 server, with camera setup,
+  detection target, editable polygon, mask-based conditions, persistence and a
+  local warning/event-log action. Existing camera/photo tools remain at /.
+- Reused the existing Pi JPEG relay, SAM 3.1 GPU worker, dynamic text prompts and
+  four-frame JSON adapter. The worker source and CUDA environment were unchanged.
+- Saved camera/target/zone/rule configuration and the latest 100 events under
+  ignored playground/data/monitoring. Credentials are backend-only and redacted
+  from responses. Server restart restored setup/events and started stopped.
+- Used real mask pixels rather than box intersection. Freshness, invalid masks,
+  camera loss, resolution changes, prompt revisions and Stop preserve Unknown
+  separately from Normal. No LLM or machine/SCADA command is used by this flow.
+- Browser demonstration connected the real Pi, drew and dragged a zone vertex,
+  saved the polygon and started person monitoring. Real masks overlapped the demo
+  polygon by about 44%; fresh observations confirmed Warning. Cold results stayed
+  Unknown. Changing the target to forklift preserved the zone and fresh empty
+  results confirmed Normal. Both phases reported one model load.
+- Restarted only the PC app and confirmed restored setup could generate another
+  real warning using the still-loaded GPU model. Left monitoring stopped.
+- 75 checks passed: 16 monitoring configuration/geometry/rule tests, 16 web route
+  checks and the existing 43 segmentation tests. JavaScript syntax checks passed.
+- Existing window latency can cause Unknown intervals between results at the
+  10-second freshness limit. Persistence cannot establish continuous occupancy
+  between sampled frames. Recognition accuracy and physical camera-unplug tests
+  remain for owner evaluation. SAM-assisted zone selection and SCADA tag output
+  are explicitly unavailable in this MVP.
+
+## 2026-10-28 - Claude setup with local SAM raised-hand rule
+
+- Corrected the monitoring architecture to Claude text-only setup followed by local SAM inference and deterministic geometry/event checks.
+- Removed stand_up from the available monitor/API rules; its earlier experimental source remains preserved but is not called by monitoring.
+- Added same-frame hand/head/person segmentation, normalized mask boxes, single-person geometry validation, above-head checks, head-relative movement, and two-observation activation.
+- Missing/ambiguous masks and stale samples yield unknown; no camera image is sent to Claude from this loop.
+- Live one-frame check returned one hand, one head, and one person with valid geometry. The new rule correctly remained unknown with only one detected hand. Inference took 44.52 seconds including initial load, then 0.86 seconds for head and 0.59 seconds for person on that same frame.
+- Text-only Claude preparation returned the intended local SAM setup. Raised-hand gesture accuracy remains for owner testing; successful segmentation is not proof of physical identity or correct gesture classification.
+
+## 2026-10-28 - Seated-to-standing playground rule
+
+- Added stand-up prompt interpretation and explicit Claude vision mode with cloud-image disclosure beside Start.
+- Confirmed seated observations arm the rule; confirmed standing observations emit person_stood_up. Starting standing does not trigger. Unknown/stale observations reset the baseline.
+- Posture inference uses sampled single-person images, sequential requests, and a five-second pause. It does not use SAM or establish identity continuity.
+- Offline state-machine and response-validation tests passed; real-camera posture accuracy remains unverified. The restarted playground is stopped until the owner starts a rule.
+
+## 2026-10-28 - Prompted live Pi event playground
+
+- Added a standalone playground at localhost:5053 with Pi preview, local sampled-frame SAM masks, and bounded experimental event history.
+- Added presence and two-hand movement rules, debounce, freshness checks, duplicate-frame rejection, and stop/discard behavior.
+- Added text-only Claude interpretation into supported rules with user review before Start; unsupported conditions are explicit. No model-generated code is executed.
+- Live Pi snapshots reached the updated SAM worker. Two hand masks and two_hands_moving/no_two_hand_motion transitions were observed; recent warm requests were approximately 0.6 seconds for this scene.
+- Trigger accuracy against intentional gestures remains for owner review. This is not continuous video tracking or a SCADA control connection.
+- Credentials and frames remain outside tracked files. No cloud image request or production service change was made.
+
+## 2026-10-28 - Local SAM checkpoint and first inference
+
+- Verified Hugging Face browser login and downloaded the approved SAM 3.1 checkpoint into the Ubuntu cache.
+- Corrected the worker's multiplex bucket size to 16 to match the checkpoint; retained an eight-object limit.
+- Removed unsupported state offloading and applied the upstream issue 544 / PR 543 session-argument filter through a reproducible runtime patch script, preserving a backup.
+- Two checkpoint-backed runs on a generated 640x480 monitor image returned one mask each: 94.49 seconds including loading and 1.55 seconds warm; peak allocated GPU memory reached 5740 MiB.
+- These are diagnostic smoke-test results, not camera or tracking benchmarks. No cloud request was made; Meta API setup remains separate.
+- All 12 offline segmentation tests passed. Real Pi-photo quality and video tracking remain for testing.
+
 ## 2026-10-27 - Project definition and initial structure
 
 - Agreed on a standalone web application outside Ignition Perspective.
