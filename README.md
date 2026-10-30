@@ -1,8 +1,10 @@
-# vLock-AI Vision
+# vLock-AI Vision - Meta Global AI Developer Hackathon 2026
 
-A standalone industrial vision and supervisory vLock web application for SCADA developers.
+A standalone industrial vision and supervisory vLock application for SCADA developers and manufacturers, designed for integration with existing SCADA systems or independent operation.
 
-**Status: Pi 5 USB camera streaming and the main PC camera UI are owner-tested. Claude photo analysis is connected; SAM 3.1 remains experimental (see the development log for inference evidence and limits). The [SCADA playground](playground/scada/README.md) connects a real Bambu P1S through MQTT to Ignition Perspective: live telemetry and stopping a print from SCADA are owner-tested. Standalone vLock and end-to-end vision-to-SCADA integration are still planned.**
+**Development status:** Pi 5 USB camera streaming and the main PC camera UI are owner-tested. Claude photo analysis is connected; SAM 3.1 remains experimental. The [SCADA playground](playground/scada/README.md) connects a real Bambu P1S through MQTT to Ignition Perspective. Live telemetry and stopping a print from SCADA are owner-tested.
+
+Standalone vLock and end-to-end vision-to-SCADA integration are planned. See the [development log](docs/DEVELOPMENT_LOG.md) for verified milestones and limitations.
 
 ## Vision
 
