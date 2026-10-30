@@ -4,6 +4,11 @@
 
 Enable SCADA developers to integrate visual monitoring and supervisory vLock behavior through a standalone web application with clear endpoints and equipment mappings. Aim for reusable configuration across machines; validate each supported monitoring scenario.
 
+See [product direction notes](PRODUCT_DIRECTION.md) for the intended standalone
+and Ignition integration paths, the optional independent printer application,
+and future guided installation/documentation with RAG. These are planning notes;
+the milestone and validation requirements below still apply.
+
 ## Phase 1: SAM 3.1 and Muse
 
 Start with small image experiments, then recorded clips. Verify credentials, model IDs, output formats, prompts, mask geometry, tracking behavior, latency, rate limits, and costs. Muse should interpret intent, invoke perception/validation tools, and propose structured configuration for engineer review. It must not be required for every frame.
