@@ -1,0 +1,179 @@
+{
+  "tags": [
+    {
+      "name": "BambuP1S",
+      "tagType": "Folder",
+      "tags": [
+        {
+          "name": "Config",
+          "tagType": "Folder",
+          "tags": [
+            {
+              "name": "ServiceUrl",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "String",
+              "value": "http://127.0.0.1:8876"
+            }
+          ]
+        },
+        {
+          "name": "Connection",
+          "tagType": "Folder",
+          "tags": [
+            {
+              "name": "ServiceOnline",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Boolean",
+              "value": false
+            },
+            {
+              "name": "Message",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "String",
+              "value": "Waiting for local connector"
+            },
+            {
+              "name": "LastPoll",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "DateTime"
+            },
+            {
+              "name": "MqttConnected",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Boolean",
+              "value": false
+            }
+          ]
+        },
+        {
+          "name": "Readings",
+          "tagType": "Folder",
+          "tags": [
+            {
+              "name": "Online",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Boolean",
+              "value": false
+            },
+            {
+              "name": "State",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "String",
+              "value": "Offline"
+            },
+            {
+              "name": "RawState",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "String",
+              "value": ""
+            },
+            {
+              "name": "NozzleTemp",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Float8",
+              "value": 0
+            },
+            {
+              "name": "BedTemp",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Float8",
+              "value": 0
+            },
+            {
+              "name": "AgeSeconds",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Float8",
+              "value": 0
+            },
+            {
+              "name": "NozzleValid",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Boolean",
+              "value": false
+            },
+            {
+              "name": "BedValid",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Boolean",
+              "value": false
+            }
+          ]
+        },
+        {
+          "name": "Commands",
+          "tagType": "Folder",
+          "tags": [
+            {
+              "name": "Result",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "String",
+              "value": "No command requested"
+            },
+            {
+              "name": "Pause",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Boolean",
+              "value": false
+            },
+            {
+              "name": "Resume",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Boolean",
+              "value": false
+            },
+            {
+              "name": "Stop",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Boolean",
+              "value": false
+            },
+            {
+              "name": "Busy",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Boolean",
+              "value": false
+            }
+          ]
+        },
+        {
+          "name": "System",
+          "tagType": "Folder",
+          "tags": [
+            {
+              "name": "Enabled",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Boolean",
+              "value": false
+            },
+            {
+              "name": "Message",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "String",
+              "value": "Stopped; vLock pending"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

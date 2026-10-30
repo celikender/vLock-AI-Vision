@@ -1,0 +1,224 @@
+{
+  "tags": [
+    {
+      "name": "BambuP1S",
+      "tagType": "Folder",
+      "tags": [
+        {
+          "name": "Config",
+          "tagType": "Folder",
+          "tags": [
+            {
+              "name": "ServiceUrl",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "String",
+              "value": "http://127.0.0.1:8876"
+            }
+          ]
+        },
+        {
+          "name": "Connection",
+          "tagType": "Folder",
+          "tags": [
+            {
+              "name": "ServiceOnline",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Boolean",
+              "value": false
+            },
+            {
+              "name": "Message",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "String",
+              "value": "Waiting for local connector"
+            },
+            {
+              "name": "LastPoll",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "DateTime"
+            }
+          ]
+        },
+        {
+          "name": "Readings",
+          "tagType": "Folder",
+          "tags": [
+            {
+              "name": "Online",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Boolean",
+              "value": false
+            },
+            {
+              "name": "State",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "String",
+              "value": "Offline"
+            },
+            {
+              "name": "RawState",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "String",
+              "value": ""
+            },
+            {
+              "name": "FileName",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "String",
+              "value": ""
+            },
+            {
+              "name": "NozzleTemp",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Float8",
+              "value": 0
+            },
+            {
+              "name": "BedTemp",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Float8",
+              "value": 0
+            },
+            {
+              "name": "Progress",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Float8",
+              "value": 0
+            },
+            {
+              "name": "RemainingSeconds",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Int4",
+              "value": 0
+            },
+            {
+              "name": "FilamentRemaining",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Float8",
+              "value": 0
+            },
+            {
+              "name": "AgeSeconds",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Float8",
+              "value": 0
+            },
+            {
+              "name": "Fault",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Boolean",
+              "value": false,
+              "alarms": [
+                {
+                  "name": "PrinterFault",
+                  "mode": "Equality",
+                  "setpointA": 1,
+                  "priority": "High",
+                  "ackMode": "Unused",
+                  "label": "Bambu P1S machine fault"
+                }
+              ]
+            },
+            {
+              "name": "FaultMessage",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "String",
+              "value": ""
+            },
+            {
+              "name": "NozzleValid",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Boolean",
+              "value": false
+            },
+            {
+              "name": "BedValid",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Boolean",
+              "value": false
+            },
+            {
+              "name": "ProgressValid",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Boolean",
+              "value": false
+            },
+            {
+              "name": "RemainingValid",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Boolean",
+              "value": false
+            },
+            {
+              "name": "FilamentValid",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Boolean",
+              "value": false
+            }
+          ]
+        },
+        {
+          "name": "Commands",
+          "tagType": "Folder",
+          "tags": [
+            {
+              "name": "Result",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "String",
+              "value": "No command requested"
+            }
+          ]
+        },
+        {
+          "name": "Camera",
+          "tagType": "Folder",
+          "tags": [
+            {
+              "name": "Available",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Boolean",
+              "value": false
+            },
+            {
+              "name": "Source",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "String",
+              "value": ""
+            },
+            {
+              "name": "Message",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "String",
+              "value": "No fresh camera frame"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

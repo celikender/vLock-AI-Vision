@@ -1,0 +1,5 @@
+connector/logs/
+connector/state/
+connector/*.log
+connector/*.backup-*.py
+output/single-printer-setup.zip

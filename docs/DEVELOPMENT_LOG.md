@@ -1,5 +1,26 @@
 # Development log
 
+## 2026-10-30 - Plain single-printer Perspective export
+
+- Reworked the supplied project export into one P1S screen: nozzle/bed
+  temperature, machine state, connector/MQTT/report status, and Pause/Resume/Stop.
+- Included a dedicated two-second Gateway poller, missing-tag initialization,
+  momentary command tags, command feedback, and stale-value display handling.
+- Separated System Start/Stop/Reset into clearly labelled supervisory enable
+  state; vLock remains pending. These controls send no printer commands.
+- Prepared an idempotent, backup-producing connector patch for dedicated Resume,
+  which rejects non-paused states instead of using Start to launch a print.
+- Seven offline checks passed, including mocked command routing and applying
+  the patch against connector source. Tests now use the bundled snapshot.
+- Owner imported/rendered the new screen, verified live temperatures and connection
+  status, applied the Resume patch, restarted the connector and stopped an actual
+  print from SCADA. Separate live Pause/Resume verification remains pending.
+- Published the experiment under playground/scada with readable resources, tag
+  import, native project ZIP, MQTT bridge source and generic local configuration.
+  Original supplied exports remain unchanged; no credentials or runtime data are included.
+- Next: standalone vLock, SAM 3.1-to-vLock observations, vLock-to-SCADA whole-system
+  testing, edge cases/fallbacks, and reusable integration packaging. These are planned.
+
 ## 2026-10-29 - Monitoring Setup MVP in the existing PC application
 
 - Added /monitoring to the existing localhost:5051 server, with camera setup,

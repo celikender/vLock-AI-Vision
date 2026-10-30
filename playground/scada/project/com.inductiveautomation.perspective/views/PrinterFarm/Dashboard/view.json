@@ -1,0 +1,862 @@
+{
+  "custom": {
+    "feedback": ""
+  },
+  "params": {},
+  "props": {
+    "defaultSize": {
+      "width": 1000,
+      "height": 900
+    }
+  },
+  "root": {
+    "type": "ia.container.flex",
+    "meta": {
+      "name": "Root"
+    },
+    "props": {
+      "direction": "column",
+      "wrap": "nowrap",
+      "justify": "flex-start",
+      "alignItems": "stretch",
+      "style": {
+        "boxSizing": "border-box",
+        "gap": "12px",
+        "padding": "20px",
+        "backgroundColor": "#ffffff",
+        "color": "#20252b",
+        "fontFamily": "Segoe UI, Arial, sans-serif",
+        "overflow": "auto"
+      }
+    },
+    "children": [
+      {
+        "type": "ia.display.label",
+        "meta": {
+          "name": "Title"
+        },
+        "position": {
+          "basis": "44px",
+          "grow": 0,
+          "shrink": 0
+        },
+        "props": {
+          "text": "Single printer control",
+          "style": {
+            "fontSize": "26px",
+            "whiteSpace": "normal",
+            "color": "#20252b"
+          }
+        }
+      },
+      {
+        "type": "ia.container.flex",
+        "meta": {
+          "name": "SystemControl"
+        },
+        "position": {
+          "basis": "auto",
+          "grow": 0,
+          "shrink": 0
+        },
+        "props": {
+          "direction": "column",
+          "wrap": "nowrap",
+          "justify": "flex-start",
+          "alignItems": "stretch",
+          "style": {
+            "boxSizing": "border-box",
+            "gap": "12px",
+            "border": "1px solid #b9c0c7",
+            "padding": "16px",
+            "backgroundColor": "#f5f6f7"
+          }
+        },
+        "children": [
+          {
+            "type": "ia.display.label",
+            "meta": {
+              "name": "Heading"
+            },
+            "position": {
+              "basis": "32px",
+              "grow": 0,
+              "shrink": 0
+            },
+            "props": {
+              "text": "System control",
+              "style": {
+                "fontSize": "20px",
+                "whiteSpace": "normal",
+                "color": "#20252b"
+              }
+            }
+          },
+          {
+            "type": "ia.container.flex",
+            "meta": {
+              "name": "SystemButtons"
+            },
+            "position": {
+              "basis": "auto",
+              "grow": 0,
+              "shrink": 0
+            },
+            "props": {
+              "direction": "row",
+              "wrap": "wrap",
+              "justify": "flex-start",
+              "alignItems": "stretch",
+              "style": {
+                "boxSizing": "border-box",
+                "gap": "12px"
+              }
+            },
+            "children": [
+              {
+                "type": "ia.input.button",
+                "meta": {
+                  "name": "SystemStart"
+                },
+                "position": {
+                  "basis": "130px",
+                  "grow": 0,
+                  "shrink": 0
+                },
+                "props": {
+                  "text": "System Start",
+                  "enabled": true,
+                  "primary": false,
+                  "style": {
+                    "backgroundColor": "#e8f1e9",
+                    "color": "#20252b",
+                    "border": "1px solid #929ba4",
+                    "borderRadius": "3px",
+                    "height": "42px",
+                    "fontSize": "15px"
+                  }
+                },
+                "events": {
+                  "component": {
+                    "onActionPerformed": {
+                      "type": "script",
+                      "scope": "G",
+                      "config": {
+                        "script": "\ttry:\n\t    bambuP1s.system_command('Start')\n\t    self.view.custom.feedback = \"\"\n\texcept Exception as exc:\n\t    self.view.custom.feedback = str(exc)"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "type": "ia.input.button",
+                "meta": {
+                  "name": "SystemStop"
+                },
+                "position": {
+                  "basis": "130px",
+                  "grow": 0,
+                  "shrink": 0
+                },
+                "props": {
+                  "text": "System Stop",
+                  "enabled": true,
+                  "primary": false,
+                  "style": {
+                    "backgroundColor": "#f6e8e8",
+                    "color": "#20252b",
+                    "border": "1px solid #929ba4",
+                    "borderRadius": "3px",
+                    "height": "42px",
+                    "fontSize": "15px"
+                  }
+                },
+                "events": {
+                  "component": {
+                    "onActionPerformed": {
+                      "type": "script",
+                      "scope": "G",
+                      "config": {
+                        "script": "\ttry:\n\t    bambuP1s.system_command('Stop')\n\t    self.view.custom.feedback = \"\"\n\texcept Exception as exc:\n\t    self.view.custom.feedback = str(exc)"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "type": "ia.input.button",
+                "meta": {
+                  "name": "SystemReset"
+                },
+                "position": {
+                  "basis": "130px",
+                  "grow": 0,
+                  "shrink": 0
+                },
+                "props": {
+                  "text": "System Reset",
+                  "enabled": true,
+                  "primary": false,
+                  "style": {
+                    "backgroundColor": "#ffffff",
+                    "color": "#20252b",
+                    "border": "1px solid #929ba4",
+                    "borderRadius": "3px",
+                    "height": "42px",
+                    "fontSize": "15px"
+                  }
+                },
+                "events": {
+                  "component": {
+                    "onActionPerformed": {
+                      "type": "script",
+                      "scope": "G",
+                      "config": {
+                        "script": "\ttry:\n\t    bambuP1s.system_command('Reset')\n\t    self.view.custom.feedback = \"\"\n\texcept Exception as exc:\n\t    self.view.custom.feedback = str(exc)"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "type": "ia.display.label",
+            "meta": {
+              "name": "SystemState"
+            },
+            "position": {
+              "basis": "32px",
+              "grow": 0,
+              "shrink": 0
+            },
+            "props": {
+              "text": "Stopped; vLock pending",
+              "style": {
+                "fontSize": "16px",
+                "whiteSpace": "normal",
+                "color": "#20252b"
+              }
+            },
+            "propConfig": {
+              "props.text": {
+                "binding": {
+                  "type": "expr",
+                  "config": {
+                    "expression": "if((!isNull({[default]BambuP1S/Connection/LastPoll}) && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) >= 0 && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) < 10), {[default]BambuP1S/System/Message}, \"System status unavailable\")"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "ia.display.label",
+            "meta": {
+              "name": "SystemMeaning"
+            },
+            "position": {
+              "basis": "32px",
+              "grow": 0,
+              "shrink": 0
+            },
+            "props": {
+              "text": "Supervisory enable only. Printer operation is separate. vLock is not connected.",
+              "style": {
+                "fontSize": "13px",
+                "whiteSpace": "normal",
+                "color": "#20252b"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "type": "ia.container.flex",
+        "meta": {
+          "name": "PrinterPanel"
+        },
+        "position": {
+          "basis": "auto",
+          "grow": 0,
+          "shrink": 0
+        },
+        "props": {
+          "direction": "column",
+          "wrap": "nowrap",
+          "justify": "flex-start",
+          "alignItems": "stretch",
+          "style": {
+            "boxSizing": "border-box",
+            "gap": "12px",
+            "border": "1px solid #b9c0c7",
+            "padding": "16px"
+          }
+        },
+        "children": [
+          {
+            "type": "ia.display.label",
+            "meta": {
+              "name": "PrinterTitle"
+            },
+            "position": {
+              "basis": "40px",
+              "grow": 0,
+              "shrink": 0
+            },
+            "props": {
+              "text": "Bambu Lab P1S",
+              "style": {
+                "fontSize": "24px",
+                "whiteSpace": "normal",
+                "color": "#20252b"
+              }
+            }
+          },
+          {
+            "type": "ia.container.flex",
+            "meta": {
+              "name": "MachineAndData"
+            },
+            "position": {
+              "basis": "auto",
+              "grow": 0,
+              "shrink": 0
+            },
+            "props": {
+              "direction": "row",
+              "wrap": "wrap",
+              "justify": "flex-start",
+              "alignItems": "stretch",
+              "style": {
+                "boxSizing": "border-box",
+                "gap": "12px"
+              }
+            },
+            "children": [
+              {
+                "type": "ia.container.flex",
+                "meta": {
+                  "name": "Schematic"
+                },
+                "position": {
+                  "basis": "280px",
+                  "grow": 0,
+                  "shrink": 0
+                },
+                "props": {
+                  "direction": "column",
+                  "wrap": "nowrap",
+                  "justify": "flex-start",
+                  "alignItems": "stretch",
+                  "style": {
+                    "boxSizing": "border-box",
+                    "gap": "12px"
+                  }
+                },
+                "children": [
+                  {
+                    "type": "ia.display.image",
+                    "meta": {
+                      "name": "Printer"
+                    },
+                    "position": {
+                      "basis": "240px",
+                      "grow": 0,
+                      "shrink": 0
+                    },
+                    "props": {
+                      "source": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyODAiIGhlaWdodD0iMjQwIiB2aWV3Qm94PSIwIDAgMjgwIDI0MCI+PHJlY3QgeD0iMzUiIHk9IjEyIiB3aWR0aD0iMjEwIiBoZWlnaHQ9IjIwNyIgcng9IjQiIGZpbGw9IiNmNWY2ZjciIHN0cm9rZT0iIzM5NDI0YyIgc3Ryb2tlLXdpZHRoPSI1Ii8+PHJlY3QgeD0iNTIiIHk9IjM3IiB3aWR0aD0iMTc2IiBoZWlnaHQ9IjE1MSIgZmlsbD0id2hpdGUiIHN0cm9rZT0iIzlkYTVhZCIgc3Ryb2tlLXdpZHRoPSIyIi8+PHBhdGggZD0iTTYwIDY3SDIyMCBNMTQwIDY4VjEwMiBNMTMyIDEwMkgxNDhMMTQwIDExNlogTTY1IDE2M0gyMTUgTTc4IDE3MUgyMDIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzM5NDI0YyIgc3Ryb2tlLXdpZHRoPSI1Ii8+PHBhdGggZD0iTTEwNSAxNTlWMTM3SDE3MVYxNTkiIGZpbGw9IiNlNWU5ZWMiIHN0cm9rZT0iIzc4ODM4ZSIgc3Ryb2tlLXdpZHRoPSIyIi8+PHJlY3QgeD0iNDgiIHk9IjIyMCIgd2lkdGg9IjM1IiBoZWlnaHQ9IjgiIGZpbGw9IiMzOTQyNGMiLz48cmVjdCB4PSIxOTciIHk9IjIyMCIgd2lkdGg9IjM1IiBoZWlnaHQ9IjgiIGZpbGw9IiMzOTQyNGMiLz48dGV4dCB4PSIxNDAiIHk9IjIwOCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEyIiBmaWxsPSIjMzk0MjRjIj5CQU1CVSBMQUIgUDFTPC90ZXh0Pjwvc3ZnPg==",
+                      "fit": {
+                        "mode": "contain"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "ia.container.flex",
+                "meta": {
+                  "name": "Readings"
+                },
+                "position": {
+                  "basis": "300px",
+                  "grow": 1,
+                  "shrink": 0
+                },
+                "props": {
+                  "direction": "column",
+                  "wrap": "nowrap",
+                  "justify": "flex-start",
+                  "alignItems": "stretch",
+                  "style": {
+                    "boxSizing": "border-box",
+                    "gap": "6px"
+                  }
+                },
+                "children": [
+                  {
+                    "type": "ia.display.label",
+                    "meta": {
+                      "name": "MachineStatus"
+                    },
+                    "position": {
+                      "basis": "40px",
+                      "grow": 0,
+                      "shrink": 0
+                    },
+                    "props": {
+                      "text": "Machine: Offline",
+                      "style": {
+                        "fontSize": "20px",
+                        "whiteSpace": "normal",
+                        "color": "#20252b"
+                      }
+                    },
+                    "propConfig": {
+                      "props.text": {
+                        "binding": {
+                          "type": "expr",
+                          "config": {
+                            "expression": "\"Machine: \" + if(((!isNull({[default]BambuP1S/Connection/LastPoll}) && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) >= 0 && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) < 10) && {[default]BambuP1S/Readings/Online}), {[default]BambuP1S/Readings/State}, \"Offline / unknown\")"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "type": "ia.display.label",
+                    "meta": {
+                      "name": "NozzleTemp"
+                    },
+                    "position": {
+                      "basis": "40px",
+                      "grow": 0,
+                      "shrink": 0
+                    },
+                    "props": {
+                      "text": "Nozzle: --",
+                      "style": {
+                        "fontSize": "23px",
+                        "whiteSpace": "normal",
+                        "color": "#20252b"
+                      }
+                    },
+                    "propConfig": {
+                      "props.text": {
+                        "binding": {
+                          "type": "expr",
+                          "config": {
+                            "expression": "if(((!isNull({[default]BambuP1S/Connection/LastPoll}) && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) >= 0 && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) < 10) && {[default]BambuP1S/Readings/Online}) && {[default]BambuP1S/Readings/NozzleValid}, \"Nozzle: \" + numberFormat({[default]BambuP1S/Readings/NozzleTemp}, \"0.0\") + \" deg C\", \"Nozzle: --\")"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "type": "ia.display.label",
+                    "meta": {
+                      "name": "BedTemp"
+                    },
+                    "position": {
+                      "basis": "40px",
+                      "grow": 0,
+                      "shrink": 0
+                    },
+                    "props": {
+                      "text": "Bed: --",
+                      "style": {
+                        "fontSize": "23px",
+                        "whiteSpace": "normal",
+                        "color": "#20252b"
+                      }
+                    },
+                    "propConfig": {
+                      "props.text": {
+                        "binding": {
+                          "type": "expr",
+                          "config": {
+                            "expression": "if(((!isNull({[default]BambuP1S/Connection/LastPoll}) && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) >= 0 && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) < 10) && {[default]BambuP1S/Readings/Online}) && {[default]BambuP1S/Readings/BedValid}, \"Bed: \" + numberFormat({[default]BambuP1S/Readings/BedTemp}, \"0.0\") + \" deg C\", \"Bed: --\")"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "type": "ia.display.label",
+                    "meta": {
+                      "name": "Connector"
+                    },
+                    "position": {
+                      "basis": "26px",
+                      "grow": 0,
+                      "shrink": 0
+                    },
+                    "props": {
+                      "text": "Connector: unavailable",
+                      "style": {
+                        "fontSize": "16px",
+                        "whiteSpace": "normal",
+                        "color": "#20252b"
+                      }
+                    },
+                    "propConfig": {
+                      "props.text": {
+                        "binding": {
+                          "type": "expr",
+                          "config": {
+                            "expression": "\"Connector: \" + if((!isNull({[default]BambuP1S/Connection/LastPoll}) && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) >= 0 && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) < 10) && {[default]BambuP1S/Connection/ServiceOnline}, \"Connected\", \"Disconnected / stale\")"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "type": "ia.display.label",
+                    "meta": {
+                      "name": "MQTT"
+                    },
+                    "position": {
+                      "basis": "26px",
+                      "grow": 0,
+                      "shrink": 0
+                    },
+                    "props": {
+                      "text": "MQTT: unavailable",
+                      "style": {
+                        "fontSize": "16px",
+                        "whiteSpace": "normal",
+                        "color": "#20252b"
+                      }
+                    },
+                    "propConfig": {
+                      "props.text": {
+                        "binding": {
+                          "type": "expr",
+                          "config": {
+                            "expression": "\"MQTT: \" + if((!isNull({[default]BambuP1S/Connection/LastPoll}) && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) >= 0 && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) < 10) && {[default]BambuP1S/Connection/MqttConnected}, \"Connected\", \"Disconnected / stale\")"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "type": "ia.display.label",
+                    "meta": {
+                      "name": "Printerreports"
+                    },
+                    "position": {
+                      "basis": "26px",
+                      "grow": 0,
+                      "shrink": 0
+                    },
+                    "props": {
+                      "text": "Printer reports: unavailable",
+                      "style": {
+                        "fontSize": "16px",
+                        "whiteSpace": "normal",
+                        "color": "#20252b"
+                      }
+                    },
+                    "propConfig": {
+                      "props.text": {
+                        "binding": {
+                          "type": "expr",
+                          "config": {
+                            "expression": "\"Printer reports: \" + if((!isNull({[default]BambuP1S/Connection/LastPoll}) && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) >= 0 && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) < 10) && {[default]BambuP1S/Readings/Online}, \"Connected\", \"Disconnected / stale\")"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "type": "ia.display.label",
+                    "meta": {
+                      "name": "ReportAge"
+                    },
+                    "position": {
+                      "basis": "32px",
+                      "grow": 0,
+                      "shrink": 0
+                    },
+                    "props": {
+                      "text": "Report age: --",
+                      "style": {
+                        "fontSize": "16px",
+                        "whiteSpace": "normal",
+                        "color": "#20252b"
+                      }
+                    },
+                    "propConfig": {
+                      "props.text": {
+                        "binding": {
+                          "type": "expr",
+                          "config": {
+                            "expression": "if(((!isNull({[default]BambuP1S/Connection/LastPoll}) && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) >= 0 && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) < 10) && {[default]BambuP1S/Readings/Online}), \"Report age: \" + numberFormat({[default]BambuP1S/Readings/AgeSeconds}, \"0.0\") + \" s\", \"Report age: --\")"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "ia.container.flex",
+            "meta": {
+              "name": "PrinterButtons"
+            },
+            "position": {
+              "basis": "auto",
+              "grow": 0,
+              "shrink": 0
+            },
+            "props": {
+              "direction": "row",
+              "wrap": "wrap",
+              "justify": "flex-start",
+              "alignItems": "stretch",
+              "style": {
+                "boxSizing": "border-box",
+                "gap": "12px"
+              }
+            },
+            "children": [
+              {
+                "type": "ia.input.button",
+                "meta": {
+                  "name": "Pause"
+                },
+                "position": {
+                  "basis": "130px",
+                  "grow": 0,
+                  "shrink": 0
+                },
+                "props": {
+                  "text": "Pause",
+                  "enabled": false,
+                  "primary": false,
+                  "style": {
+                    "backgroundColor": "#fff3d6",
+                    "color": "#20252b",
+                    "border": "1px solid #929ba4",
+                    "borderRadius": "3px",
+                    "height": "42px",
+                    "fontSize": "15px"
+                  }
+                },
+                "events": {
+                  "component": {
+                    "onActionPerformed": {
+                      "type": "script",
+                      "scope": "G",
+                      "config": {
+                        "script": "\ttry:\n\t    bambuP1s.command('Pause')\n\t    self.view.custom.feedback = \"\"\n\texcept Exception as exc:\n\t    self.view.custom.feedback = str(exc)"
+                      }
+                    }
+                  }
+                },
+                "propConfig": {
+                  "props.enabled": {
+                    "binding": {
+                      "type": "expr",
+                      "config": {
+                        "expression": "((!isNull({[default]BambuP1S/Connection/LastPoll}) && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) >= 0 && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) < 10) && {[default]BambuP1S/Readings/Online}) && {[default]BambuP1S/Readings/State} = \"Running\" && !{[default]BambuP1S/Commands/Busy}"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "type": "ia.input.button",
+                "meta": {
+                  "name": "Resume"
+                },
+                "position": {
+                  "basis": "130px",
+                  "grow": 0,
+                  "shrink": 0
+                },
+                "props": {
+                  "text": "Resume",
+                  "enabled": false,
+                  "primary": false,
+                  "style": {
+                    "backgroundColor": "#e8f1e9",
+                    "color": "#20252b",
+                    "border": "1px solid #929ba4",
+                    "borderRadius": "3px",
+                    "height": "42px",
+                    "fontSize": "15px"
+                  }
+                },
+                "events": {
+                  "component": {
+                    "onActionPerformed": {
+                      "type": "script",
+                      "scope": "G",
+                      "config": {
+                        "script": "\ttry:\n\t    bambuP1s.command('Resume')\n\t    self.view.custom.feedback = \"\"\n\texcept Exception as exc:\n\t    self.view.custom.feedback = str(exc)"
+                      }
+                    }
+                  }
+                },
+                "propConfig": {
+                  "props.enabled": {
+                    "binding": {
+                      "type": "expr",
+                      "config": {
+                        "expression": "((!isNull({[default]BambuP1S/Connection/LastPoll}) && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) >= 0 && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) < 10) && {[default]BambuP1S/Readings/Online}) && {[default]BambuP1S/Readings/State} = \"Paused\" && {[default]BambuP1S/System/Enabled} && !{[default]BambuP1S/Commands/Busy}"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "type": "ia.input.button",
+                "meta": {
+                  "name": "Stop"
+                },
+                "position": {
+                  "basis": "130px",
+                  "grow": 0,
+                  "shrink": 0
+                },
+                "props": {
+                  "text": "Stop / cancel",
+                  "enabled": false,
+                  "primary": false,
+                  "style": {
+                    "backgroundColor": "#f6e8e8",
+                    "color": "#20252b",
+                    "border": "1px solid #929ba4",
+                    "borderRadius": "3px",
+                    "height": "42px",
+                    "fontSize": "15px"
+                  }
+                },
+                "events": {
+                  "component": {
+                    "onActionPerformed": {
+                      "type": "script",
+                      "scope": "G",
+                      "config": {
+                        "script": "\ttry:\n\t    bambuP1s.command('Stop')\n\t    self.view.custom.feedback = \"\"\n\texcept Exception as exc:\n\t    self.view.custom.feedback = str(exc)"
+                      }
+                    }
+                  }
+                },
+                "propConfig": {
+                  "props.enabled": {
+                    "binding": {
+                      "type": "expr",
+                      "config": {
+                        "expression": "((!isNull({[default]BambuP1S/Connection/LastPoll}) && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) >= 0 && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) < 10) && {[default]BambuP1S/Readings/Online}) && ({[default]BambuP1S/Readings/State} = \"Running\" || {[default]BambuP1S/Readings/State} = \"Paused\")"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "type": "ia.display.label",
+            "meta": {
+              "name": "ControlMeaning"
+            },
+            "position": {
+              "basis": "40px",
+              "grow": 0,
+              "shrink": 0
+            },
+            "props": {
+              "text": "Resume continues a paused job. Stop cancels the job; it is not an emergency stop.",
+              "style": {
+                "fontSize": "13px",
+                "whiteSpace": "normal",
+                "color": "#20252b"
+              }
+            }
+          },
+          {
+            "type": "ia.display.label",
+            "meta": {
+              "name": "CommandResult"
+            },
+            "position": {
+              "basis": "60px",
+              "grow": 0,
+              "shrink": 0
+            },
+            "props": {
+              "text": "No command requested",
+              "style": {
+                "fontSize": "16px",
+                "whiteSpace": "normal",
+                "color": "#20252b"
+              }
+            },
+            "propConfig": {
+              "props.text": {
+                "binding": {
+                  "type": "expr",
+                  "config": {
+                    "expression": "\"Printer command: \" + {[default]BambuP1S/Commands/Result}"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "type": "ia.display.label",
+        "meta": {
+          "name": "DataFlow"
+        },
+        "position": {
+          "basis": "32px",
+          "grow": 0,
+          "shrink": 0
+        },
+        "props": {
+          "text": "P1S -> MQTT connector -> Ignition tags -> this screen",
+          "style": {
+            "fontSize": "13px",
+            "whiteSpace": "normal",
+            "color": "#20252b"
+          }
+        }
+      },
+      {
+        "type": "ia.display.label",
+        "meta": {
+          "name": "Feedback"
+        },
+        "position": {
+          "basis": "50px",
+          "grow": 0,
+          "shrink": 0
+        },
+        "props": {
+          "text": "",
+          "style": {
+            "fontSize": "13px",
+            "whiteSpace": "normal",
+            "color": "#20252b"
+          }
+        },
+        "propConfig": {
+          "props.text": {
+            "binding": {
+              "type": "expr",
+              "config": {
+                "expression": "{view.custom.feedback}"
+              }
+            }
+          }
+        }
+      }
+    ]
+  }
+}

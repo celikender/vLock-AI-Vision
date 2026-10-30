@@ -1,0 +1,7 @@
+{
+  "title": "Single Printer Control",
+  "description": "One P1S: live temperatures, status, printer commands and separate supervisory controls.",
+  "enabled": true,
+  "inheritable": false,
+  "parent": ""
+}

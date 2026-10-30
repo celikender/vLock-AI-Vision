@@ -21,3 +21,11 @@ Copy [the report template](reports/TEMPLATE.md) for each experiment. Include scr
 
 Only move proven behavior into the application after understanding its output, errors, and limitations. Keep experiments independent from production service imports.
 
+
+## SCADA test machine milestone
+
+The [single-printer SCADA experiment](scada/README.md) includes readable Ignition
+Perspective resources, tags and a local Bambu P1S MQTT bridge. The owner verified
+telemetry and stopping an actual print from SCADA. This is a physical test setup
+before connecting SAM 3.1, standalone vLock and SCADA. See its README for evidence,
+remaining tests and next steps.
