@@ -1,5 +1,60 @@
 # Development log
 
+## 2026-10-31 - Owner-confirmed live detection-to-printer Pause
+
+- Owner confirmed manual printer Pause works and then verified entering the camera
+  zone causes a real printer Pause through SAM 3.1, monitoring rule confirmation,
+  vLock Bridge HTTP input, OPC UA, an Ignition tag and a Gateway Tag Change script.
+- Recorded the exact final watched tag path under conveyor_01 and the separate
+  Boolean Memory PauseRequested latch. A deleted duplicate tag initially left a
+  wrong watched path; correcting it enabled the live trigger.
+- Added the owner-tested handler as readable reference source, a minimal additive
+  tag-import example, and setup/troubleshooting instructions in integrations/ignition.
+  The import JSON is new and not live-import tested; the owner configured live
+  tags/event manually. Existing Perspective ZIP and printer controls are unchanged.
+- Latch stays set after detection clears and blocks more Pause requests. A request
+  is not proof of acknowledgement. No automatic Resume or reset UI was added.
+- Owner estimates about three seconds from entry to pause. This is not a measured
+  latency benchmark. Next: instrument delays, add a guarded SCADA reset/re-arm
+  button, test edge cases, review architecture and consolidate into the MVP before
+  adapting to another SCADA application.
+- Publication checks passed: 119 Python tests (monitoring 24, segmentation 43,
+  web 16, bridge 29, SCADA 7), JavaScript syntax and heartbeat watchdog checks.
+  Offline Gateway-handler checks covered startup skip, bad quality, one request,
+  latch retention and command failure; tag JSON parsed. No live machine commands
+  were sent during these checks. The reference handler was checked with stubs,
+  not an automated Ignition runtime.
+- Included earlier pending monitoring/grounding performance changes and their
+  existing report with the working publisher milestone; those hardware benchmarks
+  were not repeated during this publication step. Unrelated Bambu temperature
+  experiment remains local.
+
+
+## 2026-10-30 - Experimental SAM monitoring to bridge publisher
+
+- Reused the existing Monitoring Setup camera, local SAM and zone-event pipeline.
+  Added an opt-in bridge section with an asset mapping, API acceptance/error
+  status, and a link to the bridge. Existing configurations default to disabled.
+- Added a SAM input section beside the bridge's existing manual workflow. Source
+  sam publishes people_count and zone_condition through the existing HTTP API;
+  MQTT and OPC UA use the existing shared state. Manual streams stay separate.
+- Anchored validity to frame capture with a ten-second expiry. Missing, stopped
+  or stale inference is Unknown, never a fabricated zero. Counts cover the whole
+  image; the condition follows zone geometry and persistence. Publication uses
+  bounded synchronous local requests without a retry queue or machine commands.
+- 24 monitoring checks passed, including five new synthetic-result tests through
+  an isolated bridge HTTP server, expiry, confirmation, Stop, disabled migration
+  and transport failure. 16 web checks and 29 bridge checks passed; one initial
+  bridge run had a Windows connection abort in origin rejection, then the full
+  rerun passed. JavaScript syntax and heartbeat watchdog checks passed.
+- Browser-checked both sections and saved target person with bridge publishing
+  enabled for conveyor_01. Monitoring remains stopped for camera placement.
+  Worker health responded ready, with model_loads=0; weights are not loaded yet.
+- Started the local SAM worker and monitoring UI. Actual camera inference, new
+  Ignition tag import and printer Pause remain for live owner validation. No
+  existing printer control or automatic Resume logic was changed.
+
+
 ## 2026-10-30 - Timed heartbeat pulse and bounded history
 
 - Clarified protocol connection monitoring versus an optional application heartbeat.

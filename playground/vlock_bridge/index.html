@@ -21,7 +21,7 @@
     <div class="layout">
       <section class="panel">
         <h2>Manual input</h2>
-        <p class="muted">Simulated observations. No camera or model is connected.</p>
+        <p class="muted">Simulated observations from the manual source, independent of SAM input.</p>
         <form id="input-form">
           <label>Asset ID<input id="asset" value="conveyor_01" required maxlength="64" pattern="[A-Za-z0-9][A-Za-z0-9_-]{0,63}"></label>
           <div class="pair">
@@ -58,6 +58,12 @@
         <details><summary>Current API response</summary><pre id="response">{}</pre></details>
       </section>
     </div>
+    <section class="panel history">
+      <h2>SAM 3.1 input</h2>
+      <p>Use <a href="http://localhost:5051/monitoring" target="_blank" rel="noopener">Monitoring Setup</a> to connect your camera, set the target to person, draw a zone and enable Send to vLock Bridge.</p>
+      <p class="muted">Source: sam · people_count: current detections in the whole frame · zone_condition: confirmed configured zone rule. Manual inputs remain separate.</p>
+      <div id="sam-input" role="status">Waiting for SAM observations. Monitoring must be enabled separately.</div>
+    </section>
     <section class="panel history">
       <div class="section-heading"><h2>Event history</h2><span id="history-info" class="muted">Latest 5 · saved in SQLite</span></div>
       <div class="table-wrap"><table><thead><tr><th>Revision</th><th>Time</th><th>Asset</th><th>Source / signal</th><th>Event</th><th>Value / reason</th></tr></thead><tbody id="events"></tbody></table></div>

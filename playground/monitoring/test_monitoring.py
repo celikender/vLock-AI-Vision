@@ -208,6 +208,57 @@ class ControllerTests(unittest.TestCase):
         self.assertNotIn('sensitive',str(caught.exception))
         self.assertEqual(self.monitor.status()['state'],'Unknown')
 
+    def test_newest_overlay_preserves_every_mask_observation_and_warning(self):
+        before=time.monotonic()-1
+        with patch('playground.monitoring.controller.render',return_value='newest-overlay') as render:
+            for index in range(4):
+                self.monitor.publish(result(index=index),
+                    {'jpeg':jpeg(),'captured_at':before+index*.1},0,self.monitor.config,
+                    render_overlay=index==3)
+                if index<3:self.assertIsNone(self.monitor.status()['result'])
+        render.assert_called_once()
+        rows=self.monitor.results(0)['frames']
+        self.assertEqual([r['frame_index'] for r in rows],[0,1,2,3])
+        for index,row in enumerate(rows):
+            self.assertEqual(row['objects'],result(index=index)['objects'])
+            self.assertEqual(row['zone_detections'][0]['overlap_ratio'],.5)
+        state=self.monitor.status()
+        self.assertEqual(state['result']['frame_index'],3)
+        self.assertEqual(state['result']['annotated_image'],'newest-overlay')
+        self.assertTrue(state['warning_active'])
+        self.assertEqual([e['type'] for e in self.monitor.events],['warning'])
+
+    def test_collection_keeps_spacing_and_uniqueness_without_final_wait(self):
+        waits=[];calls=[];sequences=iter(['1','1','2','3','4'])
+        def fetch(camera):
+            return jpeg(),{'X-Frame-Sequence':next(sequences),'X-Frame-Age-Ms':'0'}
+        def wait(seconds):
+            waits.append(seconds)
+            return False
+        def infer(frames,prompt,revision):
+            calls.append([frame['sequence'] for frame in frames])
+            self.monitor.cancel.set()
+            return (row for row in ())
+        self.monitor.fetch,self.monitor.infer=fetch,infer
+        with patch.object(self.monitor.cancel,'wait',side_effect=wait):self.monitor.loop()
+        self.assertEqual(calls,[['1','2','3','4']])
+        # Three inter-frame waits plus one duplicate retry; none after frame four.
+        self.assertEqual(waits,[.25]*4)
+
+    def test_skipped_overlays_never_make_old_observations_fresh(self):
+        before=time.monotonic()-20
+        with patch('playground.monitoring.controller.render',return_value='old-overlay'):
+            for index in range(4):
+                self.monitor.publish(result(index=index),
+                    {'jpeg':jpeg(),'captured_at':before+index*.1},0,self.monitor.config,
+                    render_overlay=index==3)
+        self.assertEqual(len(self.monitor.results(0)['frames']),4)
+        state=self.monitor.status()
+        self.assertEqual(state['state'],'Unknown')
+        self.assertFalse(state['warning_active'])
+        self.assertTrue(state['result']['stale'])
+        self.assertGreater(state['result']['age_seconds'],19)
+
     def test_corrupt_monitoring_config_does_not_disable_existing_app(self):
         path=Path(self.directory.name)/'corrupt.json';path.write_text('invalid-json')
         monitor=Monitoring(fetch=None,path=path)

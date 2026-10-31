@@ -221,6 +221,12 @@ the official SAM 3.1 predictor on a temporary one-frame session, bf16 inference,
 eight tracked objects with the checkpoint's required 16-slot multiplex bucket,
 CPU frame offloading, no compilation, and no Flash
 Attention 3 dependency. Temporary captures are removed when the request finishes.
+Grounding processes one frame per batch on the existing 8 GB GPU. This bounds
+temporary activations while retaining the checkpoint's 16-slot multiplex bucket,
+input resolution and confidence settings. Startup logs report the grounding batch
+size. A matched-frame comparison against batch sizes 16 and 2 measured lower
+latency and memory for size 1, with matching counts/IDs/boxes/scores and near-identical
+masks on the test clip. See the [performance report](../reports/monitoring_performance.md).
 Local images are not uploaded. Local failure never switches to cloud automatically.
 An 8 GB GPU may still run out of memory; the UI reports that explicitly. Do not
 claim a latency or memory result until a real checkpoint-backed run succeeds.

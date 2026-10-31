@@ -454,8 +454,19 @@ expiry, reconnect with fresh state, offline availability, and OPC UA read-only a
 typed measurements, quality changes and recovery. Missing optional packages cause
 those transport checks to skip; report skips when evaluating a fresh installation.
 
-Actual Ignition tag mapping, remote deployment and real model output remain
-unverified. See the development log for actual adapter/client evidence.
+The owner subsequently verified live SAM observations, Ignition OPC tag mapping
+and printer Pause on October 31, 2026. Remote deployment remains unverified.
+See the development log and Ignition integration guide for scope and limitations.
 
 Implementation references: [Paho client API](https://eclipse.dev/paho/files/paho.mqtt.python/html/client.html)
 and [OPC UA asyncio library](https://github.com/FreeOpcUa/opcua-asyncio).
+
+## SAM input alongside manual input
+
+The bridge page now shows received source `sam` observations in a SAM 3.1 input
+section and links to Monitoring Setup at http://localhost:5051/monitoring.
+Enable publishing there, with target `person`, to send `people_count` and
+`zone_condition` through the existing observation API. The bridge itself does
+not run SAM. Manual streams remain separate. See the monitoring README for
+freshness, activation and Ignition tag mapping. The live camera-to-Ignition and
+printer Pause path is now owner-tested; see [the SCADA guide](../../integrations/ignition/SAM_BRIDGE.md).

@@ -1,0 +1,53 @@
+{
+  "tags": [
+    {
+      "name": "vLockBridge",
+      "tagType": "Folder",
+      "tags": [
+        {
+          "name": "PauseRequested",
+          "tagType": "AtomicTag",
+          "valueSource": "memory",
+          "dataType": "Boolean",
+          "value": false
+        },
+        {
+          "name": "vLock",
+          "tagType": "Folder",
+          "tags": [
+            {
+              "name": "conveyor_01",
+              "tagType": "Folder",
+              "tags": [
+                {
+                  "name": "Active",
+                  "tagType": "AtomicTag",
+                  "valueSource": "opc",
+                  "dataType": "Boolean",
+                  "opcServer": "vLock Bridge",
+                  "opcItemPath": "nsu=urn:vlock:bridge:v1;s=Bridge/Assets/conveyor_01/Signals/sam/zone_condition/Active"
+                },
+                {
+                  "name": "SamZoneStatus",
+                  "tagType": "AtomicTag",
+                  "valueSource": "opc",
+                  "dataType": "String",
+                  "opcServer": "vLock Bridge",
+                  "opcItemPath": "nsu=urn:vlock:bridge:v1;s=Bridge/Assets/conveyor_01/Signals/sam/zone_condition/Status"
+                },
+                {
+                  "name": "SamPeopleCount",
+                  "tagType": "AtomicTag",
+                  "valueSource": "opc",
+                  "dataType": "Float8",
+                  "opcServer": "vLock Bridge",
+                  "opcItemPath": "nsu=urn:vlock:bridge:v1;s=Bridge/Assets/conveyor_01/Signals/sam/people_count/NumericValue"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

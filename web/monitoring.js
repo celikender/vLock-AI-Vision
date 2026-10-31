@@ -19,6 +19,7 @@ function summary(){
 }
 function hydrate(config){
   $('cameraName').value=config.camera.name;$('cameraUrl').value=config.camera.url;
+  $('bridgeEnabled').checked=!!config.bridge?.enabled;$('bridgeAsset').value=config.bridge?.asset_id||'conveyor_01';
   $('target').value=config.sam_prompt;$('zoneName').value=config.zone.name;
   $('condition').value=config.rule.condition;$('overlap').value=config.rule.min_overlap_ratio*100;
   $('duration').value=config.rule.persistence_seconds;$('action').value=config.rule.action;
@@ -31,6 +32,7 @@ function hydrate(config){
 function payload(){
   return {camera:{name:$('cameraName').value,url:$('cameraUrl').value,
     username:$('username').value,password:$('password').value,clear_credentials:$('clearCredentials').checked},
+    bridge:{enabled:$('bridgeEnabled').checked,asset_id:$('bridgeAsset').value.trim()},
     sam_prompt:$('target').value,zone:{name:$('zoneName').value,polygon:points,frame_size:zoneSize},
     rule:{condition:$('condition').value,min_overlap_ratio:Number($('overlap').value)/100,
       persistence_seconds:Number($('duration').value),action:$('action').value}};
@@ -45,7 +47,7 @@ async function control(operation){
 }
 function controls(){
   const locked=busy||!!status?.busy;
-  for(const id of ['cameraName','cameraUrl','username','password','clearCredentials','zoneName','condition','duration','action','connect','save'])$(id).disabled=locked;
+  for(const id of ['bridgeEnabled','bridgeAsset','cameraName','cameraUrl','username','password','clearCredentials','zoneName','condition','duration','action','connect','save'])$(id).disabled=locked;
   for(const id of ['draw','undo','clearZone'])$(id).disabled=locked||!cameraHealthy;
   $('canvasDraw').disabled=locked||!cameraHealthy;
   $('canvasDraw').hidden=drawing;$('canvasFinish').hidden=!drawing;
@@ -123,6 +125,7 @@ function drawResult(result,config){
   };image.src=result.annotated_image;
 }
 function show(data){
+  $('bridgeStatus').textContent=!data.bridge_output?.enabled?'Publishing disabled.':`${data.bridge_output.message}${data.bridge_output.last_sent_at?' Last accepted: '+new Date(data.bridge_output.last_sent_at).toLocaleTimeString():''}`;
   status=data;setState(data.state);cameraBadge();$('cameraTitle').textContent=data.config.camera.name;
   $('activeTarget').textContent=data.config.sam_prompt;$('reason').textContent=data.reason;
   if(data.result){const r=data.result;drawResult(r,data.config);$('objectCount').textContent=r.stale?'—':r.count;$('age').textContent=r.age_seconds.toFixed(1)+'s';

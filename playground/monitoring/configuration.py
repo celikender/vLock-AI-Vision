@@ -4,6 +4,7 @@ import ipaddress
 import json
 import math
 import os
+import re
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -13,6 +14,7 @@ DEFAULT = {
     'camera': {'id': 'CAM_01', 'name': 'Conveyor Camera 01', 'url': 'http://192.168.1.254:8080',
                'username': '', 'password': '', 'frame_size': None},
     'sam_prompt': 'person',
+    'bridge': {'enabled': False, 'asset_id': 'conveyor_01'},
     'zone': {'name': 'Conveyor Zone A', 'polygon': [], 'frame_size': None},
     'rule': {'condition': 'mask_overlaps_zone', 'min_overlap_ratio': 0.1,
              'persistence_seconds': 0.5, 'action': 'warning'},
@@ -116,6 +118,15 @@ def validate(data, previous=None, require_zone=False):
             result['camera'][key] = ''
     result['camera']['frame_size'] = frame_size(old['camera']['frame_size'] if same_camera else None)
     result['sam_prompt'] = text(data.get('sam_prompt', old['sam_prompt']), 'a detection target')
+    bridge = data.get('bridge', old.get('bridge', DEFAULT['bridge']))
+    if not isinstance(bridge, dict) or type(bridge.get('enabled')) is not bool:
+        raise ValueError('Select whether to send SAM observations to the bridge.')
+    asset = bridge.get('asset_id')
+    if not isinstance(asset, str) or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]{0,63}', asset):
+        raise ValueError('Bridge asset ID: use 1–64 letters, numbers, underscores or hyphens.')
+    result['bridge'] = {'enabled': bridge['enabled'], 'asset_id': asset}
+    if bridge['enabled'] and result['sam_prompt'].lower() != 'person':
+        raise ValueError('Use the target person for the person-count bridge test, or disable bridge publishing.')
     result['zone']['name'] = text(zone.get('name', old['zone']['name']), 'a zone name', 80)
     result['zone']['frame_size'] = frame_size(zone.get('frame_size', old['zone']['frame_size']))
     result['zone']['polygon'] = polygon(zone.get('polygon', old['zone']['polygon']), result['zone']['frame_size'])

@@ -1,10 +1,20 @@
 # Single-printer Perspective project
 
+## Live detection-to-Pause checkpoint - October 31, 2026
+
+The owner confirmed camera -> SAM 3.1 -> vLock Bridge -> OPC UA -> Ignition
+Gateway event -> printer Pause. The final Active/latch paths, Gateway script,
+minimal tag import and troubleshooting are in the
+[SCADA integration guide](../../integrations/ignition/SAM_BRIDGE.md). The estimated
+three-second response is an owner observation, not an instrumented measurement.
+Reset/re-arm UI and latency improvements remain planned. The original screen ZIP
+is unchanged; the additional tags/event are configured separately.
+
 ## Development milestone - October 30, 2026
 
 This playground experiment prepares a small physical test machine before industrial
 integration. We built an Ignition Perspective SCADA screen and a local MQTT bridge
-connecting SCADA to a Bambu Lab P1S. This is an intermediate hackathon milestone,
+connecting SCADA to a Bambu Lab P1S. This is an intermediate development milestone,
 not the finished industrial application.
 
 ```text

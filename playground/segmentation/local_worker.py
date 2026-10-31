@@ -18,6 +18,7 @@ lock=threading.Lock()
 predictor=None
 model_loads=0
 log=logging.getLogger('sam.video')
+GROUNDING_BATCH_SIZE=1
 
 
 def get_predictor():
@@ -31,10 +32,16 @@ def get_predictor():
         if not path:
             raise SegmentationError('SAM 3.1 weights missing. Complete Hugging Face access and run the download command.',503)
         from sam3.model_builder import build_sam3_predictor
-        predictor=build_sam3_predictor(version='sam3.1',checkpoint_path=path,compile=False,warm_up=False,
+        model=build_sam3_predictor(version='sam3.1',checkpoint_path=path,compile=False,warm_up=False,
             use_fa3=False,use_rope_real=False,max_num_objects=8,multiplex_count=16,async_loading_frames=False)
+        # Bound grounding activations on the 8 GB GPU. This is a frame batch
+        # setting; the checkpoint's trained 16-slot multiplex architecture stays fixed.
+        if not hasattr(model.model,'batched_grounding_batch_size'):
+            raise RuntimeError('Installed SAM does not expose grounding batch sizing.')
+        model.model.batched_grounding_batch_size=GROUNDING_BATCH_SIZE
+        predictor=model
         model_loads+=1
-        log.info('SAM predictor loaded; model_loads=%s', model_loads)
+        log.info('SAM predictor loaded; model_loads=%s grounding_batch_size=%s',model_loads,GROUNDING_BATCH_SIZE)
     return predictor
 
 

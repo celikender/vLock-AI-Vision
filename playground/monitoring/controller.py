@@ -15,6 +15,7 @@ from video_client import track_video
 from video_tracking import WINDOW_FRAMES, decode_mask
 from .configuration import Store, validate, public, text, DEFAULT
 from .zone_rules import RuleState, evaluate
+from .bridge_output import BridgeOutput
 
 
 DATA = Path(__file__).resolve().parents[1]/'data'/'monitoring'
@@ -53,6 +54,10 @@ class Monitoring:
         self.frames = deque(maxlen=8)
         self.output_id = 0
         self.last_frame = None
+        self.bridge = BridgeOutput()
+
+    def bridge_unknown(self):
+        self.bridge.send(self.config, 'Unknown', self.rule.reason)
 
     def busy(self):
         return bool(self.thread and self.thread.is_alive())
@@ -71,6 +76,9 @@ class Monitoring:
             if self.busy():
                 raise ValueError('Stop monitoring before editing the camera, zone or rule.')
             config = validate(data, self.config)
+            if self.config.get('bridge', {}).get('enabled'):
+                self.rule.unavailable('Monitoring configuration changed.')
+                self.bridge_unknown()
             if config['camera']['url'] != self.config['camera']['url']:
                 self.connected = False
                 config['zone']['polygon'] = []
@@ -131,6 +139,7 @@ class Monitoring:
             with self.lock:
                 if self.rule.unavailable('Camera is disconnected or stale.') and self.running:
                     self.event('unavailable')
+                    self.bridge_unknown()
                 self.result = self.result_at = None
             raise OSError('Camera unavailable. Check its address, service and credentials.') from None
 
@@ -148,6 +157,7 @@ class Monitoring:
             self.frames.clear()
             self.running = True
             self.event('started')
+            self.bridge_unknown()
             self.thread = threading.Thread(target=self.loop,daemon=True)
             self.thread.start()
 
@@ -159,10 +169,13 @@ class Monitoring:
                 self.rule.unavailable('Monitoring stopped.')
                 self.result = self.result_at = None
                 self.event('stopped')
+                self.bridge_unknown()
 
     def change_prompt(self, prompt):
         prompt = text(prompt,'a detection target')
         with self.lock:
+            if self.config.get('bridge', {}).get('enabled') and prompt.lower() != 'person':
+                raise ValueError('Stop and disable bridge publishing before changing the person target.')
             if prompt == self.config['sam_prompt']:
                 return
             config = copy.deepcopy(self.config)
@@ -175,11 +188,13 @@ class Monitoring:
             self.result = self.result_at = None
             self.frames.clear()
             self.event('prompt_changed')
+            self.bridge_unknown()
 
-    def publish(self, result, frame, revision, config):
+    def publish(self, result, frame, revision, config, render_overlay=True):
         matched, details = evaluate(result,config)
-        with Image.open(BytesIO(frame['jpeg'])) as image:
-            annotated = render(image,[decode_mask(obj['mask']) for obj in result['objects']])
+        if render_overlay:
+            with Image.open(BytesIO(frame['jpeg'])) as image:
+                annotated = render(image,[decode_mask(obj['mask']) for obj in result['objects']])
         with self.lock:
             if self.cancel.is_set() or revision != self.revision:
                 return
@@ -189,10 +204,17 @@ class Monitoring:
                    'zone_detections':details, 'condition_matched':matched, 'rule_state':self.rule.state,
                    '_captured_at':frame['captured_at']}
             self.frames.append(row)
-            self.result, self.result_at = {**row, 'annotated_image':annotated}, frame['captured_at']
+            # Keep geometry, persistence and events for every frame. Only the newest
+            # frame in a window replaces the UI image and its matching metadata.
+            if render_overlay:
+                self.result, self.result_at = {**row, 'annotated_image':annotated}, frame['captured_at']
             if changed:
                 kind = ('warning' if config['rule']['action']=='warning' else 'rule_triggered') if self.rule.state=='Warning' else 'cleared' if self.rule.state=='Normal' else 'unavailable'
                 self.event(kind,result)
+            if changed or render_overlay:
+                self.bridge.send(config, self.rule.state, self.rule.reason, frame['captured_at'], result['count'],
+                                 {'run_id': self.run_id, 'frame_sequence': result['frame_sequence'],
+                                  'condition_matched': matched})
 
     def loop(self):
         previous = None
@@ -212,7 +234,7 @@ class Monitoring:
                     if sequence != previous:
                         frames.append(dict(jpeg=jpeg,sequence=sequence,captured_at=requested-age/1000))
                         previous = sequence
-                    if self.cancel.wait(0.25):
+                    if len(frames)<WINDOW_FRAMES and self.cancel.wait(0.25):
                         return
                     if time.monotonic()-began>3:
                         raise ValueError('Camera did not provide four fresh frames.')
@@ -227,13 +249,14 @@ class Monitoring:
                     index = result['frame_index']
                     if result['frame_sequence'] != frames[index]['sequence']:
                         raise ValueError('SAM result does not match its camera frame.')
-                    self.publish(result,frames[index],revision,config)
+                    self.publish(result,frames[index],revision,config,render_overlay=index==len(frames)-1)
             except Exception:
                 with self.lock:
                     if not self.cancel.is_set() and revision == self.revision:
                         if self.rule.unavailable('Camera or SAM unavailable. Check the Pi connection and local GPU worker.'):
                             self.event('unavailable')
                         self.result = self.result_at = None
+                        self.bridge_unknown()
                 self.cancel.wait(1)
             finally:
                 if stream is not None:
@@ -249,14 +272,17 @@ class Monitoring:
         with self.lock:
             if self.running and self.rule.expire():
                 self.event('unavailable')
+                self.bridge_unknown()
             return dict(config=public(self.config), running=self.running, busy=self.busy(),
                 connected=self.connected, run_id=self.run_id, revision=self.revision,
                 state=self.rule.state, reason=self.rule.reason,
                 warning_active=self.rule.state=='Warning' and self.config['rule']['action']=='warning',
                 result=self.frame_view(self.result) if self.result else None,
                 events=list(self.events), stale_seconds=self.rule.stale_seconds,
+                bridge_output=dict(self.bridge.status, enabled=self.config.get('bridge', {}).get('enabled', False)),
                 capabilities={'camera':'Pi HTTP snapshots, optional HTTP Basic credentials',
-                    'sam_selection':False, 'scada_output':False, 'id_scope':'four-frame SAM session'})
+                    'sam_selection':False, 'scada_output':True, 'machine_commands':False,
+                    'id_scope':'four-frame SAM session'})
 
     def results(self, after):
         with self.lock:

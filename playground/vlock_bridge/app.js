@@ -31,6 +31,7 @@ function renderBridgeHealth() {
   if (!health.waiting && !health.online) {
     byId('output').replaceChildren(text('p', 'Bridge is Offline. Last values must not be treated as current.', 'empty'));
     byId('response').textContent = 'Bridge unavailable or heartbeat stopped. Reconnecting…';
+    byId('sam-input').textContent = 'Bridge unavailable. Last SAM values must not be treated as current.';
     for (const name of ['mqtt', 'opcua']) {
       byId(name + '-online').textContent = 'Status unavailable';
       byId(name + '-online').className = 'badge offline';
@@ -68,6 +69,9 @@ function feedback(message, failed = false) {
 
 function render(state, history) {
   knownAssets = state.assets;
+  const sam = state.assets.flatMap(asset => asset.signals.filter(signal => signal.source_id === 'sam')
+    .map(signal => text('p', `${asset.asset_id} / ${signal.signal_id}: ${signal.status}${signal.kind === 'measurement' ? ' · last value ' + JSON.stringify(signal.value) : ''}`)));
+  byId('sam-input').replaceChildren(...(sam.length ? sam : [text('p', 'No SAM observations received yet. Enable publishing in Monitoring Setup.')]));
   updateSignalHint();
   byId('response').textContent = JSON.stringify(state, null, 2);
   const output = byId('output');

@@ -19,6 +19,7 @@ class FakePredictor:
         self.requests=[]
         self.sessions=0
         self.closed_streams=0
+        self.model=SimpleNamespace(batched_grounding_batch_size=16)
 
     def handle_request(self, request):
         self.requests.append(request.copy())
@@ -149,13 +150,17 @@ class VideoTests(unittest.TestCase):
 
     def test_worker_model_is_shared_across_video_prompts_and_cleanup(self):
         model=FakePredictor()
+        builder_options=[]
+        def build(**kwargs):
+            builder_options.append(kwargs)
+            return model
         fake=SimpleNamespace(cuda=SimpleNamespace(is_available=lambda:True,
             reset_peak_memory_stats=lambda:None,max_memory_allocated=lambda:1024**2),
             inference_mode=nullcontext,autocast=lambda *a,**k:nullcontext(),bfloat16='bf16')
         buffer=BytesIO();Image.new('RGB',(4,3)).save(buffer,'JPEG')
         jpeg=buffer.getvalue()
         with patch.dict(sys.modules,{'torch':fake,'sam3':SimpleNamespace(),
-                'sam3.model_builder':SimpleNamespace(build_sam3_predictor=lambda **kwargs:model)}), \
+                'sam3.model_builder':SimpleNamespace(build_sam3_predictor=build)}), \
                 patch('local_worker.checkpoint',return_value='cached-checkpoint'), \
                 patch('local_worker.predictor',None),patch('local_worker.model_loads',0):
             client=local_worker.app.test_client()
@@ -172,6 +177,11 @@ class VideoTests(unittest.TestCase):
                 self.assertFalse(local_worker.lock.locked())
             self.assertIs(local_worker.predictor,model)
             self.assertEqual(local_worker.model_loads,1)
+            self.assertEqual(model.model.batched_grounding_batch_size,1)
+            self.assertEqual(len(builder_options),1)
+            self.assertEqual(builder_options[0]['multiplex_count'],16)
+            self.assertEqual(builder_options[0]['max_num_objects'],8)
+            self.assertFalse(builder_options[0]['compile'])
             # A client disconnect while a window is streaming must free its session/lock.
             response=client.post('/video/track',base_url='http://localhost:5052',data={
                 'prompt':'person','frames':json.dumps([{'sequence':str(i)} for i in range(4)]),

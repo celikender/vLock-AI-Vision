@@ -40,6 +40,10 @@ rule edits require monitoring to stop and its in-flight window to finish.
   are shown on the exact analyzed camera frame, with the saved polygon and boxes.
   The independently refreshed live view is used for drawing. Old masks are not
   projected onto a newer unrelated frame.
+- Every frame still updates polygon geometry, persistence and warning events.
+  Only the newest frame of each four-frame window renders the UI overlay; its
+  image, metadata and capture age stay together. Collection retains the 250 ms
+  spacing between samples and skips the unnecessary wait after sample four.
 - Polygon vertices are saved in original camera-pixel coordinates with their
   frame size. Self-intersecting, duplicate, tiny and out-of-frame polygons are
   rejected. Changing camera address or detecting a new resolution on reconnect
@@ -150,3 +154,52 @@ To observe an explicitly started live rule and save private per-frame evidence:
 ```powershell
 .\.venv\Scripts\python.exe playground/monitoring/record_run.py --until Warning
 ```
+
+## Performance verification — 2026-10-29
+
+The measured grounding batch size is now 1, with the same SAM 3.1 checkpoint and
+16-slot multiplex architecture. Matched-frame trials of sizes 16, 1 and 2 chose
+1 for lower latency and memory, with matching counts/IDs/boxes/scores and at least
+99.9888% positive-mask IoU versus the previous setting on the captured test scene.
+This is a small regression check, not a general recognition-accuracy benchmark.
+
+Two-minute live runs measured 0.47 → 1.03 processed FPS, median worker elapsed
+6.26 → 2.70 seconds, median displayed observation age 11.35 → 4.69 seconds, and
+stale samples 63.6% → 0% among samples with a result. Scene content differed
+between live runs; the matched-frame comparison controls that variable. Stale
+and unavailable observations still become Unknown. No freshness limit changed.
+See the [performance report](../reports/monitoring_performance.md) for methods,
+memory accounting, warning checks, cold startup, and remaining limitations.
+
+## SAM person observations to vLock Bridge
+
+Start the bridge separately with `.\.venv\Scripts\python.exe playground/vlock_bridge/server.py`.
+In Monitoring Setup, select target `person`, connect the camera and save the zone.
+Enable **Send to vLock Bridge**, set the asset ID (default `conveyor_01`), Save setup
+and Start Monitoring. Publishing is disabled by default and monitoring never starts
+automatically. Existing saved setups migrate with bridge output disabled.
+
+The backend POSTs to the loopback HTTP API on port 5055. Source `sam` publishes:
+
+- `people_count` (measurement): current whole-frame detections, not a visitor total
+  and not limited to the zone. A fresh empty result is valid zero.
+- `zone_condition` (condition): active for confirmed Warning, clear for confirmed
+  Normal, unknown while initial confirmation is pending or input is unavailable.
+  This follows the selected zone rule, including an absence rule if selected.
+
+Each sample retains its capture time and expires after 10 seconds, including time
+spent in inference and transport. Changed rules and newest window results refresh
+publication; events alone would expire even while monitoring stayed healthy.
+Stopped monitoring, inference failure and stale results publish Unknown when the
+bridge is reachable; otherwise the last sample expires. Requests are serialized,
+limited to a half-second socket timeout each, with no retry queue or machine calls.
+Bridge failure does not create a fabricated zero/clear. The status shows API
+acceptance, not broker delivery, Ignition receipt or a confirmed machine pause.
+
+Manual and SAM streams remain independent. In Ignition, refresh Browse Devices
+and import source `sam` for the asset. Bind the text label to its people_count
+NumericValue. For the printer demo, SCADA can use zone_condition Active plus good
+quality for its Pause request. Do not automatically Resume when detection clears.
+The aggregate asset inhibit can still be unknown from old manual conditions;
+select the intended SAM signal explicitly for this test. This experimental vision
+path is not a safety-rated protective function.
