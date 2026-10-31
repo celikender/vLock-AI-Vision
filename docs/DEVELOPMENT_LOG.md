@@ -1,5 +1,125 @@
 # Development log
 
+## 2026-10-30 - Timed heartbeat pulse and bounded history
+
+- Clarified protocol connection monitoring versus an optional application heartbeat.
+  The earlier diagnostic counter was calculated from uptime. Replaced that source
+  with an explicit periodic task that toggles a Boolean pulse and increments its
+  diagnostic count without requiring any API read. It does not monitor model health.
+- Removed visible heartbeat counts from the page and adapter descriptions. The UI
+  shows Online/Offline and last-heartbeat age. HTTP/MQTT expose heartbeat_pulse;
+  OPC UA adds Bridge/HeartbeatPulse and HeartbeatIntervalSeconds. Default interval
+  is one second; --heartbeat-seconds accepts 1-60 and advertises a matching timeout.
+- Fixed the subscription instructions to include an absolute executable path.
+  A read-only client started from the Windows home folder received alternating
+  True/False from the actual local OPC UA pulse node.
+- Changed the event view to the latest five rows. SQLite retains at most 1000
+  history events by default; --history-limit accepts 5-100000. Superseded observation
+  bodies are pruned, while each signal's current observation is preserved.
+- Documented the bounded duplicate-protection window and replay cursor expiration.
+  Existing event schema is migrated locally without renumbering revisions; the
+  current 40 events were below the default limit and remained retained.
+- Twenty-nine Python checks passed, including idle periodic pulses, retention,
+  current-state preservation, legacy schema migration, replay metadata and real
+  MQTT/OPC UA reads. JavaScript watchdog checks and syntax checks passed.
+- Browser verification confirmed exactly five history rows and no visible count.
+  Model connections, machine commands and the existing broker configuration were
+  unchanged. The bridge remains running with the revised source.
+
+## 2026-10-30 - Explicit Online/Offline and heartbeat signals
+
+- Added bridge Online/Offline and adapter badges to the UI, with a visible
+  elapsed-second heartbeat counter. Bridge availability remains separate from
+  observation validity: Stale observations do not make a responsive bridge Offline.
+- HTTP health/snapshots and MQTT availability now expose online, heartbeat_counter,
+  session identity and a five-second watchdog timeout. OPC UA adds read-only
+  Bridge/Online, Status, HeartbeatCounter and OfflineAfterSeconds nodes.
+- The process counter uses monotonic elapsed time rather than observation time,
+  UTC clock changes or event revisions. It adds no observation/history records.
+  Adapter availability requires recent publication progress. The browser detects
+  request failure or a frozen counter; duplicate responses cannot keep it Online.
+- Documented receiver-side watchdog behavior. A stopped/frozen server cannot
+  reliably publish Offline itself; MQTT Last Will and transport quality complement
+  the consumer's timeout. A new process session permits the counter to reset.
+- Twenty-four Python checks passed, including real MQTT/OPC UA heartbeat fields,
+  independent observation expiry and adapter-progress timeout. JavaScript watchdog
+  checks covered duplicate/frozen samples, loss, recovery and session reset.
+- Browser verification observed all three Online badges, then Bridge Offline after
+  stopping only this bridge. Restart restored Online automatically without reloading
+  the page. The bridge is running again; the installed broker was unchanged.
+- Closing browser connections are handled as lost readers rather than storage
+  errors. Nineteen HTTP/core checks passed again after that response cleanup.
+
+## 2026-10-30 - Optional MQTT and OPC UA outputs
+
+- Added optional transport dependencies and a simple Integration form to the
+  bridge playground. Broker/endpoint settings are saved beside the ignored
+  database; status distinguishes saving settings from actual connection/publication.
+- MQTT publishes retained QoS 1 JSON snapshots per bridge and asset, with online
+  heartbeat and offline Last Will. Reconnect creates a fresh client and reads
+  current state; it does not renew observations or replay old samples as fresh.
+- OPC UA exposes read-only nodes with stable asset/source/signal IDs, numeric and
+  JSON measurements, status, timestamps and complete asset snapshots. Expired
+  observations have bad quality; unknown inhibit has a null DataValue and
+  InhibitKnown=False. Client writes were rejected in the test endpoint.
+- Both adapters share the HTTP store's expiration behavior and check freshness
+  without a browser. Machine actions, latches, permissives and reset stay in SCADA.
+- Found an existing running local Mosquitto broker on port 1883. Its service and
+  configuration were left unchanged. A subscriber received the bridge's retained
+  state and online availability; the asset state matched the HTTP API.
+- Twenty-two checks passed, including actual isolated MQTT broker/subscriber
+  delivery, retention, expiry, reconnect after an observation expires offline,
+  graceful offline availability, and OPC UA client reads, read-only enforcement,
+  numeric values, bad expiry quality and recovery to a fresh Clear. JavaScript
+  syntax and dependency consistency checks passed.
+- Browser verification enabled both adapters and observed MQTT Connected and
+  OPC UA Running. Independent clients also read the live endpoints and matched
+  HTTP state. No real model or machine command was used.
+- These adapters are local-only experiments: plain MQTT JSON (not Sparkplug),
+  read-only OPC UA NoSecurity, no MQTT observation/command subscription, and no
+  LAN listener. Encrypted remote deployment and actual Ignition tag mapping
+  remain unverified. All runtime changes stay under playground/vlock_bridge.
+
+## 2026-10-30 - Clearer bridge signal type selection
+
+- Addressed a reported condition-to-measurement conflict in the manual form.
+  Switching output type now remembers a separate Signal ID for each type,
+  starting with person_in_zone and people_count; custom IDs are preserved.
+- Added an existing-signal hint and form validation before a conflicting type
+  can be submitted. The API's fixed-kind contract and stored signals are unchanged.
+- JavaScript syntax passed. Browser verification confirmed default/custom ID
+  restoration, a conflicting ID being flagged, and successful publication of
+  measurement value 12. Backend checks were not rerun for this UI-only change.
+
+## 2026-10-30 - First standalone vLock integration bridge
+
+- Agreed the integration boundary: vLock publishes observations, conditions and
+  freshness; the consuming SCADA / PLC owns machine actions, permissives,
+  interlocks, latching, worker-lock handling and reset. This refines the earlier
+  standalone-control planning; no machine-control lifecycle is implemented here.
+- Added an independent experiment under playground/vlock_bridge on port 5055,
+  with manual condition buttons, measurement input, observation JSON, current
+  output and SQLite event history. No main application or SCADA resources changed.
+- Exposed local versioned API routes for observations, assets, event replay and
+  health. Optional HTTPS accepts an existing PEM certificate/key pair. MQTT,
+  OPC UA, model normalization and prompt-guided monitoring remain planned.
+- Kept each asset/source/signal independent. Fresh active conditions aggregate
+  to True; all-clear conditions to False; unavailable conditions to null when
+  no fresh active condition exists. Measurements never generate an inhibit.
+- Expiry and restart produce Stale/Unknown, preserving history without restoring
+  old observations as current. Duplicate IDs do not renew validity or overwrite
+  newer observations. Conflicting IDs and out-of-order timestamps are rejected.
+- Seventeen checks passed, including temporary-database persistence, aggregation,
+  concurrent duplicates, timestamp/expiry validation, HTTP boundaries and HTTPS
+  with a temporary certificate verified by the client. JavaScript syntax passed.
+- Browser verification observed Active, Clear, Unknown, automatic expiry, a
+  numeric measurement, JSON submission and an idempotent retry. A process restart
+  preserved history and required fresh observations. Inputs were simulated; no
+  model or machine request was made. Owner validation and actual SCADA mapping remain open.
+- This version accepts only local connections, with no remote authentication,
+  stream removal or configurable mapping engine. The next integration step is
+  validating one external client's reading of the contract before adding transports.
+
 ## 2026-10-30 - Plain single-printer Perspective export
 
 - Reworked the supplied project export into one P1S screen: nozzle/bed

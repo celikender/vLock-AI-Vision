@@ -1,0 +1,3 @@
+# Optional integration adapters. HTTP/UI/SQLite still use the standard library.
+paho-mqtt==2.1.0
+asyncua==2.1.0

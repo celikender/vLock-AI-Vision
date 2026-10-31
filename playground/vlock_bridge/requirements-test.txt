@@ -1,0 +1,3 @@
+-r requirements.txt
+# Isolated broker for reproducible transport checks; never started by the app.
+amqtt==0.12.1

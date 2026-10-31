@@ -21,6 +21,15 @@ Copy [the report template](reports/TEMPLATE.md) for each experiment. Include scr
 
 Only move proven behavior into the application after understanding its output, errors, and limitations. Keep experiments independent from production service imports.
 
+## vLock integration bridge
+
+The [vLock Bridge experiment](vlock_bridge/README.md) accepts manual conditions
+and measurements, exposes a versioned local HTTP API (optional HTTPS), and saves
+observation/event history in SQLite. Optional MQTT publishing and a read-only
+OPC UA endpoint expose the same state. It runs separately on port 5055. SCADA / PLC
+retains control actions, interlocks and reset. Live model input remains planned.
+See its README for the contract, run commands and verification limits.
+
 
 ## SCADA test machine milestone
 

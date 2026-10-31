@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>vLock Bridge</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/heartbeat.js" defer></script>
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <main>
+    <header>
+      <div><p class="eyebrow">VLOCK · INTEGRATION PLAYGROUND</p><h1>vLock Bridge</h1>
+        <p>Publish an observation. Read it from your automation system.</p></div>
+      <div class="health">
+        <span id="connection" class="badge" role="status">Bridge: connecting…</span>
+        <span id="heartbeat" class="muted">Last heartbeat: waiting</span>
+      </div>
+    </header>
+    <div class="layout">
+      <section class="panel">
+        <h2>Manual input</h2>
+        <p class="muted">Simulated observations. No camera or model is connected.</p>
+        <form id="input-form">
+          <label>Asset ID<input id="asset" value="conveyor_01" required maxlength="64" pattern="[A-Za-z0-9][A-Za-z0-9_-]{0,63}"></label>
+          <div class="pair">
+            <label>Source ID<input id="source" value="manual" required maxlength="64" pattern="[A-Za-z0-9][A-Za-z0-9_-]{0,63}"></label>
+            <label>Signal ID<input id="signal" value="person_in_zone" aria-describedby="signal-hint" required maxlength="64" pattern="[A-Za-z0-9][A-Za-z0-9_-]{0,63}"></label>
+          </div>
+          <p id="signal-hint" class="muted" aria-live="polite">Each signal keeps its output type.</p>
+          <div class="pair">
+            <label>Output type<select id="kind" aria-label="Output type"><option value="condition">Inhibit condition</option><option value="measurement">Measurement / data</option></select></label>
+            <label>Valid for (seconds)<input id="ttl" type="number" value="30" min="1" max="3600" step="1" required></label>
+          </div>
+          <label>Reason<input id="reason" maxlength="240" placeholder="Person detected in the monitored zone"></label>
+          <label id="value-label" hidden>Value (JSON)<textarea id="value" rows="2" spellcheck="false">12</textarea></label>
+          <div class="actions">
+            <button type="submit" value="active" id="active">Publish active</button>
+            <button type="submit" value="clear" id="clear" class="secondary">Publish clear</button>
+            <button type="submit" value="unknown" class="secondary">Unknown</button>
+          </div>
+        </form>
+        <p id="feedback" role="status" aria-live="polite">Each input expires unless a new observation arrives.</p>
+        <details>
+          <summary>Submit observation JSON</summary>
+          <p class="muted">Use the same contract for an external source. Raw model output needs an adapter.</p>
+          <p class="muted">Use a new observation_id for a new sample. Reuse an ID only to retry the same sample.</p>
+          <label for="json-input">Observation</label>
+          <textarea id="json-input" rows="12" spellcheck="false"></textarea>
+          <button id="send-json" type="button" class="secondary">Submit JSON</button>
+        </details>
+      </section>
+      <section class="panel">
+        <h2>Published output</h2>
+        <p class="muted">SCADA / PLC owns machine actions, interlocks and reset.</p>
+        <div id="output"><p class="empty">Waiting for the bridge…</p></div>
+        <details><summary>Current API response</summary><pre id="response">{}</pre></details>
+      </section>
+    </div>
+    <section class="panel history">
+      <div class="section-heading"><h2>Event history</h2><span id="history-info" class="muted">Latest 5 · saved in SQLite</span></div>
+      <div class="table-wrap"><table><thead><tr><th>Revision</th><th>Time</th><th>Asset</th><th>Source / signal</th><th>Event</th><th>Value / reason</th></tr></thead><tbody id="events"></tbody></table></div>
+    </section>
+    <section class="panel integration">
+      <h2>Integration</h2>
+      <p><span class="badge" id="transport">Local HTTP API</span></p>
+      <form id="integration-form">
+        <div class="pair">
+          <fieldset>
+            <legend>MQTT publisher</legend>
+            <span id="mqtt-online" class="badge">Checking…</span>
+            <label class="toggle"><input id="mqtt-enabled" type="checkbox"> Enable MQTT</label>
+            <div class="pair">
+              <label>Local broker<select id="mqtt-host"><option value="127.0.0.1">127.0.0.1</option><option value="localhost">localhost</option></select></label>
+              <label>Broker port<input id="mqtt-port" type="number" min="1024" max="65535" value="1883" required></label>
+            </div>
+            <label>Topic prefix<input id="mqtt-prefix" value="vlock/v1" maxlength="120" required></label>
+            <p id="mqtt-status" class="muted" role="status">Loading MQTT settings…</p>
+          </fieldset>
+          <fieldset>
+            <legend>OPC UA server</legend>
+            <span id="opcua-online" class="badge">Checking…</span>
+            <label class="toggle"><input id="opcua-enabled" type="checkbox"> Enable OPC UA</label>
+            <label>Server port<input id="opcua-port" type="number" min="1024" max="65535" value="4845" required></label>
+            <p><code id="opcua-endpoint">opc.tcp://127.0.0.1:4845/vlock/</code></p>
+            <p class="muted">Read-only nodes · local connections · NoSecurity</p>
+            <p id="opcua-status" class="muted" role="status">Loading OPC UA settings…</p>
+          </fieldset>
+        </div>
+        <button id="apply-integrations" type="submit" class="secondary" disabled>Apply integration settings</button>
+        <p id="integration-feedback" class="muted" role="status">Both adapters are optional. Settings are saved locally.</p>
+      </form>
+      <dl>
+        <dt>Read outputs</dt><dd><a href="/api/v1/assets" target="_blank" rel="noopener"><code>GET /api/v1/assets</code></a></dd>
+        <dt>Read one asset</dt><dd><code>GET /api/v1/assets/{asset_id}</code></dd>
+        <dt>Publish observation</dt><dd><code>POST /api/v1/observations</code></dd>
+        <dt>Read history</dt><dd><a href="/api/v1/events" target="_blank" rel="noopener"><code>GET /api/v1/events?after=0&amp;limit=50</code></a></dd>
+        <dt>Bridge health</dt><dd><a href="/api/v1/health" target="_blank" rel="noopener"><code>GET /api/v1/health</code></a></dd>
+        <dt>Adapter settings/status</dt><dd><a href="/api/v1/integrations" target="_blank" rel="noopener"><code>GET /api/v1/integrations</code></a></dd>
+      </dl>
+      <p class="muted">Read inhibit with quality and freshness. Unknown or Stale does not establish Clear. A live bridge heartbeat does not make an old observation fresh.</p>
+    </section>
+    <footer>vLock-AI Vision · Experimental bridge v1 · Local connections only</footer>
+  </main>
+</body>
+</html>
