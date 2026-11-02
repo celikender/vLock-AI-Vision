@@ -547,3 +547,20 @@ Future entries should record actual changes, verification evidence, limitations,
   No real SAM inference, quality, speed, or 8 GB memory-fit result is claimed.
 - Local runtime source revision and dependency caveat are recorded in the
   segmentation README. Owner is arranging Meta key and Hugging Face access.
+
+## 2026-11-02 - Clear configuration and area editing
+
+- Replaced the ambiguous description box and advanced configuration controls with
+  existing executable object, area relation, confirmation, expiry and output fields.
+  Older descriptions and service contracts are preserved. A sentence shows what
+  will run, including the whole-frame semantics of count outputs.
+- Moved provider-neutral configuration help above settings. This is a bounded,
+  topic-matched local reference chat, not an LLM or cloud integration. It explains
+  single concepts, tracking windows, Unknown and pattern-recognition limitations.
+- Added drag-to-select rectangles, polygon undo/first-point closure, clear/cancel
+  and visible selection state. Retained vertex/keyboard adjustments and backend
+  geometry validation. Removed the nonworking object-selection button.
+- No inference, state, monitoring or external adapter contract changed. The
+  playground remains intact. Live camera/drawing and helper UI were checked;
+  nine isolated application tests and sequential-preview regression checks passed.
+  Detection quality and new real model inference were not evaluated in this UI step.

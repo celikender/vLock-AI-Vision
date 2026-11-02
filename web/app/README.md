@@ -14,9 +14,9 @@ The approved simulated prototype stays separate on port 5070.
 Start the existing local SAM worker separately with
 `.\playground\segmentation\start_local.ps1`. Connect the camera, draw an area,
 choose one object phrase and geometric condition, save the zone and explicitly
-enable monitoring. Only one local-SAM zone runs at once. The free-text description
-is not executed; the structured target/area/relation/persistence fields define
-the runtime rule. Persistence and validity are evaluated from fresh captures.
+enable monitoring. Only one local-SAM zone runs at once. The configuration screen exposes the structured target/area/relation/persistence
+fields that define the runtime rule. Older free-text descriptions are preserved
+in saved data but are not executed or shown as editable programs. Persistence and validity are evaluated from fresh captures.
 
 Current observations are recorded through services/vlock and exposed at
 `/api/v1/assets`, `/api/v1/events?limit=5` and `/api/v1/health`. They use stable zone
@@ -26,8 +26,8 @@ contract and distinguish the still-unwired OPC UA/MQTT adapters.
 
 AND/OR rules, point/box object selection, second-check models, remote enable,
 score filtering and external transport adapters are not wired yet. Unsupported
-settings are rejected when saving a monitoring rule. Set minimum score to zero;
-available positive object scores remain diagnostic, and Clear has no fabricated
+settings are rejected when saving a monitoring rule. A draft with unsupported options offers an explicit reset to supported settings;
+its target, area, description and output are preserved. Available positive object scores remain diagnostic, and Clear has no fabricated
 confidence score. The working app uses no synthetic detections or latency values.
 Worker window time and observation age are shown separately. Masks are displayed
 on the exact analyzed frame, independently from the newer live camera preview.
@@ -45,3 +45,26 @@ experiment has been deleted or redirected to this runtime. Backend services own
 geometry, persistence, freshness, state, counts, output values and history. The
 frontend handles editing, presentation and API requests only. Its polygon checks
 are editing assistance; the backend performs the authoritative validation.
+
+## Configuration editing
+
+Configuration help is a provider-neutral local reference chat with topic-matched
+answers. It calls no language model or cloud service, changes no settings, and
+keeps only a bounded in-memory conversation. It explains single-concept prompts,
+Unknown, confirmation, drawing and the limits of pattern recognition. SAM can
+segment a named object; arbitrary patterns, gestures and light-on state need a
+separate validated measurement or classifier. `hand and person` is not an app AND
+rule. Multiple concepts and Boolean combinations remain unwired.
+
+Choose Rectangle and drag, or Polygon and click up to 12 corners. Close with the
+first point or Finish area. Undo, cancel, clear, vertex dragging and keyboard
+arrows are supported. Rejected geometry leaves the saved area unchanged. The
+backend still validates the final polygon. Object clicking is documented only,
+not displayed as an available selection tool. Original JPEG preview nodes stay
+in place during drawing to avoid restarting the frame refresh pump.
+
+Event condition exposes the existing overlap, entirely-inside and absence rules.
+The sentence preview describes the saved fields; no prose is parsed as a rule.
+A count output is a fresh whole-frame count and bypasses area/confirmation gating
+for its numeric value. Condition and event outputs use the existing state rules.
+Prompt reference: https://dev.meta.ai/docs/sam/segmenting

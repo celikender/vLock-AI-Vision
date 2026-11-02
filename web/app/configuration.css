@@ -1,0 +1,11 @@
+.guide-chat{max-height:210px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;scrollbar-width:thin}
+.guide-message{font-size:12px;line-height:1.65;padding:11px 13px;border-radius:8px;max-width:96%;white-space:pre-wrap;overflow-wrap:anywhere}
+.guide-message.answer{background:#f0f6f3;color:#456c60;align-self:flex-start}.guide-message.question{background:#e5efed;color:#284e45;align-self:flex-end}
+.guide-message small{display:block;font-size:10px;color:#71897f;margin-top:6px}
+.guide-topics{display:flex;gap:6px;flex-wrap:wrap;margin:13px 0}.guide-topics button{border:1px solid #d8e4dd;background:white;color:#497568;border-radius:15px;padding:6px 10px;font:inherit;font-size:10px;cursor:pointer}
+.guide-input textarea{margin-top:7px;min-height:56px}.guide-send{display:flex;align-items:center;gap:12px;margin-top:10px}.guide-send small{font-size:10px;color:#7d9187}
+.rule-example{background:#eff6f2;border:1px solid #d5e5db;border-left:3px solid #79a692;border-radius:5px;padding:14px;margin:8px 0 14px}.rule-example>small{color:#658374;font-size:10px}.rule-example>small:first-child{font-size:9px;letter-spacing:.8px}.rule-example p{font-size:13px;line-height:1.7;margin:8px 0;color:#325e4d}
+.area-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:13px 16px}.area-tools>small{flex-basis:100%;font-size:10px;color:#6a8776;margin-top:3px}.camera-panel .scene{touch-action:none;user-select:none}.camera-panel .scene .zone-handle{cursor:grab;stroke:#325f4c;stroke-width:1.5}.camera-panel .scene .zone-handle:active{cursor:grabbing}.camera-panel .scene .zone{pointer-events:none}
+.config-warning{padding:12px;background:#fff5df;border:1px solid #e9d8b6;border-radius:5px;font-size:11px;line-height:1.7;margin-bottom:16px;color:#79603a}.config-warning small{display:block;font-size:10px}.config-warning button{margin:6px 0}
+.configuration-column .field-pair{gap:14px}.configuration-column label>small{line-height:1.5}.configuration-column .helper{line-height:1.7}
+@media(max-width:600px){.guide-send{align-items:flex-start}.guide-chat{max-height:230px}.guide-message{font-size:11px}.configuration-column .field-pair{grid-template-columns:1fr}}
