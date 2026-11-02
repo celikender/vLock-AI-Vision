@@ -564,3 +564,22 @@ Future entries should record actual changes, verification evidence, limitations,
   playground remains intact. Live camera/drawing and helper UI were checked;
   nine isolated application tests and sequential-preview regression checks passed.
   Detection quality and new real model inference were not evaluated in this UI step.
+
+## 2026-11-02 - One zone workspace and no dashboard previews
+
+- Removed dashboard camera images and the separate camera/configure/monitor wizard.
+  One page now presents camera connection/area editing, SAM configuration, and
+  analyzed frame/outputs/event flow in three responsive sections.
+- Monitoring control sits above the workspace. Settings lock while enabled or
+  finishing a window; disabling stays available after a camera failure. Existing
+  save/configure/enable service contracts remain authoritative and unchanged.
+- Runtime refresh patches results/controls without replacing draft fields or
+  polygon geometry. Unchanged analyzed image elements remain in place. Camera
+  connection settings and local help are expandable to keep the workspace compact.
+- UI regression checks passed for no dashboard camera requests, one editor camera,
+  control gating, editor locks and draft preservation during polling/offline state.
+  Sequential-preview checks and nine isolated application tests also passed.
+- Browser verification covered the live Pi connection, three-column layout,
+  rectangle selection, helper replies and saving the original rule on the same
+  page. Test drawings were discarded; monitoring remains disabled. No new GPU
+  inference or external adapter activation was performed. Playground intact.

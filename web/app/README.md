@@ -68,3 +68,26 @@ The sentence preview describes the saved fields; no prose is parsed as a rule.
 A count output is a fresh whole-frame count and bypasses area/confirmation gating
 for its numeric value. Condition and event outputs use the existing state rules.
 Prompt reference: https://dev.meta.ai/docs/sam/segmenting
+
+## Unified zone workspace
+
+The Zones dashboard contains status/output cards with no camera images and makes
+no camera-preview requests. Open a zone to configure and monitor it in one page:
+
+1. Camera connection and one live camera view for drawing/editing the area.
+2. SAM settings, with expandable configuration help above the rule fields.
+3. The exact analyzed SAM frame, current outputs, event-to-output flow and history.
+
+Desktop uses three columns; smaller screens reflow the same sections. Connection
+settings collapse after connecting and can be reopened. Enable/disable monitoring
+is at the top; Save rule validates through the existing service. Enabling requires
+a connected camera and saved rule. Editing is locked while monitoring is enabled
+or a worker window is finishing. Disabling remains accessible if the camera fails.
+
+Runtime polling updates the results and controls without replacing camera geometry
+or draft inputs. Unchanged analyzed images are retained while ages/output text
+refresh. Recent events still shows five with expandable bounded history. No
+backend inference, state, monitoring or integration contracts changed.
+
+UI regression commands: `node web/test_zone_workspace.cjs` and
+`node web/test_camera_preview.cjs` from the project root.
