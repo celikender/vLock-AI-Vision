@@ -1,5 +1,14 @@
 # Development log
 
+## 2026-11-02 - Fix local worker launch from paths containing spaces
+
+- Replaced the nested bash command string in start_local.ps1 with direct WSL
+  exec arguments. The launcher resolves the Ubuntu home and worker paths and
+  checks native exit codes. Project-folder spaces no longer split the script path.
+- Started the real existing worker successfully from the project folder. Its
+  loopback health endpoint returned HTTP 200 with model_loads=0. No inference,
+  model download or machine command was requested. Fix retained as a local commit.
+
 ## 2026-11-02 - Local observation output chapter
 
 - Promoted the validated SQLite observation store, heartbeat and time helpers to
