@@ -124,7 +124,7 @@ class ApplicationTests(unittest.TestCase):
             connection.close()
             return result
         try:
-            for path in ['/','/app.js','/runtime.js','/ui.js','/scene.js','/runtime.css']:
+            for path in ['/','/app.js','/runtime.js','/ui.js','/scene.js','/runtime.css','/camera-preview.js']:
                 code,body,csp=request(path)
                 self.assertEqual(code,200)
                 self.assertIn("connect-src 'self'",csp)

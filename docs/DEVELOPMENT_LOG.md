@@ -1,5 +1,21 @@
 # Development log
 
+## 2026-11-02 - Continuous camera preview and reusable worker launcher
+
+- Fixed the working UI's one-frame preview: SVG load-event capture was not a
+  reliable refresh clock. The preview now fetches original JPEG blobs sequentially,
+  clears a failed frame, retries, revokes old URLs and aborts removed-view requests.
+  Freshness stays authoritative in the existing camera service.
+- The local worker launcher recognizes the existing worker health contract on
+  5052 and returns successfully without launching a duplicate. An unrelated
+  occupied port causes an explicit error; no process is killed.
+- Camera-preview regressions passed for serialized refresh without SVG events,
+  failure/retry, stop and removed views. Nine application checks passed including
+  the new preview-script static route. Existing SAM inference was not changed.
+- Live Pi preview advanced from sequence 9163 to 9254 and continued through 9257
+  after Next: Configure. Browser navigation succeeded without console errors.
+  No inference or SCADA command was requested. Saved locally, not pushed.
+
 ## 2026-11-02 - Fix local worker launch from paths containing spaces
 
 - Replaced the nested bash command string in start_local.ps1 with direct WSL

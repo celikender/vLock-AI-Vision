@@ -55,9 +55,16 @@ async function refreshStatus(force=false){
  }catch(error){for(const z of workspace.zones){z.connected=false;z.runtime={state:'Unknown',valid:false,value:null,reason:'Application unavailable. Last values are not current.'};}if(applicationReady&&current()?.step!==2)render();$('saved').textContent='Application offline';}
  finally{refreshingRuntime=false;}
 }
-// Each image refresh waits for completion before asking for another frame.
-// Removed DOM nodes never schedule another request. No browser frame queue.
-function nextFrame(image,delay){setTimeout(()=>{if(!image.isConnected)return;image.setAttribute('href','/api/app/zones/'+encodeURIComponent(image.dataset.zone)+'/snapshot?t='+Date.now());},delay);}
-document.addEventListener('load',event=>{const image=event.target;if(!image.matches?.('.camera-frame'))return;const badge=image.closest('.scene-wrap').querySelector('.frame-state');if(badge)badge.textContent='Camera frame received';nextFrame(image,250);},true);
-document.addEventListener('error',event=>{const image=event.target;if(!image.matches?.('.camera-frame'))return;image.removeAttribute('href');const badge=image.closest('.scene-wrap')?.querySelector('.frame-state');if(badge)badge.textContent='Camera unavailable · last frame must not be used';nextFrame(image,1000);},true);
+// Observe rendered previews and cancel their fetch when a view is removed.
+const previewPumps=new Map();
+function syncCameraPreviews(){
+ for(const [image,pump] of previewPumps){if(!image.isConnected){pump.stop();previewPumps.delete(image);}}
+ for(const image of document.querySelectorAll('.camera-frame')){
+  if(previewPumps.has(image))continue;
+  const pump=createCameraPreview(image,{onFrame:connected=>{const z=workspace.zones.find(item=>item.id===image.dataset.zone);if(z)z.connected=connected;}});
+  previewPumps.set(image,pump);
+ }
+}
+new MutationObserver(syncCameraPreviews).observe(document.documentElement,{childList:true,subtree:true});
+syncCameraPreviews();
 refreshStatus().finally(()=>setInterval(()=>refreshStatus(),1500));

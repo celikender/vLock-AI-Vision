@@ -6,7 +6,7 @@ function illustration(config, editable=false, drawing=false, drawingPoints=[]) {
   const connected=config.connected;
   return `<div class="scene-wrap live-camera"><svg class="scene" id="scene" viewBox="0 0 ${w} ${h}" role="img" aria-label="Camera preview${editable?' and area editor':''}">
     <rect width="${w}" height="${h}" fill="#203c37"/>
-    ${connected?`<image class="camera-frame" data-zone="${escapeHtml(config.id)}" width="${w}" height="${h}" href="/api/app/zones/${encodeURIComponent(config.id)}/snapshot" preserveAspectRatio="none"/>`:`<text x="50%" y="50%" fill="#b1c5b5" text-anchor="middle" font-size="14">Connect the camera to see its view</text>`}
+    ${connected?`<image class="camera-frame" data-zone="${escapeHtml(config.id)}" width="${w}" height="${h}" preserveAspectRatio="none"/>`:`<text x="50%" y="50%" fill="#b1c5b5" text-anchor="middle" font-size="14">Connect the camera to see its view</text>`}
     ${config.areaSelected||drawing?`<polygon class="zone" points="${points}"/>`:''}
     ${editable&&!drawing&&config.areaSelected?config.zone.map((p,i)=>`<circle class="zone-handle" data-point="${i}" cx="${p[0]*w}" cy="${p[1]*h}" r="5" tabindex="0" role="button" aria-label="Zone vertex ${i+1}; use arrow keys to move"/>`).join(''):''}
     ${drawing?drawingPoints.map(p=>`<circle cx="${p[0]*w}" cy="${p[1]*h}" r="4" fill="#d8f9d9"/>`).join(''):''}

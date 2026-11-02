@@ -78,7 +78,7 @@ def make_server(workspace, port=5056):
                 if len(parts)==5 and parts[:3]==['api','app','zones'] and parts[4]=='analyzed':
                     return self.reply(200,workspace.analyzed(parts[3]),'image/png')
                 allowed={'/':'index.html','/index.html':'index.html','/app.js':'app.js','/ui.js':'ui.js',
-                    '/scene.js':'scene.js','/runtime.js':'runtime.js','/style.css':'style.css',
+                    '/scene.js':'scene.js','/runtime.js':'runtime.js','/camera-preview.js':'camera-preview.js','/style.css':'style.css',
                     '/polish.css':'polish.css','/runtime.css':'runtime.css','/README.md':'README.md'}
                 if path not in allowed:
                     raise ApplicationError('Not found.',404)
