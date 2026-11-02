@@ -19,14 +19,24 @@ uses a supplied PEM certificate/key pair. The optional MQTT publisher and read-o
 OPC UA server expose that same state. The base HTTP/UI needs no extra packages;
 adapter dependencies are listed in this folder's requirements.txt.
 
+OPC UA now has a second mode: **Connect to server**. It reads mapped scalar
+values with quality/timestamps and writes observation state to mapped local
+server nodes. Encrypted username authentication, pinned server certificate,
+Boolean validity and a receiver heartbeat are supported. See the
+[Ignition client setup and test instructions](../../integrations/ignition/OPC_UA_CLIENT.md).
+Existing settings retain Host server mode. Client readbacks are diagnostic;
+they do not drive rules. Live Ignition client-mode exchange remains unverified.
+
 SCADA / PLC owns machine actions, interlocks, permissives, latches, acknowledgements
 and resets. This bridge sends no machine command. There is no worker-lock or
 machine-reset implementation here. A consumer must handle missing communication
 using its own watchdog and configured fallback.
 
-Planned: live SAM normalization; rule configuration; prompt-guided setup; remote
-authentication, encrypted adapter endpoints and deployment. No running Gateway
-integration, model connection, or industrial validation is claimed.
+SAM monitoring publication and the server-mode detection-to-Ignition-Pause path
+were subsequently owner-tested; see integrations/ignition/SAM_BRIDGE.md.
+Planned: prompt-guided setup, remote adapter deployment and industrial validation.
+MQTT and the hosted OPC UA endpoint remain local and unencrypted; only the new
+OPC UA client mode supports an encrypted connection to a local external server.
 
 ## Run
 

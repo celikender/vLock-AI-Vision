@@ -32,6 +32,7 @@ function renderBridgeHealth() {
     byId('output').replaceChildren(text('p', 'Bridge is Offline. Last values must not be treated as current.', 'empty'));
     byId('response').textContent = 'Bridge unavailable or heartbeat stopped. Reconnecting…';
     byId('sam-input').textContent = 'Bridge unavailable. Last SAM values must not be treated as current.';
+    byId('opcua-readbacks').textContent = 'Bridge offline. Readbacks are unavailable.';
     for (const name of ['mqtt', 'opcua']) {
       byId(name + '-online').textContent = 'Status unavailable';
       byId(name + '-online').className = 'badge offline';
@@ -191,6 +192,13 @@ function renderIntegrations(data) {
     }
     byId('mqtt-host').value = data.settings.mqtt.host;
     byId('mqtt-prefix').value = data.settings.mqtt.topic_prefix;
+    byId('opcua-mode').value = data.settings.opcua.mode;
+    byId('opcua-client-endpoint').value = data.settings.opcua.endpoint;
+    byId('opcua-security').value = data.settings.opcua.security;
+    byId('opcua-reads').value = JSON.stringify(data.settings.opcua.reads, null, 2);
+    byId('opcua-writes').value = JSON.stringify(data.settings.opcua.writes, null, 2);
+    byId('opcua-heartbeat-node').value = data.settings.opcua.heartbeat_node_id;
+    updateOpcMode();
     integrationSettingsLoaded = true;
     byId('apply-integrations').disabled = false;
   }
@@ -202,13 +210,23 @@ function renderIntegrations(data) {
     byId(name + '-status').textContent = `${state.status}: ${state.message}`;
   }
   byId('opcua-endpoint').textContent = `opc.tcp://127.0.0.1:${data.settings.opcua.port}/vlock/`;
+  const rows = data.adapters.opcua.reads || [];
+  byId('opcua-readbacks').textContent = rows.length ? JSON.stringify(rows, null, 2) : 'No readbacks yet.';
   if (data.settings_error) byId('integration-feedback').textContent = data.settings_error;
 }
+
+function updateOpcMode() {
+  const client = byId('opcua-mode').value === 'client';
+  byId('opcua-server-settings').hidden = client;
+  byId('opcua-client-settings').hidden = !client;
+}
+byId('opcua-mode').addEventListener('change', updateOpcMode);
 
 async function refreshIntegrations() {
   if (applyingIntegrations) return;
   try { renderIntegrations(await api('integrations')); }
   catch {
+    byId('opcua-readbacks').textContent = 'Adapter status unavailable. Readbacks must not be treated as current.';
     for (const name of ['mqtt', 'opcua']) {
       byId(name + '-status').textContent = 'Adapter status unavailable.';
       byId(name + '-online').textContent = 'Status unavailable';
@@ -223,12 +241,15 @@ byId('integration-form').addEventListener('submit', async event => {
   applyingIntegrations = true;
   byId('apply-integrations').disabled = true;
   byId('integration-feedback').textContent = 'Applying settings…';
-  const settings = {
-    mqtt: {enabled: byId('mqtt-enabled').checked, host: byId('mqtt-host').value,
-      port: Number(byId('mqtt-port').value), topic_prefix: byId('mqtt-prefix').value.trim()},
-    opcua: {enabled: byId('opcua-enabled').checked, port: Number(byId('opcua-port').value)}
-  };
   try {
+    const settings = {
+      mqtt: {enabled: byId('mqtt-enabled').checked, host: byId('mqtt-host').value,
+        port: Number(byId('mqtt-port').value), topic_prefix: byId('mqtt-prefix').value.trim()},
+      opcua: {enabled: byId('opcua-enabled').checked, port: Number(byId('opcua-port').value),
+        mode: byId('opcua-mode').value, endpoint: byId('opcua-client-endpoint').value.trim(),
+        security: byId('opcua-security').value, reads: JSON.parse(byId('opcua-reads').value),
+        writes: JSON.parse(byId('opcua-writes').value), heartbeat_node_id: byId('opcua-heartbeat-node').value.trim()}
+    };
     const data = await api('integrations', settings, 20000);
     renderIntegrations(data);
     byId('integration-feedback').textContent = 'Settings saved. Check adapter status for connection confirmation.';

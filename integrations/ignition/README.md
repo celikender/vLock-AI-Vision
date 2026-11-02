@@ -2,6 +2,11 @@
 
 Reference integration for the standalone vLock application. The application is not hosted inside Perspective.
 
+The bridge also offers an experimental [Ignition OPC UA client mode](OPC_UA_CLIENT.md)
+for mapped machine-status reads and observation writes to Memory tags. Isolated
+read/write and encrypted login tests pass; live Ignition client-mode validation
+is pending certificate trust, credentials and explicit test-tag mappings.
+
 The owner confirmed live SAM person detection through vLock Bridge and OPC UA into Ignition, triggering one printer Pause request. See [the setup, Gateway script, tags and reset limitations](SAM_BRIDGE.md). This remains an experimental integration, not the consolidated MVP.
 
 ## Single-printer experiment

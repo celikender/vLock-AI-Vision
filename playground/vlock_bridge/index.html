@@ -85,12 +85,27 @@
             <p id="mqtt-status" class="muted" role="status">Loading MQTT settings…</p>
           </fieldset>
           <fieldset>
-            <legend>OPC UA server</legend>
+            <legend>OPC UA</legend>
             <span id="opcua-online" class="badge">Checking…</span>
             <label class="toggle"><input id="opcua-enabled" type="checkbox"> Enable OPC UA</label>
+            <label>Connection mode<select id="opcua-mode"><option value="server">Host server — Ignition reads vLock</option><option value="client">Connect to server — read and write Ignition</option></select></label>
+            <div id="opcua-server-settings">
             <label>Server port<input id="opcua-port" type="number" min="1024" max="65535" value="4845" required></label>
             <p><code id="opcua-endpoint">opc.tcp://127.0.0.1:4845/vlock/</code></p>
             <p class="muted">Read-only nodes · local connections · NoSecurity</p>
+            </div>
+            <div id="opcua-client-settings" hidden>
+              <label>Server endpoint<input id="opcua-client-endpoint" value="opc.tcp://127.0.0.1:62541"></label>
+              <label>Security<select id="opcua-security"><option value="Basic256Sha256">Basic256Sha256 / SignAndEncrypt</option><option value="None">None — local test server only</option></select></label>
+              <p class="muted">Credentials and certificate paths come from server environment variables. Apply starts the configured reads and writes.</p>
+              <label>Read mappings (JSON)<textarea id="opcua-reads" rows="4" spellcheck="false">[]</textarea></label>
+              <p class="muted">Example: [{"label":"machine_running","node_id":"ns=2;s=Example/Running"}]</p>
+              <label>Write mappings (JSON)<textarea id="opcua-writes" rows="5" spellcheck="false">[]</textarea></label>
+              <p class="muted">State JSON: asset_id, field: "state_json", node_id. Boolean: asset_id, field: "inhibit", node_id, known_node_id. Use dedicated observation Memory tags.</p>
+              <label>Boolean heartbeat Node ID<input id="opcua-heartbeat-node" placeholder="Required when writing observations"></label>
+              <p class="muted">Ignition must check validity and heartbeat progress. Unknown observations never publish a valid Clear. Readbacks are diagnostic and do not drive rules.</p>
+              <pre id="opcua-readbacks">No readbacks yet.</pre>
+            </div>
             <p id="opcua-status" class="muted" role="status">Loading OPC UA settings…</p>
           </fieldset>
         </div>

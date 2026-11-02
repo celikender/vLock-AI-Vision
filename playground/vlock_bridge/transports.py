@@ -15,13 +15,19 @@ from store import BridgeError, encode, utc
 NAMESPACE = 'urn:vlock:bridge:v1'
 DEFAULTS = {
     'mqtt': {'enabled': False, 'host': '127.0.0.1', 'port': 1883, 'topic_prefix': 'vlock/v1'},
-    'opcua': {'enabled': False, 'port': 4845},
+    'opcua': {'enabled': False, 'port': 4845, 'mode': 'server',
+              'endpoint': 'opc.tcp://127.0.0.1:62541', 'security': 'Basic256Sha256',
+              'reads': [], 'writes': [], 'heartbeat_node_id': ''},
 }
 
 
 def configuration(data):
     if not isinstance(data, dict) or set(data) != set(DEFAULTS):
         raise BridgeError('Supply mqtt and opcua settings.')
+    data = copy.deepcopy(data)
+    # Migrate existing server-only settings without enabling a new connection.
+    if isinstance(data['opcua'], dict):
+        data['opcua'] = DEFAULTS['opcua'] | data['opcua']
     for name, defaults in DEFAULTS.items():
         if not isinstance(data[name], dict) or set(data[name]) != set(defaults):
             raise BridgeError(f'Check {name} settings; unknown or missing fields.')
@@ -37,6 +43,8 @@ def configuration(data):
         raise BridgeError('Use a topic prefix of letters, digits, hyphens, underscores and single slashes (up to 120 characters).')
     if data['mqtt']['port'] == data['opcua']['port']:
         raise BridgeError('MQTT and OPC UA must use different ports.')
+    from opc_client import validate_client_settings
+    validate_client_settings(data['opcua'])
     return copy.deepcopy(data)
 
 
@@ -276,7 +284,9 @@ class Integrations:
         self._start()
 
     def _start(self):
-        for name, factory in [('mqtt', MqttPublisher), ('opcua', OpcUaServer)]:
+        from opc_client import OpcUaClient
+        opc_factory = OpcUaClient if self.settings['opcua']['mode'] == 'client' else OpcUaServer
+        for name, factory in [('mqtt', MqttPublisher), ('opcua', opc_factory)]:
             if self.settings[name]['enabled'] and name not in self.workers:
                 worker = factory(self.store, self.settings[name])
                 self.workers[name] = worker
@@ -286,6 +296,7 @@ class Integrations:
         with self.lock:
             return dict(schema_version=1, settings=copy.deepcopy(self.settings), settings_error=self.settings_error,
                 credentials_configured=bool(os.environ.get('VLOCK_BRIDGE_MQTT_USERNAME')),
+                opcua_credentials_configured=bool(os.environ.get('VLOCK_BRIDGE_OPCUA_USERNAME')),
                 adapters={name: worker.status() if (worker := self.workers.get(name)) else
                     dict(status='disabled', message='Adapter is disabled.', last_update=None,
                          online=False, heartbeat_counter=0, offline_after_seconds=5) for name in DEFAULTS})
