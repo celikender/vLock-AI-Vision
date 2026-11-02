@@ -583,3 +583,26 @@ Future entries should record actual changes, verification evidence, limitations,
   rectangle selection, helper replies and saving the original rule on the same
   page. Test drawings were discarded; monitoring remains disabled. No new GPU
   inference or external adapter activation was performed. Playground intact.
+
+## 2026-11-02 - Stable SAM viewer and integration visibility
+
+- Fixed results-column replacement during polling. Observation/events now patch
+  independently while the SAM image element remains mounted. New images decode
+  before swapping; pending obsolete updates are discarded and object URLs freed.
+  Slow/failing/stale updates keep a clearly labeled last image without flashing
+  back to the placeholder. Backend inference and validity rules are unchanged.
+- Added an independent Show drawn area control, including during monitoring.
+  It changes display only; the saved polygon and active monitoring are preserved.
+- Moved Observation to the top beside Camera & area and removed the event-flow
+  card. Recent events remains bounded to five with expandable history.
+- Replaced System monitor navigation with SCADA tags: configured output names,
+  types, predefined bridge NodeId paths, local values and explicit inactive
+  delivery. Values are not claimed as sent to Ignition; app transport activation
+  and OPC client mappings remain unwired.
+- Restored compact shared OPC UA/MQTT/HTTP connection profiles with actual local
+  API availability checks and the independent bridge troubleshooting link.
+- Nine isolated application checks and three JavaScript regression scripts passed.
+  Browser checks confirmed area visibility, preserved eight-vertex geometry,
+  aligned observation layout, server/client fields, live API status and tag rows.
+  Temporary profile selection was discarded. No new GPU inference or external
+  adapter activation was performed. Existing services and playground unchanged.

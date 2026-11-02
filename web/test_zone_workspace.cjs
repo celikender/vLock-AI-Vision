@@ -24,6 +24,17 @@ assert.equal((html.match(/class="camera-frame"/g)||[]).length,1);
 assert.match(html,/configuration-column/);assert.match(html,/id="zone-results"/);
 assert.doesNotMatch(html,/data-step=|Next: Configure|Save rule &amp; open monitor/);
 assert.match(html,/data-action="monitor-toggle"/);
+assert.match(html,/3\. Observation/);assert.doesNotMatch(html,/Event → output flow/);
+assert.match(html,/data-show-area/);assert.match(html,/data-analyzed-zone/);
+run("outputSnapshot={assets:[]};zone.outputType='count';zone.runtime.value=0");
+assert.equal(run("tagRows().find(r=>r[1].endsWith('/NumericValue'))[3]"),0);
+run("zone.outputType='condition';zone.runtime.value=false");
+assert.equal(run("tagRows().find(r=>r[1].endsWith('/Active'))[3]"),false);
+run('outputSnapshot=null');
+assert.equal(run("tagRows().find(r=>r[1].endsWith('/Active'))[3]"),null);
+assert.match(run('tagMonitor()'),/Not sent by this app/);
+assert.match(run('integrationProfiles()'),/Existing|Host address/);
+
 assert.match(run('zoneControls(zone)'),/Rule saved/);
 run('dirtyFlag=true');
 assert.match(run('zoneControls(zone)'),/data-action="monitor-toggle" disabled/);
@@ -35,6 +46,18 @@ run('zone.runtime.enabled=false;zone.connected=false;dirtyFlag=false');
 assert.match(run('simpleCameraPane(zone)'),/fieldset data-area-editor disabled/);
 run('zone.runtime.busy=true');
 assert.match(run('zoneControls(zone)'),/data-action="monitor-toggle" disabled/);
+// Updating ages/events must never detach the persistent SAM viewer container.
+run(`
+const stableResults={replaceChildren(){throw new Error('SAM viewer was detached');},set innerHTML(v){throw new Error('SAM viewer was replaced');}};
+const observationHolder={dataset:{},innerHTML:''},eventsHolder={dataset:{},innerHTML:''};
+let viewerUpdates=0;
+document.getElementById=id=>({'zone-results':stableResults,'observation-content':observationHolder,'zone-events':eventsHolder}[id]);
+document.querySelector=()=>null;refreshZoneControls=()=>{};
+function syncAnalyzedPreview(){viewerUpdates++;}
+refreshZoneResults();zone.runtime.age_seconds=2;refreshZoneResults();
+`);
+assert.equal(run('viewerUpdates'),2);
+assert.match(run('observationHolder.innerHTML'),/2.0 s/);
 // Polling must update service state/results without replacing draft inputs or geometry.
 run(`
 zone.runtime.busy=false;zone.target='draft hand';zone.zone=[[.2,.2],[.8,.2],[.8,.8],[.2,.8]];

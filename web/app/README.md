@@ -91,3 +91,33 @@ backend inference, state, monitoring or integration contracts changed.
 
 UI regression commands: `node web/test_zone_workspace.cjs` and
 `node web/test_camera_preview.cjs` from the project root.
+
+## Stable observation view and SCADA visibility
+
+The right column starts with Observation, aligned with Camera & area. Only its
+text and event list are patched during polling. The SAM viewer stays mounted;
+replacement images are fetched/decoded before swapping onto the same element.
+Only the newest requested update is retained, with one request/decode in flight.
+The previous decoded image remains visible during a slow or failed update. If
+fresh evidence is unavailable, it is labeled as a last image, not a current
+observation. Backend state/validity remain authoritative. This is not an inference
+latency improvement. `node web/test_analyzed_preview.cjs` exercises this lifecycle.
+
+Show drawn area controls only outline/vertex visibility. It remains usable while
+monitoring; hiding the outline never disables monitoring or removes the saved
+geometry. Starting a new drawing makes the outline visible again. The event-flow
+card is removed; five recent events and expandable history remain.
+
+SCADA tags replaces System monitor in the sidebar. It lists configured output
+names/types and predefined server NodeId strings from the existing bridge contract,
+with local values and publication metadata. False, zero and unavailable/null stay
+distinct. These are local diagnostics and mapping previews, not OPC readbacks or
+proof of delivery. The app still does not activate OPC UA/MQTT adapters. Client
+mode still needs explicit gateway target-node mapping in a later wiring chapter.
+
+Integrations restores compact OPC UA server/client, MQTT and HTTP profile fields,
+local API troubleshooting and a link to the independent bridge connection/status
+UI. Profile edits persist through the existing Save workspace contract. Saving an
+enabled profile does not start a transport. API availability is checked live;
+unwired adapter status is stated explicitly. Profile forms are not replaced by
+background status polling. The original playground remains intact.
