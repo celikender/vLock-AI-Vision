@@ -1,5 +1,24 @@
 # Development log
 
+## 2026-11-02 - Working application camera/workspace checkpoint
+
+- Published the approved UI baseline (769a0e9) and existing OPC UA client option
+  (84765f1) as separate commits on main. A UTF-8 publication audit passed for
+  all 17 published files; local instructions, credentials and unrelated printer
+  experimentation were excluded.
+- Added web/application.py on port 5056, the approved layout under web/app,
+  backend-owned workspace metadata and services/vision/camera.py. Existing
+  experiments on 5051/5055 and the static prototype remain independent.
+- Real camera requests validate private-LAN Pi HTTP addresses, bound JPEG sizes,
+  dimensions, freshness and sequence progress. Original JPEGs remain unchanged;
+  UI refresh waits for the current image response and adds no frame queue.
+- Seven isolated checks passed for camera validation/freshness, byte preservation,
+  save/restart, revision conflicts, browser-state forgery, invalid-file preservation
+  and HTTP origin/host guards. Browser creation/save/reload passed without errors.
+- Existing monitoring and local-worker health endpoints were not reachable at
+  this check. Actual camera/model inference has not been validated in the working
+  UI. Monitoring and output controls remain explicitly unwired at this checkpoint.
+
 ## 2026-11-02 - Area selection feedback and event limits
 
 - Added selected/unselected/drawing feedback and a changing Configure camera-card
