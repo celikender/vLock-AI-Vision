@@ -1,5 +1,23 @@
 # Development log
 
+## 2026-11-02 - Local SAM monitoring service checkpoint
+
+- Promoted validated monitoring, geometry, mask, window-transport and configuration
+  code into services/vision using package-relative imports. Original experiments
+  remain untouched. The existing 5052 worker is reused; no second runtime is loaded.
+- Added configure and explicit enable/stop routes to the working app. One active
+  local-SAM zone is allowed at a time; restart begins disconnected and disabled.
+  Unsupported combined concepts, score filtering, second checks and remote enable
+  are explicitly rejected. Free text is descriptive, not executable code.
+- Working UI uses actual service states, original live JPEGs and the separately
+  matched analyzed frame. It does not manufacture a confidence score for Clear.
+  Observation validity and timing remain distinct from model window latency.
+- Eighteen promoted regressions and nine application tests passed. Synthetic
+  SAM windows covered Active, Clear, worker loss to Unknown, Stop and analyzed-frame
+  availability. No actual GPU inference or machine command was requested.
+- Owner requested local commits between chapters. The camera/workspace checkpoint
+  was already published as dab50c7; this and following checkpoints stay local.
+
 ## 2026-11-02 - Working application camera/workspace checkpoint
 
 - Published the approved UI baseline (769a0e9) and existing OPC UA client option

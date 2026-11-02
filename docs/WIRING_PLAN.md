@@ -22,8 +22,9 @@ observations only; machine actions, worker locks and SCADA latches remain extern
 4. Integration evidence: isolated end-to-end tests, live camera checks when reachable,
    hardware/model testing reported separately, exact start commands and limitations.
 
-Each completed checkpoint gets a descriptive commit after appropriate tests and
-staged publication checks. Keep main as instructed. Preserve existing playground
+Each completed checkpoint gets a descriptive local commit after appropriate tests
+and staged publication checks. Push chapter by chapter, following owner review.
+Keep main as instructed. Preserve existing playground
 services and user data. A real UI never displays synthetic detection or latency
 fixtures as measured results. Starting inference or enabling a transport is explicit.
 
@@ -34,7 +35,8 @@ multi-concept AND/OR evaluation, remote deployment/authentication, native Gatewa
 packaging and hosted MQTT broker installation need separate implementation and
 validation. Their prototype screens are not evidence of working services.
 
-Status: baselines published. Camera/workspace services and HTTP routes implemented;
-seven isolated camera/workspace checks pass. Real hardware preview validation is
-pending. Monitoring and observation services are next; no model inference is
-started by this checkpoint.
+Status: baselines and camera/workspace checkpoint published (dab50c7). Local SAM
+monitoring service and explicit enable/stop routes implemented; 18 promoted
+regressions and nine application tests pass. Live hardware validation is pending.
+Observation-store/output wiring is next. Subsequent checkpoints stay local until
+the owner chooses to push the next chapter.

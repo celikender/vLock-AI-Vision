@@ -14,6 +14,9 @@ from services.application import Workspace, ApplicationError
 from services.vision.camera import Camera, address
 from application import make_server
 from PIL import Image
+from services.vision.video import encode_mask
+from PIL import ImageDraw
+import time
 
 
 def jpeg():
@@ -135,6 +138,65 @@ class ApplicationTests(unittest.TestCase):
             self.assertEqual(request('/../.env')[0],404)
         finally:
             server.shutdown();server.server_close();thread.join()
+
+    def test_local_sam_path_active_clear_failure_and_stop(self):
+        mode=['active']
+        def infer(frames,prompt,revision):
+            if mode[0]=='fail':
+                raise OSError('Injected worker loss')
+            mask=Image.new('L',(100,80))
+            ImageDraw.Draw(mask).rectangle((20,20,40,40),fill=255)
+            for index,frame in enumerate(frames):
+                objects=[dict(object_id=1,score=.9,mask=encode_mask(mask),bbox_xywh=[.2,.25,.2,.25])] if mode[0]=='active' else []
+                yield dict(type='frame',frame_index=index,frame_sequence=frame['sequence'],
+                    prompt=prompt,prompt_revision=revision,width=100,height=80,count=len(objects),objects=objects,
+                    session_id='isolated-session',elapsed_seconds=.01)
+        self.workspace.infer=infer
+        zone=self.create()
+        self.workspace.connect(zone)
+        config=self.workspace.status()['workspace']
+        config['zones'][0].update(zone=[[.1,.1],[.9,.1],[.9,.9],[.1,.9]],areaSelected=True,persistence=0)
+        self.workspace.save(config)
+        self.workspace.configure(zone)
+        self.workspace.enable(zone,True)
+        def until(state):
+            deadline=time.monotonic()+7
+            while time.monotonic()<deadline:
+                view=self.workspace.status()['workspace']['zones'][0]
+                if view['runtime']['state']==state:return view
+                time.sleep(.03)
+            self.fail('Expected isolated monitoring state: '+state)
+        active=until('Active')
+        self.assertIs(active['runtime']['value'],True)
+        self.assertTrue(active['runtime']['valid'])
+        self.assertEqual(active['runtime']['count'],1)
+        self.assertEqual(self.workspace.analyzed(zone)[:8],b'\x89PNG\r\n\x1a\n')
+        with self.assertRaises(ApplicationError):
+            self.workspace.save(self.workspace.status()['workspace'])
+        mode[0]='clear'
+        clear=until('Clear')
+        self.assertIs(clear['runtime']['value'],False)
+        self.assertIsNone(clear['runtime']['score'])
+        mode[0]='fail'
+        unknown=until('Unknown')
+        self.assertFalse(unknown['runtime']['valid'])
+        self.assertIsNone(unknown['runtime']['value'])
+        self.workspace.enable(zone,False)
+        self.assertFalse(self.workspace.status()['workspace']['zones'][0]['runtime']['enabled'])
+        with self.assertRaises(ApplicationError):
+            self.workspace.analyzed(zone)
+
+    def test_unsupported_rule_features_are_not_silently_ignored(self):
+        zone=self.create()
+        self.workspace.connect(zone)
+        for changes in [dict(extraConditions=[dict(object='dog',relation='overlaps area')]),
+                        dict(allowRemote=True),dict(minConfidence=75),dict(recheck='Cloud vision model — planned')]:
+            config=self.workspace.status()['workspace']
+            config['zones'][0].update(dict(zone=[[.1,.1],[.9,.1],[.9,.9],[.1,.9]],areaSelected=True,
+                extraConditions=[],allowRemote=False,minConfidence=0,recheck='None')|changes)
+            self.workspace.save(config)
+            with self.subTest(changes=changes),self.assertRaises(ApplicationError):
+                self.workspace.configure(zone)
 
 
 if __name__=='__main__':

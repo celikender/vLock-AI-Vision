@@ -52,6 +52,8 @@ def make_server(workspace, port=5056):
                 if len(parts)==5 and parts[:3]==['api','app','zones'] and parts[4]=='snapshot':
                     jpeg,headers=workspace.snapshot(parts[3])
                     return self.reply(200,jpeg,'image/jpeg',headers)
+                if len(parts)==5 and parts[:3]==['api','app','zones'] and parts[4]=='analyzed':
+                    return self.reply(200,workspace.analyzed(parts[3]),'image/png')
                 allowed={'/':'index.html','/index.html':'index.html','/app.js':'app.js','/ui.js':'ui.js',
                     '/scene.js':'scene.js','/runtime.js':'runtime.js','/style.css':'style.css',
                     '/polish.css':'polish.css','/runtime.css':'runtime.css','/README.md':'README.md'}
@@ -88,6 +90,10 @@ def make_server(workspace, port=5056):
                         return self.reply(200,workspace.connect(parts[3]))
                     if parts[4]=='disconnect':
                         return self.reply(200,workspace.disconnect(parts[3]))
+                    if parts[4]=='configure':
+                        return self.reply(200,workspace.configure(parts[3]))
+                    if parts[4]=='enable':
+                        return self.reply(200,workspace.enable(parts[3],data.get('enabled')))
                 raise ApplicationError('This function is not wired yet.',404)
             except ApplicationError as error:
                 self.reply(error.status,dict(error=str(error)))
