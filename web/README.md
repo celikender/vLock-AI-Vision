@@ -1,5 +1,22 @@
 # Main camera UI
 
+## Working Zones application — incremental wiring
+
+The approved Zones layout is now available separately from these existing tools:
+
+```powershell
+.\.venv\Scripts\python.exe web/application.py
+```
+
+Open http://localhost:5056. Start the existing local SAM worker separately with
+`.\playground\segmentation\start_local.ps1` before explicitly enabling a reviewed
+monitoring rule. See [working application scope and limits](app/README.md) and
+[chapter checkpoints](../docs/WIRING_PLAN.md).
+
+The existing server.py, camera/photo page and Monitoring Setup described below
+remain unchanged. Their saved settings and SCADA integration are not migrated
+or overwritten by the new application.
+
 ## Monitoring Setup
 
 Open http://localhost:5051/monitoring after starting the existing local GPU worker

@@ -1,5 +1,29 @@
 # Development log
 
+## 2026-11-02 - Local observation output chapter
+
+- Promoted the validated SQLite observation store, heartbeat and time helpers to
+  services/vlock. Monitoring records directly through an internal publisher;
+  no separate bridge process or SCADA endpoint is contacted by this path.
+- Added read-only versioned asset, event and heartbeat routes to the working app.
+  Capture age/expiry, unknown values, valid-zero counts, duplicate handling,
+  restart invalidation and bounded global history retain the bridge semantics.
+  Per-zone monitoring event limits remain separate and apply to retained events.
+- Frontend output values now come directly from the backend contract; display
+  formatting does not derive counts or decide condition truth. Advanced debug
+  views distinguish local publication from external delivery. External adapters
+  are explicitly unwired in this chapter, not represented as active services.
+- Forty-eight production checks passed: 18 monitoring regressions, 17 observation
+  store regressions, four capture-age/publisher checks and nine app/API checks.
+  Full web suite (25) and preserved monitoring playground (24) passed. Tests use
+  injected camera/SAM results, isolated HTTP servers and temporary databases.
+- A read-only live probe of the saved Pi address obtained no valid fresh JPEG.
+  The old monitoring and 5052 worker endpoints were not reachable. No paid model
+  calls, actual GPU inference, adapter activation or machine commands were sent.
+- Owner clarified architecture compatibility: preserve working backend behavior
+  and SCADA contracts, adapt the UI to those services, and keep the playground
+  intact. The chapter remains local pending owner review before the next push.
+
 ## 2026-11-02 - Local SAM monitoring service checkpoint
 
 - Promoted validated monitoring, geometry, mask, window-transport and configuration

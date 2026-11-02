@@ -13,6 +13,9 @@ from services.vision.camera import Camera, address, fetch_jpeg
 from services.vision.monitoring import Monitoring
 from services.vision.transport import track_video
 from services.vision.configuration import validate as validate_monitor
+from services.vlock.store import Store as ObservationStore
+from services.vlock.output import ObservationOutput
+from collections import deque
 
 
 class ApplicationError(ValueError):
@@ -103,6 +106,7 @@ class Workspace:
                 self.config = self.validate(saved)
             except (ValueError,TypeError,KeyError,OSError):
                 raise ApplicationError('Saved workspace is invalid; it was not overwritten.',503) from None
+        self.observations=ObservationStore(self.directory/'observations.sqlite3',history_limit=1000)
 
     def validate(self, data):
         if not isinstance(data,dict) or not isinstance(data.get('zones'),list) or len(data['zones'])>32:
@@ -168,6 +172,12 @@ class Workspace:
                     inference_ms=frame['elapsed_seconds']*1000 if frame and isinstance(frame.get('elapsed_seconds'),(int,float)) else None,
                     output_id=frame['output_id'] if fresh else None,count=frame.get('count') if fresh else None,
                     tracking_scope='four-frame session',actual_frames=monitor.output_id if monitor else 0)
+                record['publication']=dict(monitor.bridge.status) if monitor else dict(state='idle',message='Configure the zone first.')
+                if zone['outputType']=='count' and fresh:
+                    record.update(state='Valid',value=frame['count'],valid=True,quality='Good',
+                        reason='Whole-frame detection count; not a zone count or cumulative visitor count.')
+                elif zone['outputType']=='event' and valid:
+                    record['value']={'state':state['state']}
                 if not enabled:
                     record.update(state='Disabled',reason='Monitoring disabled; no current observation.')
                 events=[dict(state=e['state'],value=e['type'],time=e['time']) for e in reversed(state['events'])] if state else []
@@ -175,7 +185,7 @@ class Workspace:
                     localEnabled=enabled,remoteEnabled=False,step=3 if zone['id'] in self.ready else 2 if runtime['connected'] else 1,
                     events=events[:self.config['eventLimit']],runtime=record)
             return dict(schema_version=1,prototype=False,workspace=result,
-                capabilities=dict(camera=True,monitoring=True,transports=False,machine_commands=False,
+                capabilities=dict(camera=True,monitoring=True,observation_api=True,transports=False,machine_commands=False,
                     supported_camera='Pi / HTTP',restart='Monitoring always starts disabled.'))
 
     def save(self, data):
@@ -204,6 +214,9 @@ class Workspace:
             except OSError:
                 self.config = before
                 raise
+            for monitor in self.monitors.values():
+                monitor.events=deque(monitor.events,maxlen=candidate['eventLimit'])
+                monitor.events_store.save(list(monitor.events))
             return self.status()
 
     def add(self, name='New zone'):
@@ -290,6 +303,8 @@ class Workspace:
                       'persistence_seconds':zone['persistence'],'action':'event_log' if zone['outputType']=='event' else 'warning'})
             config=validate_monitor(config,monitor.config,require_zone=True)
             monitor.save(config)
+            monitor.bridge=ObservationOutput(self.observations,zone)
+            monitor.bridge.send(config,'Unknown','Monitoring is configured but disabled.')
             self.ready.add(zone_id)
             return self.status()
 
@@ -324,3 +339,4 @@ class Workspace:
         for monitor in self.monitors.values():
             if monitor.thread:
                 monitor.thread.join(timeout=3)
+        self.observations.close()

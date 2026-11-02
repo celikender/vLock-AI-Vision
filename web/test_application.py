@@ -128,6 +128,12 @@ class ApplicationTests(unittest.TestCase):
                 code,body,csp=request(path)
                 self.assertEqual(code,200)
                 self.assertIn("connect-src 'self'",csp)
+            for path in ['/api/v1/assets','/api/v1/health','/api/v1/events?limit=5']:
+                code,body,_=request(path)
+                self.assertEqual(code,200)
+                self.assertEqual(json.loads(body)['schema_version'],1)
+            self.assertEqual(request('/api/v1/events?limit=999')[0],400)
+            self.assertEqual(request('/api/v1/events?after=-1')[0],400)
             self.assertEqual(request('/api/app/zones',{'name':'Bad'},origin='https://other.example')[0],403)
             self.assertEqual(request('/api/app/workspace',override_host='other.example')[0],403)
             zone=self.create()
@@ -170,6 +176,9 @@ class ApplicationTests(unittest.TestCase):
         self.assertIs(active['runtime']['value'],True)
         self.assertTrue(active['runtime']['valid'])
         self.assertEqual(active['runtime']['count'],1)
+        asset=self.workspace.observations.snapshot()['assets'][0]
+        self.assertIs(asset['inhibit'],True)
+        self.assertEqual(asset['signals'][0]['signal_id'],'zone_condition')
         self.assertEqual(self.workspace.analyzed(zone)[:8],b'\x89PNG\r\n\x1a\n')
         with self.assertRaises(ApplicationError):
             self.workspace.save(self.workspace.status()['workspace'])
@@ -177,12 +186,15 @@ class ApplicationTests(unittest.TestCase):
         clear=until('Clear')
         self.assertIs(clear['runtime']['value'],False)
         self.assertIsNone(clear['runtime']['score'])
+        self.assertIs(self.workspace.observations.snapshot()['assets'][0]['inhibit'],False)
         mode[0]='fail'
         unknown=until('Unknown')
         self.assertFalse(unknown['runtime']['valid'])
         self.assertIsNone(unknown['runtime']['value'])
+        self.assertIsNone(self.workspace.observations.snapshot()['assets'][0]['inhibit'])
         self.workspace.enable(zone,False)
         self.assertFalse(self.workspace.status()['workspace']['zones'][0]['runtime']['enabled'])
+        self.assertIsNone(self.workspace.observations.snapshot()['assets'][0]['inhibit'])
         with self.assertRaises(ApplicationError):
             self.workspace.analyzed(zone)
 

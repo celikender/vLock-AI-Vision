@@ -2,13 +2,15 @@
 import argparse
 import json
 import sys
+import sqlite3
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, parse_qs
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
 from services.application import Workspace, ApplicationError
+from services.vlock.store import BridgeError
 
 STATIC = Path(__file__).with_name('app')
 
@@ -48,6 +50,27 @@ def make_server(workspace, port=5056):
                 path = urlsplit(self.path).path
                 if path=='/api/app/workspace':
                     return self.reply(200,workspace.status())
+                if path in ('/api/v1/assets','/api/v1/health') or path.startswith('/api/v1/assets/'):
+                    snapshot=workspace.observations.snapshot()
+                    if path=='/api/v1/health':
+                        return self.reply(200,{key:value for key,value in snapshot.items() if key!='assets'})
+                    if path=='/api/v1/assets':
+                        return self.reply(200,snapshot)
+                    asset_id=path.removeprefix('/api/v1/assets/')
+                    asset=next((a for a in snapshot['assets'] if a['asset_id']==asset_id),None)
+                    if asset is None:
+                        raise ApplicationError('No observations for this asset.',404)
+                    return self.reply(200,{key:value for key,value in snapshot.items() if key!='assets'}|asset)
+                if path=='/api/v1/events':
+                    query=parse_qs(urlsplit(self.path).query)
+                    limit=int(query.get('limit',['5'])[0])
+                    after=int(query['after'][0]) if 'after' in query else None
+                    if not 1<=limit<=200 or after is not None and not 0<=after<=2**63-1:
+                        raise ApplicationError('Use limit 1–200 and a nonnegative 64-bit after cursor.')
+                    events=workspace.observations.events(after,limit)
+                    history=workspace.observations.history_info()
+                    return self.reply(200,dict(schema_version=1,events=events,**history,
+                        cursor_expired=after is not None and history['oldest_revision'] is not None and after+1<history['oldest_revision']))
                 parts=path.strip('/').split('/')
                 if len(parts)==5 and parts[:3]==['api','app','zones'] and parts[4]=='snapshot':
                     jpeg,headers=workspace.snapshot(parts[3])
@@ -62,11 +85,11 @@ def make_server(workspace, port=5056):
                 file=STATIC/allowed[path]
                 mime={'.html':'text/html','.js':'text/javascript','.css':'text/css','.md':'text/plain'}[file.suffix]+'; charset=utf-8'
                 return self.reply(200,file.read_bytes(),mime)
-            except ApplicationError as error:
+            except (ApplicationError,BridgeError) as error:
                 self.reply(error.status,dict(error=str(error)))
             except ValueError:
                 self.reply(400,dict(error='Check the application request.'))
-            except OSError:
+            except (OSError,sqlite3.Error):
                 self.reply(503,dict(error='Camera or application storage unavailable. No result was confirmed.'))
 
         def do_POST(self):
@@ -99,7 +122,7 @@ def make_server(workspace, port=5056):
                 self.reply(error.status,dict(error=str(error)))
             except (ValueError,TypeError,KeyError,RecursionError):
                 self.reply(400,dict(error='Invalid request. Check the configuration fields.'))
-            except OSError:
+            except (OSError,sqlite3.Error):
                 self.reply(503,dict(error='Camera or storage unavailable. Check the connection before retrying.'))
     server=ThreadingHTTPServer(('127.0.0.1',port),Handler)
     server.daemon_threads=True

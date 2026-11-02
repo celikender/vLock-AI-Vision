@@ -35,8 +35,21 @@ multi-concept AND/OR evaluation, remote deployment/authentication, native Gatewa
 packaging and hosted MQTT broker installation need separate implementation and
 validation. Their prototype screens are not evidence of working services.
 
-Status: baselines and camera/workspace checkpoint published (dab50c7). Local SAM
-monitoring service and explicit enable/stop routes implemented; 18 promoted
-regressions and nine application tests pass. Live hardware validation is pending.
-Observation-store/output wiring is next. Subsequent checkpoints stay local until
-the owner chooses to push the next chapter.
+## Compatibility requirements
+
+Preserve working SAM inference, monitoring rules, state management and SCADA
+integrations. Adapt the UI to the existing service contracts. Refactoring must
+preserve behavior, with incremental compatibility checks. The original playground
+is a working reference and remains unchanged. Promoted production copies use
+package-relative imports and regression tests; they do not change the model
+runtime or its request protocol. Backend services remain authoritative. No
+detection or state-decision logic is duplicated into the frontend.
+
+Status: approved UI and camera/workspace checkpoint published (dab50c7). Local
+commit 703deb1 wires local SAM monitoring. Durable local observation publication
+and read-only REST are implemented next, with 48 production checks passing.
+The preserved web suite (25 tests) and monitoring playground (24) also pass.
+Live camera check to the saved Pi address did not obtain a fresh JPEG, and the
+existing local worker was not reachable. Hardware/model validation remains pending.
+External OPC UA/MQTT adapter activation is the next chapter; existing bridge
+functionality stays usable independently. Further commits remain local.
