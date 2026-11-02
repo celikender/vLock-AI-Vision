@@ -1,5 +1,88 @@
 # Development log
 
+## 2026-11-02 - Area selection feedback and event limits
+
+- Added selected/unselected/drawing feedback and a changing Configure camera-card
+  title. New example outlines require explicit selection before saving a zone.
+- Recent events now shows five rows, expandable earlier history and a workspace
+  retention setting of 5/20/50/100/500 events per zone (default 100, maximum 500).
+  Lowering the bound prunes oldest simulated entries immediately.
+- Browser-verified five recent/two older rows, cap reduction to five and area
+  reset/confirmation feedback. JavaScript syntax passed; no browser errors.
+  Changes remain confined to prototype presentation and browser draft state.
+
+## 2026-11-02 - Final combined UI polish
+
+- Compacted camera setup, replaced later connection cards with a source strip,
+  and made page titles/breadcrumbs identify the current zone step clearly.
+- Added explicit Monitor enable/disable, expandable input/output/JSON diagnostics,
+  contextual documentation help and a System monitor page with zone filtering.
+- Added an expandable AND/OR condition-builder preview and a Meta configuration
+  helper using fixed templates only. No model or API request is made; object
+  selection remains labeled planned, while polygon drawing stays interactive.
+- Reviewed existing monitoring persistence and local SAM video-window limits.
+  Help distinguishes app confirmation timing from SAM tracking, and sample
+  object scores from probability of a clear zone. Multi-concept rules still
+  need runtime design, freshness alignment and validation after UI approval.
+- Browser checks passed for enable gates, debug expansion, combined-condition
+  preview, helper/help dialogs and System monitor filtering. JavaScript syntax
+  checks passed and no browser errors were observed. All changes remain UI-only
+  inside playground/combined_app, apart from these development notes.
+
+## 2026-11-02 - Zones-first combined UI revision
+
+- Rebuilt playground/combined_app around a Zones dashboard with scorecards,
+  enable switches, recent output/event summaries and Add zone. Each zone now
+  has Camera, Configure and Monitor steps, with camera connection/preview on
+  the left on desktop. Integration settings are shared once per workspace.
+- Added zone-level Unknown/score settings and proposed second-check choices.
+  Model scores and inference timings are labeled samples. Vision instructions
+  remain text only; they are not interpreted or executed.
+- Added simulated local and SCADA enable gates. Disabled means unavailable/null,
+  not Clear; re-enabling waits in Unknown for another simulated observation.
+  Output monitoring separates value, state, validity, score, reason and enable.
+  No worker lock, SCADA latch or machine action is changed.
+- Browser checks covered zone creation/navigation gates, dog output naming,
+  polygon keyboard editing, five scenario presets, shared OPC UA modes, remote
+  disable/re-enable and browser save/reload. Desktop camera-left placement and
+  narrow dashboard overflow were checked; JavaScript syntax checks passed.
+- UI-only files stay in the playground. Existing camera, segmentation, bridge,
+  production UI and live SCADA services are not wired into the prototype.
+  The earlier UI's browser draft and README design notes remain preserved.
+
+## 2026-11-01 - Experimental OPC UA client mode
+
+- Added Host server / Connect to server selection to the bridge Integration form.
+  Existing saved settings retain server mode. Client mode supports explicit
+  scalar read mappings with quality/timestamps and observation-state writes
+  to String or Boolean/validity nodes. Readbacks remain diagnostic and are
+  not imported into observations or monitoring rules.
+- Added encrypted Basic256Sha256 / SignAndEncrypt username authentication
+  with process-environment credentials and certificate paths. Server certificate
+  matching is enforced. Local NoSecurity remains available for isolated tests;
+  the client accepts loopback endpoints only and creates no remote nodes.
+- Boolean outputs require a separate Known node; all writes require a heartbeat
+  mapping. Unknown/stale data never produces a valid Clear. Receivers must
+  enforce the heartbeat watchdog because remote Memory values survive loss.
+  Failed/partial writes are not machine acknowledgements. No command, latch,
+  worker-lock or reset handling was added to the bridge.
+- PowerShell found Ignition on loopback port 62541 and its web listener on 8088.
+  Read-only discovery confirmed an encrypted endpoint with UserName login.
+  Bridge ports 4845 and 5055 were not listening at the check. Prepared local
+  ignored client certificates and retrieved the Gateway's public certificate;
+  fingerprint verification and Gateway-side trust still need owner setup.
+- Thirty-five bridge Python checks passed against isolated endpoints, covering
+  encrypted username login, wrong server certificate rejection, mapped reads
+  and writes, bad input quality, expiry, disconnect/reconnect, rejected writes,
+  frozen readbacks and server-mode compatibility. JavaScript syntax and the
+  existing heartbeat watchdog checks passed. No browser visual check was run.
+  Sandbox socket restrictions required running the network tests outside it.
+- Live Ignition client login and Memory-tag exchange remain unverified: the
+  bridge process has no OPC UA credentials configured, and trusted certificates
+  plus explicit test-tag mappings are pending. No Gateway settings, live
+  machine tags or printer commands were changed. Setup is documented under
+  integrations/ignition/OPC_UA_CLIENT.md.
+
 ## 2026-10-31 - Owner-confirmed live detection-to-printer Pause
 
 - Owner confirmed manual printer Pause works and then verified entering the camera
