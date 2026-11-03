@@ -1,5 +1,25 @@
 # Development log
 
+## 2026-11-03 - RTSP IP cameras
+
+- Zones choose Camera type Pi / HTTP (unchanged) or RTSP. `services/vision/rtsp.py`
+  validates `rtsp://<private IPv4>[:port]/<path>[?query]` (credentials in the address
+  are rejected), opens the stream with OpenCV/FFmpeg over TCP with 5 s open/read
+  timeouts, and keeps one reader thread with only the newest decoded frame. JPEG is
+  encoded on request, once per frame, scaled to fit 1280×960 so SAM time and the
+  2-megapixel frame limit hold. A lost stream reconnects with 1-8 s backoff; the zone
+  goes Unknown meanwhile. Decoder logging is silenced and errors never contain the
+  address, so the login cannot leak into messages.
+- The camera password is write-only: kept in the local workspace file, never returned
+  by the status API (`cameraPasswordSet` only), kept when the field is left empty,
+  cleared with the username. Address errors now show their exact message instead of
+  a generic 400.
+- New dependency, pinned: opencv-python-headless 4.10.0.84 (with numpy 2.5.4).
+- Checks: 6 RTSP tests (address rules, login quoting, scaling and single encode,
+  reconnect without leaking the login, unopened stream, real OpenCV decode of a local
+  video file), 1 app test (write-only password, connect, preview, monitoring to
+  Clear), UI check for the camera fields. A real RTSP camera is not yet tested.
+
 ## 2026-11-03 - MQTT retained-state fix and documentation refresh
 
 - Defect (found in an external review, reproduced with an isolated broker): a zone

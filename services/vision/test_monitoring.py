@@ -56,7 +56,9 @@ class ConfigurationTests(unittest.TestCase):
     def test_lan_url_and_credentials_validation(self):
         self.assertEqual(camera_url('192.168.1.254:8080'),'http://192.168.1.254:8080')
         self.assertEqual(camera_url('http://192.168.1.254:8080/snapshot.jpg'),'http://192.168.1.254:8080')
-        for value in ('http://user:secret@192.168.1.2','http://8.8.8.8','http://localhost:8080','rtsp://192.168.1.2','http://192.168.1.2/other','http://192.168.1.2?token=private','192.168.1.2:0'):
+        self.assertEqual(camera_url('rtsp://192.168.1.2/stream2'),'rtsp://192.168.1.2:554/stream2')
+        for value in ('http://user:secret@192.168.1.2','http://8.8.8.8','http://localhost:8080','rtsp://user:secret@192.168.1.2/s',
+                      'rtsp://8.8.8.8/s','http://192.168.1.2/other','http://192.168.1.2?token=private','192.168.1.2:0'):
             with self.assertRaises(ValueError):camera_url(value)
         with self.assertRaises(ValueError):validate({'camera':{'password':'bad\nvalue'}})
 

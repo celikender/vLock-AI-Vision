@@ -13,6 +13,15 @@
 - Main PC UI: web/, with Pi IP input, connection recovery, preview, and photo capture.
 - Owner confirmed the Pi feed and main UI connection work on 2026-10-28.
 - Reboot recovery, sustained latency, multiple cameras, and model integration into the main UI still require verification.
+- RTSP IP cameras (2026-11-03): choose Camera type **RTSP** in the zone's connection
+  settings and enter `rtsp://<private IPv4>[:port]/<path>` plus the username and
+  password in their own fields (`services/vision/rtsp.py`). One reader thread decodes
+  the stream over TCP with OpenCV/FFmpeg and keeps only the newest frame; a JPEG is
+  encoded only when a preview or SAM asks for it, scaled to fit 1280×960 (use the
+  camera's sub-stream). The password is written to the local workspace file only and
+  is never returned to the browser or written to logs. A lost stream reconnects with
+  backoff and the zone shows Unknown meanwhile. Tested with an injected stream and a
+  local video file; a real RTSP camera is not yet tested.
 
 ## Interface direction for later steps
 

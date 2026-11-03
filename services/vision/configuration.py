@@ -32,6 +32,9 @@ def text(value, label, limit=200):
 
 def camera_url(value):
     value = text(value, 'a camera IP address or HTTP URL', 300)
+    if value.lower().startswith('rtsp://'):
+        from .rtsp import rtsp_address
+        return rtsp_address(value)
     parsed = urlsplit(value if '://' in value else 'http://' + value)
     if parsed.username is not None or parsed.password is not None:
         raise ValueError('Enter camera credentials in the separate credential fields.')

@@ -14,8 +14,11 @@ left running. A different program on port 5052 is reported, never stopped. The
 worker log is `sam_worker.log` in the data directory. Closing the app window stops
 a worker the app started. `--no-sam` runs without managing a worker.
 
-Add a zone, enter the Pi camera's private LAN address, connect, then configure the
-zone with Muse or by hand. Workspace configuration is stored by the backend under
+Add a zone, choose the camera type and enter its private LAN address, connect, then
+configure the zone with Muse or by hand. **Pi / HTTP** reads the Pi camera service's
+original JPEGs. **RTSP** reads an IP camera (`rtsp://192.168.1.64:554/stream2`) with
+its username and password in their own fields; the password is write-only and frames
+are scaled to fit 1280×960 (see [camera sources](../../docs/CAMERA_SOURCES.md)). Workspace configuration is stored by the backend under
 ignored data/application (copied once from the former playground location). Enable monitoring is available once SAM is ready
 and a rule is saved. Only one local-SAM zone runs at once.
 

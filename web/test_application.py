@@ -294,6 +294,47 @@ class ApplicationTests(unittest.TestCase):
         self.assertEqual(self.workspace.observations.snapshot()['assets'],[])
         self.assertEqual(self.workspace.observations.zones()['zones'],[])
 
+    def test_rtsp_camera_password_is_write_only_and_monitoring_runs(self):
+        from services.vision.test_rtsp import FakeStream
+        opened=[]
+        def infer(frames,prompt,revision):
+            for index,frame in enumerate(frames):
+                yield dict(type='frame',frame_index=index,frame_sequence=frame['sequence'],prompt=prompt,prompt_revision=revision,
+                    width=640,height=480,count=0,objects=[],session_id='isolated',elapsed_seconds=.01)
+        self.workspace.close()
+        self.workspace=Workspace(self.directory.name,infer=infer,rtsp_opener=lambda url:opened.append(url) or FakeStream(size=(480,640)))
+        state=self.workspace.add('Gate camera')['workspace']
+        state['zones'][0].update(cameraType='RTSP',cameraAddress='rtsp://192.168.1.64/stream2',cameraUsername='viewer',cameraPassword='rtsp-secret-1')
+        view=self.workspace.save(state)['workspace']['zones'][0]
+        zone=view['id']
+        self.assertNotIn('cameraPassword',view)
+        self.assertTrue(view['cameraPasswordSet'])
+        self.assertEqual(view['cameraAddress'],'rtsp://192.168.1.64:554/stream2')
+        self.assertNotIn('rtsp-secret-1',json.dumps(self.workspace.status()))
+        view=self.workspace.save(self.workspace.status()['workspace'])['workspace']['zones'][0]
+        self.assertTrue(view['cameraPasswordSet'],'An empty password field keeps the saved password')
+        for bad in [dict(cameraAddress='rtsp://viewer:pw@192.168.1.64/stream2'),dict(cameraType='USB'),dict(cameraAddress='http://192.168.1.64:8080')]:
+            state=self.workspace.status()['workspace']
+            state['zones'][0].update(bad)
+            with self.subTest(bad=bad),self.assertRaises(ApplicationError):
+                self.workspace.save(state)
+        connected=self.workspace.connect(zone)['workspace']['zones'][0]
+        self.assertTrue(connected['connected'])
+        self.assertEqual(opened,['rtsp://viewer:rtsp-secret-1@192.168.1.64:554/stream2'])
+        jpeg,headers=self.workspace.snapshot(zone)
+        self.assertTrue(jpeg.startswith(b'\xff\xd8'))
+        config=self.workspace.status()['workspace']
+        config['zones'][0].update(zone=[[.1,.1],[.9,.1],[.9,.9],[.1,.9]],areaSelected=True,persistence=0)
+        self.workspace.save(config)
+        self.workspace.connect(zone)
+        self.workspace.configure(zone)
+        self.workspace.enable(zone,True)
+        deadline=time.monotonic()+7
+        while time.monotonic()<deadline and self.workspace.status()['workspace']['zones'][0]['runtime']['state']!='Clear':
+            time.sleep(.05)
+        self.assertEqual(self.workspace.status()['workspace']['zones'][0]['runtime']['state'],'Clear')
+        self.workspace.enable(zone,False)
+
     def test_opc_ua_network_access_needs_a_local_address_and_login(self):
         from unittest.mock import patch
         from services.application import transport_settings,INTEGRATION_DEFAULTS

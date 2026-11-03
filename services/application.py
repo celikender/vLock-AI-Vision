@@ -10,6 +10,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from services.vision.camera import Camera, address, fetch_jpeg
+from services.vision.rtsp import RtspCamera, rtsp_address, open_stream
 from services.vision.masks import SegmentationError
 from services.vision.monitoring import Monitoring
 from services.vision.transport import track_video, segment_regions
@@ -28,7 +29,8 @@ class ApplicationError(ValueError):
         self.status = status
 
 
-ZONE_DEFAULTS = dict(name='New zone', cameraName='Camera', cameraAddress='', cameraType='Pi / HTTP',
+CAMERA_TYPES = ('Pi / HTTP', 'RTSP')
+ZONE_DEFAULTS = dict(name='New zone', cameraName='Camera', cameraAddress='', cameraType='Pi / HTTP', cameraUsername='',
     target='person', program='', output='zone_condition', outputType='condition', persistence=.5,
     validity=10, minConfidence=0, unknownPolicy='Keep Unknown + publish reason', recheck='None',
     allowRemote=False, zone=[], areaSelected=False, extraConditions=[], ruleJoin='ALL (AND)',
@@ -95,15 +97,33 @@ def zone_config(data, zone_id):
     for key, default in ZONE_DEFAULTS.items():
         value = data.get(key,default)
         if isinstance(default,str):
-            result[key] = label(value,key,2000 if key=='program' else 300,empty=key in ('program','cameraAddress','tagKey'))
+            result[key] = label(value,key,2000 if key=='program' else 300,empty=key in ('program','cameraAddress','tagKey','cameraUsername'))
         elif isinstance(default,bool):
             if type(value) is not bool:
                 raise ApplicationError(f'{key} must be true or false.')
             result[key] = value
     for key, low, high in [('persistence',0,60),('validity',1,3600),('minConfidence',0,100)]:
         result[key] = number(data.get(key,result[key]),low,high,key)
+    if result['cameraType'] not in CAMERA_TYPES:
+        raise ApplicationError('Choose a supported camera type: Pi / HTTP or RTSP.')
     if result['cameraAddress']:
-        address(result['cameraAddress'])
+        try:
+            if result['cameraType']=='RTSP':
+                result['cameraAddress']=rtsp_address(result['cameraAddress'])
+            else:
+                address(result['cameraAddress'])
+        except ApplicationError:
+            raise
+        except ValueError as error:
+            # Show the operator the exact address problem instead of a generic 400.
+            raise ApplicationError(str(error)) from None
+    if result['cameraUsername'] and not re.fullmatch(r'[^\x00-\x1f:@/]{1,64}',result['cameraUsername']):
+        raise ApplicationError('Camera username: up to 64 characters, without : @ / or control characters.')
+    # Write-only: kept in the local workspace file, never returned by status().
+    password=data.get('cameraPassword','')
+    if not isinstance(password,str) or len(password)>128 or any(ord(c)<32 for c in password):
+        raise ApplicationError('Camera password: up to 128 characters, without control characters.')
+    result['cameraPassword']=password
     if not re.fullmatch(r'[A-Za-z][A-Za-z0-9_-]{0,63}',result['output']):
         raise ApplicationError('Output name: use 1–64 letters, digits, underscores or hyphens, starting with a letter.')
     if result['tagKey'] and not zone_tags.KEY.fullmatch(result['tagKey']):
@@ -132,7 +152,7 @@ def zone_config(data, zone_id):
 
 class Workspace:
     def __init__(self, directory, fetch=fetch_jpeg, infer=track_video, diagnostics=None, assistant=None,
-                 worker=None, regions=segment_regions):
+                 worker=None, regions=segment_regions, rtsp_opener=open_stream):
         self.directory = Path(directory)
         self.assistant = assistant or RuleAssistant()
         self.worker = worker
@@ -140,6 +160,7 @@ class Workspace:
         self.path = self.directory/'workspace.json'
         self.lock = threading.RLock()
         self.fetch = fetch
+        self.rtsp_opener = rtsp_opener
         self.infer = infer
         self.diagnostics = diagnostics
         self.cameras = {}
@@ -219,6 +240,7 @@ class Workspace:
         with self.lock:
             result = copy.deepcopy(self.config)
             for zone in result['zones']:
+                zone['cameraPasswordSet']=bool(zone.pop('cameraPassword',''))
                 camera = self.cameras.get(zone['id'])
                 runtime = camera.status() if camera else dict(connected=False,frame_size=None,error=None)
                 monitor=self.monitors.get(zone['id'])
@@ -261,7 +283,7 @@ class Workspace:
                 integrations=dict(self.integrations.status()['adapters'],error=self.integration_error),
                 diagnostics=self.diagnostics.snapshot() if self.diagnostics else {},
                 capabilities=dict(camera=True,monitoring=True,observation_api=True,transports=True,machine_commands=False,
-                    supported_camera='Pi / HTTP',restart='Monitoring always starts disabled.',
+                    supported_camera='Pi / HTTP, RTSP',restart='Monitoring always starts disabled.',
                     opcua=dict(adapters=network_adapters(),login_ready=credentials_ready()),
                     assistant=self.assistant.status()))
 
@@ -277,13 +299,16 @@ class Workspace:
             for z in candidate['zones']:
                 # The application owns the tag key; SCADA bindings depend on it never changing.
                 z['tagKey']=old[z['id']]['tagKey'] if z['id'] in old else ''
+                # An empty password field keeps the saved one; clearing the username clears both.
+                if not z['cameraPassword'] and z['id'] in old and z['cameraUsername']:
+                    z['cameraPassword']=old[z['id']]['cameraPassword']
                 monitor=self.monitors.get(z['id'])
                 if (z['id'] in old and isinstance(monitor and monitor.bridge,ObservationOutput) and
                         (z['output'],z['outputType'])!=(old[z['id']]['output'],old[z['id']]['outputType'])):
                     monitor.bridge=ObservationOutput(self.observations,z)
                 if old.get(z['id']) != z:
                     self.ready.discard(z['id'])
-                if z['id'] not in old or z['cameraAddress'] != old[z['id']]['cameraAddress']:
+                if z['id'] not in old or any(z[k]!=old[z['id']][k] for k in ('cameraAddress','cameraType','cameraUsername','cameraPassword')):
                     old_camera=self.cameras.pop(z['id'],None)
                     if old_camera:old_camera.stop()
                     self.monitors.pop(z['id'],None)
@@ -320,12 +345,25 @@ class Workspace:
             zone = self.find(zone_id)
             if any(m.busy() for m in self.monitors.values()):
                 raise ApplicationError('Stop monitoring before reconnecting cameras.',409)
-            if zone['cameraType']!='Pi / HTTP':
-                raise ApplicationError('Only the tested Pi / HTTP camera is wired so far.')
+            if not zone['cameraAddress']:
+                raise ApplicationError('Enter the camera address first.')
             previous=self.cameras.get(zone_id)
             if previous:previous.stop()
-            camera = Camera(zone['cameraAddress'],self.fetch)
+            if zone['cameraType']=='RTSP':
+                camera = RtspCamera(zone['cameraAddress'],zone['cameraUsername'],zone['cameraPassword'],self.rtsp_opener)
+            else:
+                camera = Camera(zone['cameraAddress'],self.fetch)
             self.cameras[zone_id] = camera
+        if isinstance(camera,RtspCamera):
+            # The reader thread owns the stream; wait for its first frame or a clear error.
+            camera.start()
+            try:
+                camera.wait_first()
+            except OSError:
+                camera.stop()
+                with self.lock:
+                    if self.cameras.get(zone_id) is camera:self.cameras.pop(zone_id)
+                raise
         camera.snapshot()
         with self.lock:
             if zone.get('frameSize') and zone['frameSize']!=camera.size:
