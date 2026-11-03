@@ -167,6 +167,42 @@ class ControllerTests(unittest.TestCase):
         self.assertEqual(len(restored.events),2)
         self.assertFalse(restored.running)
 
+    def test_unwritable_event_file_keeps_monitoring_and_status_working(self):
+        from unittest.mock import patch
+        before=time.monotonic()-1
+        with patch.object(self.monitor.events_store,'save',side_effect=OSError('disk full')):
+            for index in range(4):
+                self.monitor.publish(result(index=index),{'jpeg':jpeg(),'captured_at':before+index*0.1},0,self.monitor.config)
+            status=self.monitor.status()
+        self.assertEqual(status['state'],'Warning','The rule still runs')
+        self.assertIn('could not be saved',status['storage_error'])
+        self.assertEqual([e['type'] for e in self.monitor.events],['warning'],'Events stay in memory')
+
+    def test_watchdog_reports_a_dead_monitoring_thread_as_unknown(self):
+        sent=[]
+        class Output:
+            status={}
+            def send(self,config,state,reason,*args,**kwargs):sent.append((state,reason))
+        self.monitor.bridge=Output()
+        self.monitor.running=True
+        self.monitor.thread=threading.Thread(target=lambda:None)
+        self.monitor.thread.start();self.monitor.thread.join()
+        self.assertTrue(self.monitor.check_alive())
+        status=self.monitor.status()
+        self.assertFalse(status['running'])
+        self.assertEqual(status['state'],'Unknown')
+        self.assertIn('stopped unexpectedly',status['reason'])
+        self.assertEqual(sent[-1][0],'Unknown','SCADA receives Unknown, not the last value')
+        self.assertFalse(self.monitor.check_alive(),'Reported once')
+
+    def test_unexpected_loop_failure_ends_in_unknown(self):
+        from unittest.mock import patch
+        self.monitor.running=True
+        with patch.object(self.monitor,'_loop',side_effect=RuntimeError('bug')):
+            self.monitor.loop()
+        self.assertFalse(self.monitor.running)
+        self.assertIn('stopped unexpectedly',self.monitor.status()['reason'])
+
     def test_stop_and_prompt_change_discard_inflight_outputs(self):
         entered,release=threading.Event(),threading.Event()
         counter=[0]

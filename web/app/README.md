@@ -90,6 +90,28 @@ two-object result arrives only every ~6.7 s, keep **Result expires after** at 15
 more; applying a two-object Muse proposal raises it to 15 s and the rule summary warns
 if it is lower. More than two objects is rejected.
 
+## Reliability
+
+- **SAM worker:** if a worker the app started crashes, stops answering (three missed
+  health checks after it was ready) or fails warm-up, the app restarts it by itself,
+  at most 3 times in 15 minutes, then shows the reason. Missing CUDA or weights are
+  reported without retries. A GPU out-of-memory error during monitoring drops the
+  model so the next check reloads it. Zones show Unknown until results return.
+- **Damaged files:** a damaged `workspace.json` is replaced by its last good copy
+  (`workspace.json.bak`, written on every save), or the app starts empty; a damaged
+  history database or zone monitoring file is started again. Damaged files are kept
+  as `<name>.damaged-<time>` and a notice explains what happened.
+- **Clock:** observation order and expiry use a steady clock, so changing the PC clock
+  cannot freeze an old Clear or reject fresh results.
+- **One copy per data folder:** a second start with the same data folder, or on a port
+  already in use, is refused with a message.
+- **Monitoring watchdog:** a monitoring thread that stops unexpectedly turns the zone
+  Unknown and stopped within 2 s, even with no browser open; an event file that cannot
+  be written keeps events in memory instead of stopping monitoring.
+- **Logs and outputs:** the SAM worker log rotates at 5 MB before each worker start
+  (two old copies) and no longer logs every frame or health check. The OPC UA server
+  restarts by itself with backoff after a failure such as a busy port.
+
 ## OPC UA and MQTT outputs
 
 Integrations → enable **OPC UA** (Host server mode) and/or **MQTT** (client of a broker

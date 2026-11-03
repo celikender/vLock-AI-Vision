@@ -4,6 +4,7 @@ import os
 import shutil
 import json
 import sys
+import socket
 import sqlite3
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -21,6 +22,50 @@ from services.vlock import zone_tags
 STATIC = Path(__file__).with_name('app')
 DATA = ROOT/'data'/'application'
 LEGACY_DATA = ROOT/'playground'/'data'/'application'
+
+
+class SingleInstance:
+    """Exclusive lock on <data folder>/app.lock for the life of the process.
+
+    A second copy using the same data folder would share the history database, MQTT
+    topics and SAM worker and mark the first copy's live results Unknown.
+    """
+    def __init__(self, folder):
+        Path(folder).mkdir(parents=True, exist_ok=True)
+        self.file = open(Path(folder)/'app.lock', 'a+b')
+        try:
+            self.file.seek(0)
+            if os.name == 'nt':
+                import msvcrt
+                msvcrt.locking(self.file.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(self.file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            self.file.close()
+            raise RuntimeError('vLock-AI Vision is already running with this data folder. '
+                               'Use the open window, or close it before starting again.') from None
+
+    def release(self):
+        try:
+            if os.name == 'nt':
+                import msvcrt
+                self.file.seek(0)
+                msvcrt.locking(self.file.fileno(), msvcrt.LK_UNLCK, 1)
+        except OSError:
+            pass
+        self.file.close()
+
+
+class Server(ThreadingHTTPServer):
+    """No shared port: Windows would otherwise let a second process bind the same port."""
+    allow_reuse_address = False
+    daemon_threads = True
+
+    def server_bind(self):
+        if hasattr(socket, 'SO_EXCLUSIVEADDRUSE'):
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
 
 
 def migrate_data():
@@ -121,9 +166,22 @@ def make_server(workspace, port=5056):
             except (OSError,sqlite3.Error):
                 self.reply(503,dict(error='Camera or application storage unavailable. No result was confirmed.'))
 
+        def drain(self):
+            """Read an unread small body before a rejection, so the client gets the answer, not a reset."""
+            try:
+                length=int(self.headers.get('Content-Length','0') or 0)
+                if 0<length<=256*1024 and not self.headers.get('Transfer-Encoding'):
+                    self.rfile.read(length)
+            except (ValueError,OSError):
+                pass
+
         def do_POST(self):
             try:
-                self.local(write=True)
+                try:
+                    self.local(write=True)
+                except ApplicationError:
+                    self.drain()
+                    raise
                 if self.headers.get('Transfer-Encoding') or self.headers.get_content_type()!='application/json':
                     raise ApplicationError('Send JSON with Content-Length.')
                 length=int(self.headers.get('Content-Length','0'))
@@ -160,9 +218,7 @@ def make_server(workspace, port=5056):
                 self.reply(400,dict(error='Invalid request. Check the configuration fields.'))
             except (OSError,sqlite3.Error):
                 self.reply(503,dict(error='Camera or storage unavailable. Check the connection before retrying.'))
-    server=ThreadingHTTPServer(('127.0.0.1',port),Handler)
-    server.daemon_threads=True
-    return server
+    return Server(('127.0.0.1',port),Handler)
 
 
 def on_console_close(callback):
@@ -184,11 +240,24 @@ def main():
     parser.add_argument('--no-sam',action='store_true',help='Do not start or manage the local SAM worker.')
     parser.add_argument('--open',action='store_true',help='Open the application in the default browser.')
     args=parser.parse_args()
+    try:
+        instance=SingleInstance(args.data_dir)
+    except RuntimeError as error:
+        print(error,flush=True)
+        if args.open:
+            webbrowser.open(f'http://localhost:{args.port}')
+        sys.exit(1)
     if args.data_dir==DATA:
         migrate_data()
     worker=None if args.no_sam else SamWorker(args.data_dir/'sam_worker.log')
     workspace=Workspace(args.data_dir,diagnostics=Diagnostics(),worker=worker)
-    server=make_server(workspace,args.port)
+    try:
+        server=make_server(workspace,args.port)
+    except OSError:
+        workspace.close()
+        instance.release()
+        print(f'Port {args.port} is used by another program. Close it or start with --port <other port>.',flush=True)
+        sys.exit(1)
     url=f'http://localhost:{server.server_port}'
     print(f'vLock-AI Vision: {url}',flush=True)
     if worker:
@@ -207,6 +276,7 @@ def main():
         workspace.close()
         if worker:
             worker.stop(wait=True)
+        instance.release()
 
 
 if __name__=='__main__':

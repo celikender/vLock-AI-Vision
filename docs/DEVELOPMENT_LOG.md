@@ -1,5 +1,40 @@
 # Development log
 
+## 2026-11-03 - Reliability
+
+- SAM supervisor: restarts a worker it started after an exit, three missed health
+  checks after ready, or a failed warm-up; at most 3 restarts in 15 minutes with
+  growing delay, then `failed` with the reason. Missing CUDA/weights and workers the
+  app did not start are never relaunched. Video-route GPU out-of-memory now drops the
+  predictor so the next window reloads it.
+- Damaged files: `workspace.json` falls back to `workspace.json.bak` (copied before
+  every save) or an empty workspace; a damaged `observations.sqlite3` (the store now
+  closes it on failure) or `zones/<id>/monitor.json` is started again. Originals are
+  kept as `.damaged-<time>`; notices reach the UI as long toasts.
+- Steady clock (`store_time.steady_now`, start time plus `perf_counter`) for store
+  ordering/expiry and output timestamps. A first version used `time.monotonic`, whose
+  ~15.6 ms Windows resolution made two quick results look out of order; the full test
+  run caught it.
+- Single instance: exclusive `app.lock` in the data folder and an exclusive port
+  (no address reuse); a second start exits with a message.
+- Monitoring: event-file write errors are kept in memory and reported; the thread
+  ends any unexpected failure in Unknown; a workspace watchdog (every 2 s) and status
+  polls mark a dead monitoring thread Unknown and stopped.
+- Logs: worker log rotated at 5 MB before each launch (2 backups); per-frame SAM
+  request/output lines moved to debug; werkzeug access lines and SAM library progress
+  bars off. OPC UA server: restarts with 2-30 s backoff after failures.
+- Live check (copy of the workspace, real SAM worker): a second app on the same data
+  folder exited with the message. With monitoring Clear, `pkill -9` of the worker
+  gave: +2 s restarting / zone Unknown, +10 s starting, +12 s loading, +111 s ready,
+  +115 s zone Clear again. The worker log had no health or per-frame lines; most of
+  its 333 KB were the library's one-time model-load messages (twice: start and
+  restart).
+- HTTP: a rejected POST (cross-site, wrong host) now reads its small body before
+  answering. Windows reset the connection otherwise, so clients sometimes saw a
+  dropped connection instead of the 403; this was the intermittent Muse route test
+  failure (now 9 passes in a row).
+- Checks: services 100, web 26, UI and other suites pass.
+
 ## 2026-11-03 - RTSP IP cameras
 
 - Zones choose Camera type Pi / HTTP (unchanged) or RTSP. `services/vision/rtsp.py`

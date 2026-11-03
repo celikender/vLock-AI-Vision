@@ -35,6 +35,7 @@ class SamWorkerTests(unittest.TestCase):
         self.directory = tempfile.TemporaryDirectory()
         self.launched, self.commands = [], []
         self.process = FakeProcess()
+        self.exit_code = None
 
     def tearDown(self):
         self.directory.cleanup()
@@ -47,13 +48,16 @@ class SamWorkerTests(unittest.TestCase):
 
         def popen(command, **kwargs):
             self.launched.append(command)
+            # Each launch gets its own process; exit_code makes every new one exit at once.
+            self.process = FakeProcess()
+            self.process.returncode = self.exit_code
             return self.process
 
         def run(command, **kwargs):
             self.commands.append(command)
             return SimpleNamespace(returncode=0, stdout='/home/tester\n')
         return SamWorker(Path(self.directory.name)/'sam.log', distro='Ubuntu', probe=probe, popen=popen, run=run,
-                         poll_seconds=.01)
+                         poll_seconds=.01, restart_delay=.01)
 
     def until(self, worker, state):
         deadline = time.monotonic()+2
@@ -94,24 +98,55 @@ class SamWorkerTests(unittest.TestCase):
         self.assertIn('another program', self.until(worker, 'blocked')['message'])
         self.assertEqual(self.launched, [])
 
-    def test_exit_and_failed_warmup_are_reported(self):
-        self.process.returncode = 1
-        worker = self.worker([None, None])
+    def test_crash_is_restarted_automatically_then_gives_up(self):
+        self.exit_code = 1
+        worker = self.worker([None])
         worker.start()
-        self.assertIn('code 1', self.until(worker, 'failed')['message'])
-        failed = self.worker([dict(READY, warmup=dict(state='failed'))])
-        failed.start()
-        self.assertIn('warm-up', self.until(failed, 'failed')['message'])
+        status = self.until(worker, 'failed')
+        self.assertIn('code 1', status['message'])
+        self.assertIn('Automatic restarts stopped after 3 tries', status['message'])
+        self.assertEqual(len(self.launched), 4, 'First launch plus three automatic restarts')
+        self.assertTrue(any('pkill' in c for c in self.commands), 'A crashed worker is cleaned up before relaunch')
+
+    def test_hung_worker_is_restarted_and_recovers(self):
+        answers = iter([None, READY, None, None, None, None])
+        worker = self.worker([None])
+        worker.probe = lambda: next(answers, READY)
+        worker.start()
+        self.until(worker, 'ready')
+        deadline = time.monotonic() + 2
+        while len(self.launched) < 2 and time.monotonic() < deadline:
+            time.sleep(.01)
+        self.assertEqual(len(self.launched), 2, 'Three missed probes after ready restart the worker')
+        self.until(worker, 'ready')
+        worker.stop(wait=True)
+
+    def test_missing_weights_and_external_failures_are_not_restarted(self):
         missing = self.worker([dict(READY, ready=False)])
         missing.start()
         self.assertIn('weights', self.until(missing, 'failed')['message'])
+        failed = self.worker([dict(READY, warmup=dict(state='failed'))])
+        failed.start()
+        self.assertIn('warm-up', self.until(failed, 'failed')['message'])
+        self.assertEqual(self.launched, [], 'Workers this app did not start are never relaunched')
+
+    def test_log_is_rotated_before_launch(self):
+        from services.vision import worker_process
+        log = Path(self.directory.name)/'sam.log'
+        log.write_bytes(b'x' * (worker_process.LOG_LIMIT + 1))
+        worker = self.worker([None, READY])
+        worker.start()
+        self.until(worker, 'ready')
+        self.assertTrue((Path(self.directory.name)/'sam.log.1').exists())
+        self.assertLess(log.stat().st_size if log.exists() else 0, worker_process.LOG_LIMIT)
+        worker.stop(wait=True)
 
     def test_restart_after_failure_launches_again(self):
-        self.process.returncode = 1
+        self.exit_code = 1
         worker = self.worker([None])
         worker.start()
         self.until(worker, 'failed')
-        self.process = FakeProcess()
+        self.exit_code = None
         worker.probe = lambda: READY
         worker.restart()
         self.until(worker, 'ready')

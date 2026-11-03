@@ -5,6 +5,9 @@ import math
 import os
 import re
 import threading
+import time
+import shutil
+import sqlite3
 import base64
 from pathlib import Path
 from uuid import uuid4
@@ -168,13 +171,9 @@ class Workspace:
         self.ready = set()
         self.config = dict(name='My workspace', zones=[], integration=copy.deepcopy(INTEGRATION_DEFAULTS), eventLimit=100,
                            deployment='Separate network host', revision=0)
-        if self.path.exists():
-            try:
-                saved = json.loads(self.path.read_text(encoding='utf-8'))
-                self.config = self.validate(saved)
-            except (ValueError,TypeError,KeyError,OSError):
-                raise ApplicationError('Saved workspace is invalid; it was not overwritten.',503) from None
-        self.observations=ObservationStore(self.directory/'observations.sqlite3',history_limit=1000)
+        self.notices = []
+        self.load_saved()
+        self.observations=self.open_history()
         self.sync_outputs()
         # Saved enabled adapters restart with the app; they publish observations only.
         self.integrations=Integrations(self.observations,self.directory/'transports.json')
@@ -183,6 +182,19 @@ class Workspace:
             self.integrations.apply(transport_settings(self.config['integration']))
         except ApplicationError as error:
             self.integration_error=str(error)
+        self.watchdog_stop=threading.Event()
+        self.watchdog=threading.Thread(target=self.watch_monitors,name='monitoring-watchdog',daemon=True)
+        self.watchdog.start()
+
+    def watch_monitors(self):
+        """Every 2 s: a monitor whose thread died goes Unknown and stopped, even with no browser open."""
+        while not self.watchdog_stop.wait(2):
+            for zone_id,monitor in list(self.monitors.items()):
+                try:
+                    if monitor.check_alive():
+                        self.notices.append(f'Monitoring of zone {zone_id} stopped unexpectedly and was marked Unknown.')
+                except Exception:
+                    pass
 
     def validate(self, data):
         if not isinstance(data,dict) or not isinstance(data.get('zones'),list) or len(data['zones'])>32:
@@ -214,8 +226,47 @@ class Workspace:
             deployment=label(data.get('deployment','Separate network host'),'deployment'),
             revision=int(number(data.get('revision',0),0,2**53-1,'revision')))
 
+    def quarantine(self, path):
+        """Keep a damaged file beside the data under a new name; it is never deleted or overwritten."""
+        target=path.with_name(f'{path.name}.damaged-{time.strftime("%Y%m%d-%H%M%S")}')
+        path.replace(target)
+        return target.name
+
+    def load_saved(self):
+        """Start from workspace.json, else its last good copy, else empty; tell the operator which."""
+        backup=self.path.with_name('workspace.json.bak')
+        if not self.path.exists():
+            return
+        for candidate in (self.path,backup):
+            try:
+                self.config=self.validate(json.loads(candidate.read_text(encoding='utf-8')))
+                break
+            except (ValueError,TypeError,KeyError,OSError):
+                if candidate is self.path:
+                    kept=self.quarantine(self.path)
+        else:
+            self.notices.append(f'The saved workspace was damaged and no usable copy was found, so the app started empty. '
+                                f'The damaged file was kept as {kept}.')
+            return
+        if candidate is backup:
+            self.notices.append(f'The saved workspace was damaged; the previous good copy was restored. '
+                                f'The damaged file was kept as {kept}. Check your zones.')
+
+    def open_history(self):
+        """Open the observation history; a damaged database is kept aside and a new one started."""
+        path=self.directory/'observations.sqlite3'
+        try:
+            return ObservationStore(path,history_limit=1000)
+        except sqlite3.DatabaseError:
+            kept=self.quarantine(path)
+            self.notices.append(f'The observation history was damaged and was started again. The damaged file was kept as {kept}.')
+            return ObservationStore(path,history_limit=1000)
+
     def persist(self):
         self.directory.mkdir(parents=True,exist_ok=True)
+        if self.path.exists():
+            # The last good copy lets a damaged save be recovered at the next start.
+            shutil.copyfile(self.path,self.path.with_name('workspace.json.bak'))
         temp = self.path.with_suffix('.tmp')
         with temp.open('w',encoding='utf-8') as file:
             json.dump(self.config,file,allow_nan=False,indent=2)
@@ -244,6 +295,7 @@ class Workspace:
                 camera = self.cameras.get(zone['id'])
                 runtime = camera.status() if camera else dict(connected=False,frame_size=None,error=None)
                 monitor=self.monitors.get(zone['id'])
+                if monitor:monitor.check_alive()
                 state=monitor.status() if monitor else None
                 enabled=bool(state and state['running'])
                 frame=state['result'] if state else None
@@ -278,7 +330,7 @@ class Workspace:
                     localEnabled=enabled,remoteEnabled=False,step=3 if zone['id'] in self.ready else 2 if runtime['connected'] else 1,
                     events=events[:self.config['eventLimit']],runtime=record,
                     tag_path=[self.config['name'],zone['name'],zone['output']])
-            return dict(schema_version=1,prototype=False,workspace=result,
+            return dict(schema_version=1,prototype=False,workspace=result,notices=list(self.notices),
                 sam=self.worker.status() if self.worker else None,
                 integrations=dict(self.integrations.status()['adapters'],error=self.integration_error),
                 diagnostics=self.diagnostics.snapshot() if self.diagnostics else {},
@@ -369,8 +421,13 @@ class Workspace:
             if zone.get('frameSize') and zone['frameSize']!=camera.size:
                 zone.update(zone=[],areaSelected=False)
             zone['frameSize']=camera.size
-            monitor=Monitoring(fetch=lambda config:camera.snapshot(),infer=self.infer,
-                path=self.directory/'zones'/zone_id/'monitor.json',event_limit=self.config['eventLimit'])
+            path=self.directory/'zones'/zone_id/'monitor.json'
+            monitor=Monitoring(fetch=lambda config:camera.snapshot(),infer=self.infer,path=path,event_limit=self.config['eventLimit'])
+            if monitor.config_error and path.exists():
+                # The zone's rule lives in workspace.json; its monitor file is rebuilt on Save rule.
+                kept=self.quarantine(path)
+                self.notices.append(f'Zone {zone["name"]}: its monitoring file was damaged and was reset; save the rule again. Kept as {kept}.')
+                monitor=Monitoring(fetch=lambda config:camera.snapshot(),infer=self.infer,path=path,event_limit=self.config['eventLimit'])
             monitor.connect({'camera':{'name':zone['cameraName'],'url':zone['cameraAddress']}})
             self.monitors[zone_id]=monitor
             self.ready.discard(zone_id)
@@ -536,6 +593,7 @@ class Workspace:
             return base64.b64decode(state['result']['annotated_image'].split(',',1)[1])
 
     def close(self):
+        self.watchdog_stop.set()
         for monitor in self.monitors.values():
             monitor.stop()
         for camera in self.cameras.values():camera.stop()

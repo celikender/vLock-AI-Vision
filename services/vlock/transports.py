@@ -265,14 +265,25 @@ class OpcUaServer(Worker):
     """Read-only OPC UA server: this PC only without security, or the plant network encrypted with a login."""
     certificate_dir = None
     credentials = staticmethod(server_credentials)
+    retry_delay = 2
 
     def run(self):
-        try:
-            asyncio.run(self.serve())
-        except ImportError:
-            self.report('unavailable', 'Install requirements.txt to enable OPC UA.')
-        except Exception:
-            self.report('error', 'OPC UA could not run. Check its port, network address and adapter dependencies, then apply settings again.')
+        """Serve until stopped; after any failure (port busy, storage error) restart with backoff."""
+        delay, self.fatal = self.retry_delay, False
+        while not self.stop_event.is_set():
+            try:
+                asyncio.run(self.serve())
+                if self.stop_event.is_set() or self.fatal:
+                    return
+            except ImportError:
+                self.report('unavailable', 'Install requirements.txt to enable OPC UA.')
+                return
+            except Exception:
+                self.report('error', f'OPC UA server failed; restarting in {delay:g} s. '
+                            'Check its port and network address if this repeats.')
+            if self.stop_event.wait(delay):
+                break
+            delay = min(delay * 2, 30)
 
     def network(self):
         return self.settings.get('access') == 'network'
@@ -322,6 +333,8 @@ class OpcUaServer(Worker):
         if self.network():
             credentials = self.credentials()
             if not credentials_ready(credentials):
+                # A configuration problem: retrying cannot fix it.
+                self.fatal = True
                 self.report('error', 'Network access needs VLOCK_OPCUA_SERVER_USERNAME and a '
                             f'VLOCK_OPCUA_SERVER_PASSWORD of {MINIMUM_PASSWORD}+ characters in .env. Nothing was opened.')
                 return

@@ -84,7 +84,7 @@ def serialize_frame(response, session_id, prompt, revision, metadata):
                   width=metadata[index]['size'][0], height=metadata[index]['size'][1],
                   box_coordinates='normalized_xywh', objects=objects, count=len(objects),
                   id_scope='session', window_frames=len(metadata))
-    log.info('SAM output %s', json.dumps({**{k:v for k,v in result.items() if k != 'objects'},
+    log.debug('SAM output %s', json.dumps({**{k:v for k,v in result.items() if k != 'objects'},
         'objects': [{k:v for k,v in obj.items() if k != 'mask'} | {
             'mask_size':obj['mask']['size'], 'mask_runs':len(obj['mask']['counts'])}
                     for obj in objects]}, ensure_ascii=True))
@@ -103,14 +103,14 @@ def track_window(predictor, directory, prompt, revision, metadata):
         start = {'type':'start_session', 'resource_path':str(directory), 'offload_video_to_cpu':True}
         session_id = predictor.handle_request(request=start)['session_id']
         add = {'type':'add_prompt', 'session_id':session_id, 'frame_index':0, 'text':prompt}
-        log.info('SAM request %s', json.dumps(add, ensure_ascii=True))
+        log.debug('SAM request %s', json.dumps(add, ensure_ascii=True))
         seed = predictor.handle_request(request=add)
         # Log the seed, but publish the authoritative propagated frame only once.
         serialize_frame(seed, session_id, prompt, revision, metadata)
         propagation = {'type':'propagate_in_video', 'session_id':session_id,
                        'propagation_direction':'forward', 'start_frame_index':0,
                        'max_frame_num_to_track':len(metadata)}
-        log.info('SAM request %s', json.dumps(propagation))
+        log.debug('SAM request %s', json.dumps(propagation))
         stream = predictor.handle_stream_request(request=propagation)
         seen = set()
         for response in stream:

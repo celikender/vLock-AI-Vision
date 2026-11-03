@@ -396,6 +396,27 @@ class OpcUaTests(unittest.TestCase):
                 await asyncio.to_thread(worker.stop)
                 store.close()
 
+    def test_server_restarts_by_itself_when_its_port_frees_up(self):
+        logging.getLogger('asyncua').setLevel(logging.CRITICAL)
+        with tempfile.TemporaryDirectory() as directory:
+            store = Store(Path(directory) / 'bridge.sqlite3')
+            blocker = socket.socket()
+            blocker.bind(('127.0.0.1', 0))
+            blocker.listen()
+            port = blocker.getsockname()[1]
+            worker = OpcUaServer(store, dict(enabled=True, port=port))
+            worker.retry_delay = .2
+            worker.start()
+            try:
+                until(lambda: worker.status()['status'] == 'error')
+                self.assertIn('restarting', worker.status()['message'])
+                blocker.close()
+                until(lambda: worker.status()['status'] == 'running', 15)
+            finally:
+                blocker.close()
+                worker.stop()
+                store.close()
+
     def test_network_settings_require_a_private_address(self):
         for access, host in [('local', '192.168.1.20'), ('network', '127.0.0.1'), ('network', '8.8.8.8'), ('everyone', '127.0.0.1')]:
             settings = copy.deepcopy(DEFAULTS)

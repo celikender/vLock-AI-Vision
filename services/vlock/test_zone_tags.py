@@ -92,6 +92,22 @@ class ZoneTagTests(unittest.TestCase):
         self.assertEqual(removed, [('zone-1', 'person_and_laptop')], 'A kind change starts a fresh signal')
         self.assertEqual([e['event_type'] for e in self.store.events(limit=3)][-1], 'removed')
 
+    def test_pc_clock_stepping_back_neither_freezes_clear_nor_rejects_results(self):
+        from unittest.mock import patch
+        store = Store(Path(self.directory.name) / 'steady.sqlite3')
+        try:
+            store.submit(observation('clear', ttl_seconds=1))
+            stepped = time.time() - 3600
+            with patch('time.time', return_value=stepped):
+                # A fresh result after the step is accepted, not rejected as out of order.
+                store.submit(observation('active', ttl_seconds=1, observation_id='after-step'))
+                self.assertEqual(store.snapshot()['assets'][0]['observation_status'], 'active')
+                time.sleep(1.3)
+                # Expiry still follows real elapsed time: Unknown, never a frozen value.
+                self.assertEqual(store.snapshot()['assets'][0]['observation_status'], 'stale')
+        finally:
+            store.close()
+
     def test_removed_zone_document_is_unknown(self):
         doc = zone_tags.removed('A-101')
         self.assertEqual((doc['TagKey'], doc['State'], doc['Active']), ('A-101', 'Unknown', None))

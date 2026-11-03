@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
 from .heartbeat import Heartbeat
-from .store_time import utc
+from .store_time import steady_now, utc
 from . import zone_tags
 
 
@@ -77,7 +77,7 @@ def validate(data):
 
 
 class Store:
-    def __init__(self, path, clock=time.time, heartbeat=None, heartbeat_interval_seconds=1, history_limit=1000):
+    def __init__(self, path, clock=steady_now, heartbeat=None, heartbeat_interval_seconds=1, history_limit=1000):
         if isinstance(history_limit, bool) or not isinstance(history_limit, int) or not 5 <= history_limit <= 100000:
             raise ValueError('History limit must be from 5 to 100000 events.')
         self.clock = clock
@@ -87,37 +87,42 @@ class Store:
         self.session_id = str(uuid4())
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         self.db = sqlite3.connect(path, check_same_thread=False)
-        self.db.row_factory = sqlite3.Row
-        self.db.execute('PRAGMA foreign_keys=ON')
-        self.db.executescript('''
-            CREATE TABLE IF NOT EXISTS observations (
-                observation_id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL,
-                payload TEXT NOT NULL, observed_seconds REAL NOT NULL);
-            CREATE TABLE IF NOT EXISTS signals (
-                asset_id TEXT NOT NULL, source_id TEXT NOT NULL, signal_id TEXT NOT NULL,
-                kind TEXT NOT NULL, observation_id TEXT NOT NULL REFERENCES observations,
-                unavailable TEXT,
-                PRIMARY KEY (asset_id, source_id, signal_id));
-            CREATE TABLE IF NOT EXISTS events (
-                revision INTEGER PRIMARY KEY AUTOINCREMENT, event_type TEXT NOT NULL,
-                created_at TEXT NOT NULL, asset_id TEXT, payload TEXT NOT NULL,
-                observation_id TEXT);
-        ''')
-        with self.db:
-            if 'observation_id' not in {row['name'] for row in self.db.execute('PRAGMA table_info(events)')}:
-                self.db.execute('ALTER TABLE events ADD COLUMN observation_id TEXT')
-                for row in self.db.execute('SELECT revision,payload FROM events').fetchall():
-                    observation_id = json.loads(row['payload']).get('observation_id')
-                    self.db.execute('UPDATE events SET observation_id=? WHERE revision=?', (observation_id, row['revision']))
-            self.db.execute('CREATE INDEX IF NOT EXISTS events_observation_id ON events(observation_id)')
-        # Persist history, but never restore an old Clear as a fresh observation.
-        with self.lock, self.db:
-            for row in self.db.execute('SELECT * FROM signals WHERE unavailable IS NULL').fetchall():
-                self.db.execute('UPDATE signals SET unavailable=? WHERE asset_id=? AND source_id=? AND signal_id=?',
-                                ('restart', row['asset_id'], row['source_id'], row['signal_id']))
-                self._event('unavailable', row['asset_id'], dict(source_id=row['source_id'],
-                            signal_id=row['signal_id'], reason='restart'))
-            self._prune_history()
+        try:
+            self.db.row_factory = sqlite3.Row
+            self.db.execute('PRAGMA foreign_keys=ON')
+            self.db.executescript('''
+                CREATE TABLE IF NOT EXISTS observations (
+                    observation_id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL,
+                    payload TEXT NOT NULL, observed_seconds REAL NOT NULL);
+                CREATE TABLE IF NOT EXISTS signals (
+                    asset_id TEXT NOT NULL, source_id TEXT NOT NULL, signal_id TEXT NOT NULL,
+                    kind TEXT NOT NULL, observation_id TEXT NOT NULL REFERENCES observations,
+                    unavailable TEXT,
+                    PRIMARY KEY (asset_id, source_id, signal_id));
+                CREATE TABLE IF NOT EXISTS events (
+                    revision INTEGER PRIMARY KEY AUTOINCREMENT, event_type TEXT NOT NULL,
+                    created_at TEXT NOT NULL, asset_id TEXT, payload TEXT NOT NULL,
+                    observation_id TEXT);
+            ''')
+            with self.db:
+                if 'observation_id' not in {row['name'] for row in self.db.execute('PRAGMA table_info(events)')}:
+                    self.db.execute('ALTER TABLE events ADD COLUMN observation_id TEXT')
+                    for row in self.db.execute('SELECT revision,payload FROM events').fetchall():
+                        observation_id = json.loads(row['payload']).get('observation_id')
+                        self.db.execute('UPDATE events SET observation_id=? WHERE revision=?', (observation_id, row['revision']))
+                self.db.execute('CREATE INDEX IF NOT EXISTS events_observation_id ON events(observation_id)')
+            # Persist history, but never restore an old Clear as a fresh observation.
+            with self.lock, self.db:
+                for row in self.db.execute('SELECT * FROM signals WHERE unavailable IS NULL').fetchall():
+                    self.db.execute('UPDATE signals SET unavailable=? WHERE asset_id=? AND source_id=? AND signal_id=?',
+                                    ('restart', row['asset_id'], row['source_id'], row['signal_id']))
+                    self._event('unavailable', row['asset_id'], dict(source_id=row['source_id'],
+                                signal_id=row['signal_id'], reason='restart'))
+                self._prune_history()
+        except sqlite3.DatabaseError:
+            # Release the file so a damaged database can be moved aside and replaced.
+            self.db.close()
+            raise
         self.heartbeat = heartbeat or Heartbeat(heartbeat_interval_seconds)
 
     def close(self):

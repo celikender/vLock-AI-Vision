@@ -55,6 +55,7 @@ class Monitoring:
         self.output_id = 0
         self.last_frame = None
         self.bridge = publisher or UnwiredOutput()
+        self.storage_error = None
 
     def bridge_unknown(self):
         self.bridge.send(self.config, 'Unknown', self.rule.reason)
@@ -69,7 +70,12 @@ class Monitoring:
             zone=self.config['zone']['name'], action=self.config['rule']['action'],
             frame_sequence=frame.get('frame_sequence') if frame else None)
         self.events.append(entry)
-        self.events_store.save(list(self.events))
+        try:
+            self.events_store.save(list(self.events))
+            self.storage_error = None
+        except OSError:
+            # A full disk or a locked file must not stop monitoring or the status API.
+            self.storage_error = 'Event history could not be saved (disk full or file locked); events are kept in memory.'
 
     def save(self, data):
         with self.lock:
@@ -229,6 +235,35 @@ class Monitoring:
                                   'check_seconds': check_seconds})
 
     def loop(self):
+        """Monitoring thread. Any unexpected failure ends in Unknown with a reason, never a silent stop."""
+        try:
+            self._loop()
+        except Exception:
+            self.lost('Monitoring stopped unexpectedly. Enable monitoring again; see the application log if it repeats.')
+
+    def lost(self, reason):
+        """Mark a monitor whose thread is gone: Unknown everywhere, stopped, with the reason."""
+        with self.lock:
+            if not self.running:
+                return False
+            self.running = False
+            self.cancel.set()
+            self.rule.unavailable(reason)
+            self.result = self.result_at = None
+            try:
+                self.event('stopped')
+                self.bridge_unknown()
+            except Exception:
+                pass
+            return True
+
+    def check_alive(self):
+        """Watchdog: a running monitor whose thread died is reported, not left looking active."""
+        if self.running and self.thread is not None and not self.thread.is_alive():
+            return self.lost('Monitoring stopped unexpectedly. Enable monitoring again; see the application log if it repeats.')
+        return False
+
+    def _loop(self):
         previous = None
         while not self.cancel.is_set():
             with self.lock:
@@ -303,7 +338,7 @@ class Monitoring:
             if self.running and self.rule.expire():
                 self.event('unavailable')
                 self.bridge_unknown()
-            return dict(config=public(self.config), running=self.running, busy=self.busy(),
+            return dict(config=public(self.config), running=self.running, busy=self.busy(), storage_error=self.storage_error,
                 connected=self.connected, run_id=self.run_id, revision=self.revision,
                 state=self.rule.state, reason=self.rule.reason,
                 warning_active=self.rule.state=='Warning' and self.config['rule']['action']=='warning',

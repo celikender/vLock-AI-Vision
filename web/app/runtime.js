@@ -10,7 +10,13 @@ async function appApi(path,body,timeout=8000){
  const response=await fetch('/api/app/'+path,{cache:'no-store',signal:AbortSignal.timeout(timeout),...(body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})});
  const data=await response.json();if(!response.ok)throw new Error(data.error||'Application request failed.');return data;
 }
+const shownNotices=new Set();
+function showNotices(notices){
+ // Recovery notices (damaged files kept aside) stay on screen longer than ordinary toasts.
+ for(const notice of notices||[]){if(shownNotices.has(notice))continue;shownNotices.add(notice);toast(notice);clearTimeout(timer);timer=setTimeout(()=>$('toast').hidden=true,15000);}
+}
 function applyWorkspace(data){
+ showNotices(data.notices);
  const previous=new Map(workspace.zones.map(z=>[z.id,z]));
  diagnostics=data.diagnostics||diagnostics;
  capabilities=data.capabilities||capabilities;

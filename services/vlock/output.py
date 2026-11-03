@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from uuid import uuid4
 
 from .store import BridgeError
+from .store_time import steady_now
 
 
 class ObservationOutput:
@@ -18,7 +19,8 @@ class ObservationOutput:
         age=time.monotonic()-captured_at if captured_at is not None else None
         ttl=config.get('validity_seconds',10)
         fresh=age is not None and 0<=age<ttl
-        observed=datetime.fromtimestamp(time.time()-age if fresh else time.time(),timezone.utc).isoformat()
+        now=steady_now()
+        observed=datetime.fromtimestamp(now-age if fresh else now,timezone.utc).isoformat()
         output_type=self.zone['outputType']
         kind='condition' if output_type=='condition' else 'measurement'
         payload=dict(observation_id=str(uuid4()),asset_id=self.zone['id'],source_id='vision',

@@ -156,13 +156,66 @@ class ApplicationTests(unittest.TestCase):
         self.assertFalse(view['localEnabled'])
         self.assertIsNone(view['runtime']['value'])
 
-    def test_corrupt_configuration_not_overwritten(self):
+    def test_second_copy_is_refused_for_the_same_data_folder_and_port(self):
+        from application import SingleInstance
+        first=SingleInstance(self.directory.name)
+        try:
+            with self.assertRaises(RuntimeError) as caught:
+                SingleInstance(self.directory.name)
+            self.assertIn('already running',str(caught.exception))
+        finally:
+            first.release()
+        SingleInstance(self.directory.name).release()
+        server=make_server(self.workspace,0)
+        try:
+            with self.assertRaises(OSError):
+                make_server(self.workspace,server.server_port)
+        finally:
+            server.server_close()
+
+    def test_damaged_workspace_restores_last_good_copy_and_keeps_the_damaged_file(self):
         self.create()
-        path=Path(self.directory.name)/'workspace.json'
-        path.write_text('broken',encoding='utf-8')
-        with self.assertRaises(ApplicationError):
-            Workspace(self.directory.name)
-        self.assertEqual(path.read_text(),'broken')
+        state=self.workspace.status()['workspace']
+        state['zones'][0]['name']='Kept zone'
+        self.workspace.save(state)
+        folder=Path(self.directory.name)
+        (folder/'workspace.json').write_text('broken',encoding='utf-8')
+        restored=Workspace(self.directory.name)
+        try:
+            status=restored.status()
+            self.assertEqual(len(status['workspace']['zones']),1,'The previous good copy was loaded')
+            self.assertIn('previous good copy was restored',status['notices'][0])
+            damaged=list(folder.glob('workspace.json.damaged-*'))
+            self.assertEqual([p.read_text() for p in damaged],['broken'],'The damaged file is kept, never deleted')
+        finally:
+            restored.close()
+
+    def test_damaged_workspace_without_copy_starts_empty_and_damaged_history_is_replaced(self):
+        folder=Path(self.directory.name)/'fresh'
+        folder.mkdir()
+        (folder/'workspace.json').write_text('broken',encoding='utf-8')
+        (folder/'observations.sqlite3').write_bytes(b'not a database'*100)
+        restored=Workspace(folder)
+        try:
+            notices=restored.status()['notices']
+            self.assertEqual(restored.status()['workspace']['zones'],[])
+            self.assertTrue(any('started empty' in n for n in notices))
+            self.assertTrue(any('observation history was damaged' in n for n in notices))
+            self.assertEqual(len(list(folder.glob('observations.sqlite3.damaged-*'))),1)
+            self.assertEqual(restored.observations.snapshot()['assets'],[],'A new history works')
+        finally:
+            restored.close()
+
+    def test_damaged_zone_monitor_file_is_reset_on_connect(self):
+        zone=self.create()
+        self.workspace.connect(zone)
+        path=Path(self.directory.name)/'zones'/zone/'monitor.json'
+        self.assertTrue(path.exists())
+        self.workspace.disconnect(zone)
+        path.write_text('{broken',encoding='utf-8')
+        self.assertTrue(self.workspace.connect(zone)['workspace']['zones'][0]['connected'])
+        self.assertTrue(any('monitoring file was damaged' in n for n in self.workspace.status()['notices']))
+        self.assertEqual(len(list(path.parent.glob('monitor.json.damaged-*'))),1)
 
     def test_http_lifecycle_and_origin_guards(self):
         server=make_server(self.workspace,0)

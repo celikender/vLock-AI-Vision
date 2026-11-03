@@ -12,6 +12,9 @@ import threading
 import json
 import logging
 from io import BytesIO
+
+# Per-check progress bars from the SAM library would grow the worker log all day.
+os.environ.setdefault('TQDM_DISABLE', '1')
 from pathlib import Path
 from flask import Flask, request, jsonify, Response
 from PIL import Image
@@ -275,6 +278,13 @@ def video_track():
         except Exception as error:
             log.exception('SAM video inference failed')
             message=str(error) if isinstance(error,SegmentationError) else 'SAM video failed; see worker traceback.'
+            import torch
+            if isinstance(error,torch.cuda.OutOfMemoryError):
+                # Drop the fragmented model; the next window reloads it instead of failing forever.
+                global predictor
+                predictor=None
+                torch.cuda.empty_cache()
+                message='Local GPU ran out of memory; SAM reloads on the next check.'
             yield json.dumps({'type':'error','error':message,'prompt':prompt,'prompt_revision':revision})+'\n'
         finally:
             release()
@@ -303,6 +313,8 @@ if __name__=='__main__':
     parser.add_argument('--preload',action='store_true',help='Load and warm the model at startup.')
     args=parser.parse_args()
     logging.basicConfig(level=logging.INFO,format='%(asctime)s %(levelname)s %(name)s %(message)s')
+    # Per-request access lines (a health probe every two seconds) would grow the log without limit.
+    logging.getLogger('werkzeug').setLevel(logging.WARNING)
     if args.preload:
         threading.Thread(target=preload,name='sam-preload',daemon=True).start()
     app.run(host='127.0.0.1',port=5052,threaded=True,debug=False)
