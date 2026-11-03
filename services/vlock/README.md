@@ -31,3 +31,13 @@ Renamed output streams remain in observation history and their old current paths
 become unknown on Stop/expiry. Use the configured signal path rather than assuming
 that a multi-stream asset aggregate has become Clear. Stream retirement and adapter
 mapping migrations need an explicit later contract.
+
+## OPC UA and MQTT adapters
+
+`transports.py` and `opc_client.py` are the bridge experiment's adapters with
+package-relative imports and their regression tests. The working application runs
+`Integrations` over its own observation store and starts/stops the OPC UA server and
+MQTT publisher from the workspace integration profile. The NodeId contract
+(`urn:vlock:bridge:v1`, `Bridge/Assets/<asset>/Signals/<source>/<signal>/...`) is
+unchanged; the app's asset is the zone ID and its source is `vision`. Read-only
+publication only: no command, latch or reset is implemented here.

@@ -5,3 +5,8 @@ meta-sam-parser==0.1.0
 
 anthropic==2.3.0
 
+# Working application: camera frames, OPC UA/MQTT outputs and hardware diagnostics.
+Pillow==13.0.0
+asyncua==2.1.0
+paho-mqtt==2.1.0
+psutil==7.2.2

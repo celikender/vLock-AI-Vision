@@ -53,3 +53,8 @@ Live camera check to the saved Pi address did not obtain a fresh JPEG, and the
 existing local worker was not reachable. Hardware/model validation remains pending.
 External OPC UA/MQTT adapter activation is the next chapter; existing bridge
 functionality stays usable independently. Further commits remain local.
+
+Update 2026-11-03: the app starts and supervises the SAM worker (services/vision/
+sam_worker.py, worker_process.py), Muse Spark assistant calls are wired with SAM area
+outlines, and the OPC UA server / MQTT publisher run inside the app from the saved
+Integrations profile. Client-mode node mapping and remote deployment remain deferred.

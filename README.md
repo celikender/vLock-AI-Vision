@@ -2,7 +2,7 @@
 
 A standalone industrial vision and supervisory vLock application for SCADA developers and manufacturers, designed for integration with existing SCADA systems or independent operation.
 
-**Development status:** Pi 5 USB camera streaming and the main PC camera UI are owner-tested. Claude photo analysis is connected; SAM 3.1 remains experimental. The [SCADA playground](playground/scada/README.md) connects a real Bambu P1S through MQTT to Ignition Perspective. Live telemetry and stopping a print from SCADA are owner-tested.
+**Development status:** The working application (port 5056) monitors camera zones with local SAM 3.1, lets Muse Spark configure a zone from plain language (rule plus a SAM-outlined area), and publishes observations through local REST, OPC UA and MQTT. Pi 5 camera streaming and the earlier detection-to-printer Pause through Ignition are owner-tested. The [SCADA playground](playground/scada/README.md) connects a real Bambu P1S through MQTT to Ignition Perspective.
 
 Standalone vLock and end-to-end vision-to-SCADA integration are planned. See the [development log](docs/DEVELOPMENT_LOG.md) for verified milestones and limitations.
 
@@ -71,11 +71,24 @@ Official resources:
 
 
 
-## Main camera app
+## Run the application
 
-Run `.\.venv\Scripts\python.exe web/server.py` on your PC and open http://localhost:5051.
-Enter the Pi IP address and click Connect. See [main UI guide](web/README.md)
-and [Pi installation](playground/pi_camera/README.md).
+Double-click **`Start vLock.cmd`** in the project folder. One window opens and the
+browser goes to http://localhost:5056. The app starts the SAM 3.1 worker in Ubuntu/WSL
+by itself and preloads the model (about 1–2 minutes on first start; the zone header
+shows SAM status). Close that window to stop the app and its SAM worker.
+
+Same thing from a terminal in the project folder:
+
+```powershell
+.\.venv\Scripts\python.exe web/application.py --open
+```
+
+In a zone: connect the Pi camera, describe what to watch, click **Configure with Muse**,
+review the proposal and click **Use this configuration**, then **Enable monitoring**.
+For SCADA, enable the OPC UA server under Integrations and click Save workspace.
+See the [application guide](web/app/README.md), [Pi installation](playground/pi_camera/README.md)
+and [SAM runtime setup](playground/segmentation/README.md).
 
 This repository is the active source of truth: https://github.com/celikender/vLock-AI-Vision.
 Open `vLock-AI-Vision.code-workspace` or the project folder in VS Code.

@@ -32,7 +32,8 @@ run("zone.outputType='condition';zone.runtime.value=false");
 assert.equal(run("tagRows().find(r=>r[1].endsWith('/Active'))[3]"),false);
 run('outputSnapshot=null');
 assert.equal(run("tagRows().find(r=>r[1].endsWith('/Active'))[3]"),null);
-assert.match(run('tagMonitor()'),/Not sent by this app/);
+assert.match(run('tagMonitor()'),/Not sent · enable OPC UA/);
+run("adapters={opcua:{status:'running'}}");assert.match(run('tagMonitor()'),/OPC UA server · live/);run('adapters={}');
 assert.match(run('integrationProfiles()'),/Existing|Host address/);
 
 assert.match(run('zoneControls(zone)'),/Rule saved/);

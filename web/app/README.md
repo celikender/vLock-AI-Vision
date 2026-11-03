@@ -1,60 +1,83 @@
 # Working Zones application
 
-Camera/workspace and local SAM monitoring checkpoint. Start from the project root:
+Double-click `Start vLock.cmd` in the project folder, or run from the project root:
 
 ```powershell
-.\.venv\Scripts\python.exe web/application.py
+.\.venv\Scripts\python.exe web/application.py --open
 ```
 
-Open http://localhost:5056. Add a zone, enter the Pi camera's actual private LAN
-address, save/connect, and draw an area over original camera frames. Workspace
-configuration is stored by the backend under ignored playground/data/application.
-The approved simulated prototype stays separate on port 5070.
+Open http://localhost:5056. The app starts the local SAM 3.1 worker itself
+(services/vision/sam_worker.py inside the existing Ubuntu/WSL CUDA environment,
+loopback port 5052) and preloads the model; the zone header shows its status and
+offers Start SAM after a failure. A worker that is already running is reused and
+left running. A different program on port 5052 is reported, never stopped. The
+worker log is `sam_worker.log` in the data directory. Closing the app window stops
+a worker the app started. `--no-sam` runs without managing a worker.
 
-Start the existing local SAM worker separately with
-`.\playground\segmentation\start_local.ps1`. Connect the camera, draw an area,
-choose one object phrase and geometric condition, save the zone and explicitly
-enable monitoring. Only one local-SAM zone runs at once. The configuration screen exposes the structured target/area/relation/persistence
-fields that define the runtime rule. Older free-text descriptions are preserved
-in saved data but are not executed or shown as editable programs. Persistence and validity are evaluated from fresh captures.
+Add a zone, enter the Pi camera's private LAN address, connect, then configure the
+zone with Muse or by hand. Workspace configuration is stored by the backend under
+ignored playground/data/application. Enable monitoring is available once SAM is ready
+and a rule is saved. Only one local-SAM zone runs at once.
 
 Current observations are recorded through services/vlock and exposed at
 `/api/v1/assets`, `/api/v1/events?limit=5` and `/api/v1/health`. They use stable zone
-IDs, source `vision` and the configured output name. Publication is local and
-does not send a machine command. Integration settings show the available REST
-contract and distinguish the still-unwired OPC UA/MQTT adapters.
+IDs, source `vision` and the configured output name. Integrations can also start
+the OPC UA server and MQTT publisher described below. No adapter sends a machine command.
 
-AND/OR rules, point/box object selection, second-check models, remote enable,
-score filtering and external transport adapters are not wired yet. Unsupported
-settings are rejected when saving a monitoring rule. A draft with unsupported options offers an explicit reset to supported settings;
-its target, area, description and output are preserved. Available positive object scores remain diagnostic, and Clear has no fabricated
+AND/OR rules, point/box object selection, second-check models, remote enable and
+score filtering are not wired. Unsupported settings are rejected when saving a rule.
+Available positive object scores remain diagnostic, and Clear has no fabricated
 confidence score. The working app uses no synthetic detections or latency values.
 Worker window time and observation age are shown separately. Masks are displayed
 on the exact analyzed frame, independently from the newer live camera preview.
-Existing camera/photo tools on 5051 and bridge on 5055 are unchanged.
 
 Start only one application process per data directory. Monitoring always starts
 disabled after restart. Changing settings requires Stop and completion of the
 active local-worker window. The API rejects stale concurrent workspace revisions.
-The first chapter deliberately accepts only a private-LAN Pi HTTP feed and one
-active local-SAM zone. Camera HTTP authentication is not exposed in this UI yet;
-existing credential-bearing experiment configurations are not imported.
-
-The earlier approved UI remains at playground/combined_app on port 5070. No
-experiment has been deleted or redirected to this runtime. Backend services own
+Camera HTTP authentication is not exposed in this UI yet. Backend services own
 geometry, persistence, freshness, state, counts, output values and history. The
-frontend handles editing, presentation and API requests only. Its polygon checks
-are editing assistance; the backend performs the authoritative validation.
+frontend handles editing, presentation and API requests only.
+
+## Configure with Muse Spark
+
+Type what to watch, for example "Alert SCADA when a hand is on the storage drawers
+for half a second", and click **Configure with Muse**:
+
+1. Muse Spark (META_MUSE_MODEL, default muse-spark-1.3) receives the request and the
+   zone's current draft. With "Muse sees the camera view" ticked (default when the
+   camera is connected) it also receives the newest original JPEG. Untick it to keep
+   the frame on this PC.
+2. Muse returns one proposal limited to what the runtime executes: one object phrase,
+   overlap/inside/absent relation, confirmation seconds, output type and name, and
+   how to make the area: a region SAM can outline (`sam_object`, e.g. "conveyor belt"),
+   its own estimated box (`muse_box`, only with the camera view), the whole view, or
+   keep the current area. It also lists visible objects SAM could find.
+3. For `sam_object`, the backend asks the local SAM worker to segment that phrase on
+   the current frame (POST /segment/regions) and turns the largest mask into a polygon
+   of at most 12 corners. The frame never leaves the PC for this step. If SAM is busy
+   or finds nothing, Muse's box is used when available; otherwise you draw the area.
+4. The proposal appears with a dashed outline on the camera. **Use this configuration**
+   fills the rule and area and saves the rule. Enabling monitoring stays a separate
+   click. Requests the runtime cannot execute come back as unsupported with a reason.
+
+The backend rejects proposals it cannot execute instead of repairing them. One Muse
+request at a time, no automatic retries, sanitized errors; the key never reaches the
+browser. Set META_API_KEY in the root .env. The rule can still be edited manually
+under **Edit rule manually**.
+
+## OPC UA and MQTT outputs
+
+Integrations → enable **OPC UA** (Host server mode) and/or **MQTT** (client of a broker
+on this PC), then click Save workspace. The app starts or stops the adapters promoted
+from the vLock Bridge experiment (services/vlock/transports.py) on the app's own
+observation store. Saved enabled adapters restart with the app. The OPC UA server is
+read-only at `opc.tcp://127.0.0.1:<port>/vlock/` with namespace `urn:vlock:bridge:v1`;
+a zone's condition is at `Bridge/Assets/<zone id>/Signals/vision/<output>/Active`, with
+heartbeat nodes under `Bridge/`. SCADA tags shows the exact NodeIds. Stop the separate
+bridge (port 5055) first if it uses the same OPC UA port. Client mode needs explicit
+node mappings and stays in the bridge experiment.
 
 ## Configuration editing
-
-Configuration help is a provider-neutral local reference chat with topic-matched
-answers. It calls no language model or cloud service, changes no settings, and
-keeps only a bounded in-memory conversation. It explains single-concept prompts,
-Unknown, confirmation, drawing and the limits of pattern recognition. SAM can
-segment a named object; arbitrary patterns, gestures and light-on state need a
-separate validated measurement or classifier. `hand and person` is not an app AND
-rule. Multiple concepts and Boolean combinations remain unwired.
 
 Choose Rectangle and drag, or Polygon and click up to 12 corners. Close with the
 first point or Finish area. Undo, cancel, clear, vertex dragging and keyboard
@@ -112,14 +135,14 @@ SCADA tags replaces System monitor in the sidebar. It lists configured output
 names/types and predefined server NodeId strings from the existing bridge contract,
 with local values and publication metadata. False, zero and unavailable/null stay
 distinct. These are local diagnostics and mapping previews, not OPC readbacks or
-proof of delivery. The app still does not activate OPC UA/MQTT adapters. Client
-mode still needs explicit gateway target-node mapping in a later wiring chapter.
+proof of delivery. The Delivery column shows whether the app's OPC UA server is
+live (see OPC UA and MQTT outputs above). Client mode needs explicit node mappings.
 
 Integrations restores compact OPC UA server/client, MQTT and HTTP profile fields,
 local API troubleshooting and a link to the independent bridge connection/status
-UI. Profile edits persist through the existing Save workspace contract. Saving an
-enabled profile does not start a transport. API availability is checked live;
-unwired adapter status is stated explicitly. Profile forms are not replaced by
+UI. Profile edits persist through the existing Save workspace contract; saving an
+enabled OPC UA server or MQTT profile now starts that adapter, and its real status
+is shown. API availability is checked live. Profile forms are not replaced by
 background status polling. The original playground remains intact.
 
 ## Aligned views, live camera status and workspace folders

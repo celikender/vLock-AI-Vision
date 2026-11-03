@@ -1,5 +1,80 @@
 # Development log
 
+## 2026-11-03 - One-click start, Muse configures area and rule, OPC UA/MQTT in the app
+
+- Owner report: SAM "did not open". Cause: the separately started worker was not
+  running (Ubuntu/WSL stopped, nothing on 5052); the Pi camera answered normally.
+- One-click start: `Start vLock.cmd` runs web/application.py --open. The app starts the
+  SAM worker itself (services/vision/worker_process.py) with `wsl.exe -d Ubuntu --cd
+  <project> --exec <sam-env python> -m services.vision.sam_worker --preload`, watches
+  /health, shows starting/loading/ready/failed in the zone header with a Start SAM
+  retry, and blocks Enable monitoring until SAM is ready. An existing worker is
+  reused and left running; an unidentified program on 5052 is reported, not stopped.
+  Closing the window (including the X button) stops a worker the app started.
+- The worker is promoted to services/vision/sam_worker.py: same routes and protocol,
+  plus /segment/regions (largest-contour polygons, at most 12 corners, OpenCV in the
+  worker environment) and --preload (load plus one blank-frame warm-up).
+- Muse now proposes the area too: `sam_object` (a region phrase SAM outlines on the
+  local frame), `muse_box` (Muse's box, only when it saw the frame), whole view, or
+  keep current. SAM failure falls back to Muse's box, else the engineer draws.
+  "Use this configuration" applies rule and area and saves the rule; enabling stays
+  a separate click.
+- Configuration column redesigned: one Muse box, one proposal card with a dashed
+  outline on the camera, a rule summary with manual fields collapsed. The offline
+  topic-matched guide chat was removed. Grid rows no longer stretch around the
+  middle column, so the camera and SAM images are no longer pushed down.
+- OPC UA/MQTT: the bridge adapters are promoted to services/vlock with their 11
+  regression tests. Saving an enabled Integrations profile starts the read-only OPC UA
+  server (Host server mode) and/or MQTT publisher on the app's store; real adapter
+  status appears in Integrations, SCADA tags and zone cards. Client mode and remote
+  hosts are rejected in the app. NodeIds keep the bridge contract with asset = zone
+  ID and source = vision, so an Ignition tag that watched the bridge's conveyor_01/sam
+  path must be re-pointed to the zone's NodeId shown under SCADA tags.
+- Live checks on an isolated port (5066) with a copy of the owner's workspace: the
+  app launched the worker from the project path with spaces, preloaded on the RTX
+  3070 Ti, and reported ready. One Muse request with the camera view ("Alert SCADA
+  when a hand is on the green storage drawers for half a second") returned hand /
+  overlaps / 0.5 s / condition / hand_on_storage_drawers with area "plastic storage
+  drawers"; SAM outlined it with 5 corners; 16.5 s total. Use this configuration saved
+  the rule; monitoring ran with 3.37 s windows and reported Clear (hands detected
+  outside the area); then disabled. The OPC UA server started from Save workspace and
+  an independent client read Bridge/Online=True and the zone signal (stale while
+  monitoring was off). No Ignition tag, printer or machine command was involved.
+- Checks: services 64 (assistant 9, worker supervisor 5, adapters 11), web 32,
+  three JS UI checks. The owner's saved workspace and running services were not used
+  for these live checks; Ignition re-pointing and the printer Pause through the app
+  remain for owner testing.
+
+## 2026-11-02 - Muse Spark rule proposals in the working application
+
+- Added services/vision/assistant.py: a plain-language monitoring request, the
+  zone's current draft and, only when the engineer opts in, the newest original
+  camera JPEG go to Muse Spark (muse-spark-1.3) through the Meta Model API with a
+  JSON-schema response format. Muse returns one proposal limited to the fields the
+  runtime already executes: object phrase, overlap/inside/absent relation,
+  confirmation seconds, output type and output name, plus visible scene concepts.
+- The backend rejects any proposal it cannot execute (unknown relation or type,
+  invalid name, out-of-range or non-numeric time, missing reason when unsupported)
+  rather than repairing it. Requests needing several objects, gestures, identity,
+  thresholds, PPE logic or machine commands come back as unsupported with a reason.
+- New route POST /api/app/zones/{id}/propose. It saves nothing and never enables
+  monitoring. The UI shows the proposal; Apply to draft fills the existing fields,
+  and the engineer still draws the area and clicks Save rule. One request at a time,
+  45-second timeout, no automatic retries, sanitized errors, key never sent to the
+  browser. The local topic guide remains alongside it.
+- Checks passed: 8 new assistant tests (structured output, opt-in frame, rejection
+  cases, malformed/incomplete responses, missing key, secret-free errors, single
+  request) and 1 new route test (origin guard, frame needs a connected camera,
+  nothing saved). Full suites: services 47, web 29, three JS UI checks.
+- Browser check on an isolated port with throwaway data: the panel rendered, a
+  simulated proposal displayed, and Apply filled the draft fields without saving.
+  No console errors.
+- One owner-approved live text-only request (no camera frame) succeeded: "Tell
+  SCADA when a person reaches into the glass cutter area for half a second"
+  returned person / overlaps area / 0.5 s / condition / person_in_glass_cutter_area,
+  passed backend validation, and took 15.75 s. This is one sample, not a latency
+  benchmark or accuracy evaluation. Frame-included requests are not yet tested live.
+
 ## 2026-11-02 - Continuous camera preview and reusable worker launcher
 
 - Fixed the working UI's one-frame preview: SVG load-event capture was not a

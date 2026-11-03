@@ -46,3 +46,36 @@
 @media(max-width:1100px){.unified-workspace>.configuration-column{grid-column:1/-1;grid-row:4}.unified-workspace>.results-column{grid-column:2;grid-row:1/span 3}}
 @media(max-width:700px){.unified-workspace{display:flex;flex-direction:column}.unified-workspace>.camera-column,.unified-workspace>.configuration-column,.unified-workspace>.results-column{width:100%;display:flex;flex-direction:column}.unified-workspace .camera-panel,.unified-workspace .observation-panel{display:block}.unified-workspace>.configuration-column{order:2}.unified-workspace>.results-column{order:3}}
 .unified-workspace{grid-template-rows:max-content max-content auto}.zone-title-bar{display:flex;align-items:center;gap:18px;margin-bottom:16px}.zone-title-bar h1{font-size:25px}.zone-title-bar>span{font-size:11px;color:#8b9c92;margin-left:auto}.observation-panel .result-box{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:start}.observation-panel .result-box>strong{max-width:70px}.observation-panel .result-box p{max-width:none}.observation-panel .result-box>strong>small{font-size:8px}.sam-image-section .observation-metrics{border-top:1px solid #e2eae1}.observation-metrics .metric-row{margin-top:0}
+.muse-frame{display:flex;gap:9px;align-items:flex-start;margin-top:10px;font-size:11px}.muse-frame input{width:auto;margin-top:2px}.muse-frame small{display:block;font-size:10px;color:#7d9187}
+.muse-proposal{margin-top:12px;padding:12px;border:1px solid #c9ddd2;border-radius:5px;background:#f4faf6;font-size:11px;line-height:1.6}.muse-proposal p{margin:6px 0}.muse-proposal code{font-size:11px}.muse-proposal small{font-size:10px;color:#7d9187}.muse-proposal.unsupported{background:#fff5df;border-color:#e9d8b6;color:#79603a}.muse-limits{color:#6b7d74}
+.muse-concepts{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0}.muse-concepts small{flex-basis:100%}
+#muse-assistant{padding-bottom:14px;margin-bottom:14px;border-bottom:1px solid #dfe8e3}.muse-title{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;margin-bottom:8px}
+/* Muse configuration card: one composer, one proposal, rule review below. */
+.unified-workspace{grid-template-rows:max-content max-content 1fr}
+.configuration-chat{padding:14px 14px 0}
+#muse-assistant{padding-bottom:0;margin-bottom:0;border-bottom:0}
+.muse-card{background:#fff;border:1px solid #d4dce8;border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.muse-card.busy{border-color:#7088aa;box-shadow:0 0 0 3px rgba(112,136,170,.15)}
+.muse-title{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin:0}
+.muse-title b{display:block;font-size:13px}.muse-title small{display:block;font-size:10.5px;color:#6b7d74;line-height:1.5;margin-top:2px}
+.muse-card textarea{width:100%;box-sizing:border-box;resize:vertical;min-height:64px;font:inherit;font-size:12px;line-height:1.5;padding:9px 10px;border:1px solid #cdd6d1;border-radius:6px}
+.muse-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.muse-row .button{white-space:nowrap}
+.muse-frame{display:flex;gap:8px;align-items:flex-start;margin:0!important;font-size:11px;cursor:pointer}.muse-frame input{width:auto!important;margin-top:2px}.muse-frame small{display:block;font-size:10px;color:#7d9187}
+.muse-progress{margin:0;font-size:11px;color:#516a8e}
+.muse-proposal{margin:0;padding:12px;border:1px solid #c9ddd2;border-radius:6px;background:#f4faf6;font-size:11.5px;line-height:1.55}
+.muse-proposal p{margin:6px 0}.muse-proposal code{font-size:11px}.muse-proposal.unsupported{background:#fff5df;border-color:#e9d8b6;color:#79603a}
+.muse-proposal-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:6px}.muse-proposal-head small{font-size:10px;color:#3d8a6a}
+.muse-proposal dl{display:grid;grid-template-columns:max-content 1fr;gap:3px 12px;margin:0 0 6px}.muse-proposal dt{color:#6b7d74}.muse-proposal dd{margin:0;overflow-wrap:anywhere}
+.muse-note{color:#3d6a8a}.muse-limits{color:#6b7d74}
+.muse-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px}.muse-source{font-size:10px;color:#7d9187;flex-basis:100%}
+.muse-concepts{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}.muse-concepts small{flex-basis:100%;font-size:10px;color:#6b7d74}
+.chip{border:1px solid #c6d4cc;background:#fff;border-radius:999px;padding:3px 10px;font-size:11px;cursor:pointer}.chip:hover{border-color:#548e89;color:#2d6a64}
+.pill.blue{background:#e7eef8;color:#3d5f8f;border-color:#c9d6ea}
+.rule-details{margin:12px 0 0;border-top:1px solid #e3ebe6;padding-top:10px}.rule-details summary{cursor:pointer;font-size:12px;color:#3f5f57;margin-bottom:10px}
+.rule-example p{margin:6px 0}
+.sam-chip{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;padding:3px 9px;border-radius:999px;margin:0 8px;border:1px solid #d8e0dc;background:#f6f8f7;color:#51625b;white-space:nowrap}
+.sam-chip::before{content:'';width:7px;height:7px;border-radius:50%;background:#9aa8a1}
+.sam-chip.green::before{background:#3ea36b}.sam-chip.amber::before{background:#e0a030}.sam-chip.red::before{background:#d05050}
+.sam-chip+.button{margin-right:8px}
+.zone-proposed{fill:rgba(90,140,220,.18);stroke:#7fb0ff;stroke-width:2.5;stroke-dasharray:8 6;pointer-events:none}

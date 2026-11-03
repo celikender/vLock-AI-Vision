@@ -1,6 +1,7 @@
 """PC transport for bounded camera-video windows to the existing local GPU worker."""
 import http.client
 import json
+from urllib.parse import urlencode
 from uuid import uuid4
 from .masks import SegmentationError
 from .video import validate_prompt, WINDOW_FRAMES, MAX_JPEG_BYTES
@@ -59,5 +60,35 @@ def track_video(frames, prompt, revision):
         raise SegmentationError('Local video worker unavailable or timed out. Check port 5052.',503) from None
     except (ValueError,KeyError,TypeError):
         raise SegmentationError('Local video worker returned invalid JSON.') from None
+    finally:
+        connection.close()
+
+
+def segment_regions(jpeg, prompt):
+    """Outline one object phrase on one original camera JPEG through the local worker."""
+    prompt=validate_prompt(prompt)
+    if len(jpeg)>MAX_JPEG_BYTES:
+        raise SegmentationError('Camera frame is too large for an area proposal.',400)
+    connection=http.client.HTTPConnection('127.0.0.1',5052,timeout=150)
+    try:
+        connection.request('POST','/segment/regions?'+urlencode({'prompt':prompt}),body=jpeg,
+                           headers={'Content-Type':'image/jpeg'})
+        response=connection.getresponse()
+        data=json.loads(response.read(2*1024*1024))
+        if response.status!=200:
+            raise SegmentationError(data.get('error','Area segmentation failed.'),response.status)
+        regions=data.get('regions')
+        if not isinstance(regions,list) or len(regions)>32:
+            raise SegmentationError('Local worker returned invalid area outlines.')
+        for region in regions:
+            polygon=region.get('polygon') if isinstance(region,dict) else None
+            if (not isinstance(polygon,list) or not 3<=len(polygon)<=12 or not all(
+                    isinstance(p,list) and len(p)==2 and all(type(v) in (int,float) and 0<=v<=1 for v in p) for p in polygon)):
+                raise SegmentationError('Local worker returned an invalid area outline.')
+        return regions
+    except (OSError,http.client.HTTPException):
+        raise SegmentationError('Local SAM worker is not running. Start it from the app, then retry.',503) from None
+    except (ValueError,KeyError,TypeError,AttributeError):
+        raise SegmentationError('Local worker returned invalid JSON.') from None
     finally:
         connection.close()

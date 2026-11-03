@@ -1,15 +1,21 @@
 'use strict';
 let diagnostics={};
+let capabilities={};
+let samStatus=null;
+let adapters={};
 let apiBusy=false;
 let applicationReady=false;
 let refreshingRuntime=false;
-async function appApi(path,body){
- const response=await fetch('/api/app/'+path,{cache:'no-store',signal:AbortSignal.timeout(8000),...(body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})});
+async function appApi(path,body,timeout=8000){
+ const response=await fetch('/api/app/'+path,{cache:'no-store',signal:AbortSignal.timeout(timeout),...(body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})});
  const data=await response.json();if(!response.ok)throw new Error(data.error||'Application request failed.');return data;
 }
 function applyWorkspace(data){
  const previous=new Map(workspace.zones.map(z=>[z.id,z]));
  diagnostics=data.diagnostics||diagnostics;
+ capabilities=data.capabilities||capabilities;
+ samStatus=data.sam??samStatus;
+ adapters=data.integrations||adapters;
  workspace=data.workspace;
  for(const z of workspace.zones){z.step=2;const old=previous.get(z.id);for(const key of ['showArea','guideExpanded','sourceExpanded','helperQuestion','preview'])if(old&&key in old)z[key]=old[key];}
  applicationReady=true;dirtyFlag=false;render();
@@ -41,6 +47,10 @@ async function configureZone(z){
  try{applyWorkspace(await appApi('zones/'+z.id+'/configure',{}));const zone=workspace.zones.find(item=>item.id===z.id);zone.step=2;render();toast('Zone rule saved. Enable monitoring to start local SAM.');}
  catch(error){toast(error.message);}finally{apiBusy=false;}
 }
+async function restartSam(){
+ try{const data=await appApi('sam/restart',{});samStatus=data.sam;refreshZoneControls();toast('Starting the SAM worker…');}
+ catch(error){toast(error.message);}
+}
 async function setMonitoring(z,enabled){
  if(apiBusy||!z)return;apiBusy=true;
  try{applyWorkspace(await appApi('zones/'+z.id+'/enable',{enabled}));}
@@ -51,6 +61,8 @@ async function refreshStatus(force=false){
  try{
   const data=await appApi('workspace');
   diagnostics=data.diagnostics||diagnostics;
+  samStatus=data.sam??samStatus;
+  adapters=data.integrations||adapters;
   if(!applicationReady){applyWorkspace(data);return;}
   for(const z of workspace.zones){const remote=data.workspace.zones.find(r=>r.id===z.id);if(remote){z.tag_path=remote.tag_path;z.runtime=remote.runtime;z.connected=remote.connected;z.localEnabled=remote.localEnabled;z.events=remote.events;if(!dirtyFlag)z.configured=remote.configured;}}
   // Keep draft inputs and polygon handles stable while editing.

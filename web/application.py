@@ -1,8 +1,10 @@
 """Working Zones application. Existing camera and bridge experiments stay separate."""
 import argparse
+import os
 import json
 import sys
 import sqlite3
+import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit, parse_qs
@@ -12,6 +14,7 @@ sys.path.insert(0,str(ROOT))
 from services.application import Workspace, ApplicationError
 from services.vlock.store import BridgeError
 from services.vision.diagnostics import Diagnostics
+from services.vision.worker_process import SamWorker
 
 STATIC = Path(__file__).with_name('app')
 
@@ -108,6 +111,11 @@ def make_server(workspace, port=5056):
                     return self.reply(200,workspace.save(data))
                 if self.path=='/api/app/zones':
                     return self.reply(201,workspace.add(data.get('name','New zone')))
+                if self.path=='/api/app/sam/restart':
+                    if not workspace.worker:
+                        raise ApplicationError('This application was started without SAM management.',409)
+                    workspace.worker.restart()
+                    return self.reply(200,workspace.status())
                 parts=self.path.strip('/').split('/')
                 if len(parts)==5 and parts[:3]==['api','app','zones']:
                     if parts[4]=='connect':
@@ -118,6 +126,8 @@ def make_server(workspace, port=5056):
                         return self.reply(200,workspace.configure(parts[3]))
                     if parts[4]=='enable':
                         return self.reply(200,workspace.enable(parts[3],data.get('enabled')))
+                    if parts[4]=='propose':
+                        return self.reply(200,workspace.propose(parts[3],data))
                 raise ApplicationError('This function is not wired yet.',404)
             except ApplicationError as error:
                 self.reply(error.status,dict(error=str(error)))
@@ -130,14 +140,37 @@ def make_server(workspace, port=5056):
     return server
 
 
+def on_console_close(callback):
+    """Run cleanup when the launcher window is closed; Python skips finally blocks then."""
+    if os.name!='nt':
+        return None
+    import ctypes
+    from ctypes import wintypes
+    routine=ctypes.WINFUNCTYPE(wintypes.BOOL,wintypes.DWORD)(
+        lambda event:(callback(),False)[1] if event in (2,5,6) else False)
+    ctypes.windll.kernel32.SetConsoleCtrlHandler(routine,True)
+    return routine
+
+
 def main():
     parser=argparse.ArgumentParser(description='vLock-AI Vision application')
     parser.add_argument('--port',type=int,default=5056)
     parser.add_argument('--data-dir',type=Path,default=ROOT/'playground'/'data'/'application')
+    parser.add_argument('--no-sam',action='store_true',help='Do not start or manage the local SAM worker.')
+    parser.add_argument('--open',action='store_true',help='Open the application in the default browser.')
     args=parser.parse_args()
-    workspace=Workspace(args.data_dir,diagnostics=Diagnostics())
+    worker=None if args.no_sam else SamWorker(args.data_dir/'sam_worker.log')
+    workspace=Workspace(args.data_dir,diagnostics=Diagnostics(),worker=worker)
     server=make_server(workspace,args.port)
-    print(f'vLock-AI Vision: http://localhost:{server.server_port}',flush=True)
+    url=f'http://localhost:{server.server_port}'
+    print(f'vLock-AI Vision: {url}',flush=True)
+    if worker:
+        close_handler=on_console_close(worker.stop)
+        worker.start()
+        print(f'SAM 3.1 worker: starting in Ubuntu/WSL; log at {worker.log_path}',flush=True)
+    if args.open:
+        webbrowser.open(url)
+    print('Close this window or press Ctrl+C to stop the application and its SAM worker.',flush=True)
     try:
         server.serve_forever(poll_interval=.25)
     except KeyboardInterrupt:
@@ -145,6 +178,8 @@ def main():
     finally:
         server.server_close()
         workspace.close()
+        if worker:
+            worker.stop(wait=True)
 
 
 if __name__=='__main__':

@@ -10,11 +10,14 @@ from pathlib import Path
 from uuid import uuid4
 
 from services.vision.camera import Camera, address, fetch_jpeg
+from services.vision.masks import SegmentationError
 from services.vision.monitoring import Monitoring
-from services.vision.transport import track_video
+from services.vision.transport import track_video, segment_regions
 from services.vision.configuration import validate as validate_monitor
-from services.vlock.store import Store as ObservationStore
+from services.vision.assistant import RuleAssistant, AssistantError
+from services.vlock.store import Store as ObservationStore, BridgeError
 from services.vlock.output import ObservationOutput
+from services.vlock.transports import Integrations, configuration as transport_configuration
 from collections import deque
 
 
@@ -46,6 +49,31 @@ def number(value, low, high, name):
     if type(value) not in (int,float) or not math.isfinite(value) or not low <= value <= high:
         raise ApplicationError(f'{name} must be from {low} to {high}.')
     return value
+
+
+def transport_settings(integration):
+    """Map the workspace integration profile onto the existing adapter contract."""
+    i=integration
+    if i['opcEnabled'] and i['opcMode']!='server':
+        raise ApplicationError('OPC UA client mode needs explicit node mappings. Use Host server mode in this app.')
+    if i['opcEnabled'] and i['opcHost'] not in ('127.0.0.1','localhost'):
+        raise ApplicationError('The OPC UA server listens on this PC only: use host 127.0.0.1.')
+    if i['mqttEnabled'] and i['mqttMode']!='client':
+        raise ApplicationError('Hosting an MQTT broker is not supported. Use client mode with a local broker.')
+    try:
+        ports=int(i['opcPort']),int(i['mqttPort'])
+    except (TypeError,ValueError):
+        raise ApplicationError('Ports must be whole numbers.') from None
+    if any(port!=value for port,value in zip(ports,(i['opcPort'],i['mqttPort']))):
+        raise ApplicationError('Ports must be whole numbers.')
+    data=dict(mqtt=dict(enabled=bool(i['mqttEnabled']),host=str(i['mqttHost']) if i['mqttEnabled'] else '127.0.0.1',
+                        port=ports[1],topic_prefix=str(i['topic'])),
+              opcua=dict(enabled=bool(i['opcEnabled']),port=ports[0],mode='server',endpoint='opc.tcp://127.0.0.1:62541',
+                         security='Basic256Sha256',reads=[],writes=[],heartbeat_node_id=''))
+    try:
+        return transport_configuration(data)
+    except BridgeError as error:
+        raise ApplicationError(str(error)) from None
 
 
 def zone_config(data, zone_id):
@@ -89,8 +117,12 @@ def zone_config(data, zone_id):
 
 
 class Workspace:
-    def __init__(self, directory, fetch=fetch_jpeg, infer=track_video, diagnostics=None):
+    def __init__(self, directory, fetch=fetch_jpeg, infer=track_video, diagnostics=None, assistant=None,
+                 worker=None, regions=segment_regions):
         self.directory = Path(directory)
+        self.assistant = assistant or RuleAssistant()
+        self.worker = worker
+        self.regions = regions
         self.path = self.directory/'workspace.json'
         self.lock = threading.RLock()
         self.fetch = fetch
@@ -108,6 +140,13 @@ class Workspace:
             except (ValueError,TypeError,KeyError,OSError):
                 raise ApplicationError('Saved workspace is invalid; it was not overwritten.',503) from None
         self.observations=ObservationStore(self.directory/'observations.sqlite3',history_limit=1000)
+        # Saved enabled adapters restart with the app; they publish observations only.
+        self.integrations=Integrations(self.observations,self.directory/'transports.json')
+        self.integration_error=None
+        try:
+            self.integrations.apply(transport_settings(self.config['integration']))
+        except ApplicationError as error:
+            self.integration_error=str(error)
 
     def validate(self, data):
         if not isinstance(data,dict) or not isinstance(data.get('zones'),list) or len(data['zones'])>32:
@@ -188,12 +227,16 @@ class Workspace:
                     events=events[:self.config['eventLimit']],runtime=record,
                     tag_path=[self.config['name'],zone['name'],zone['output']])
             return dict(schema_version=1,prototype=False,workspace=result,
+                sam=self.worker.status() if self.worker else None,
+                integrations=dict(self.integrations.status()['adapters'],error=self.integration_error),
                 diagnostics=self.diagnostics.snapshot() if self.diagnostics else {},
-                capabilities=dict(camera=True,monitoring=True,observation_api=True,transports=False,machine_commands=False,
-                    supported_camera='Pi / HTTP',restart='Monitoring always starts disabled.'))
+                capabilities=dict(camera=True,monitoring=True,observation_api=True,transports=True,machine_commands=False,
+                    supported_camera='Pi / HTTP',restart='Monitoring always starts disabled.',
+                    assistant=self.assistant.status()))
 
     def save(self, data):
         candidate = self.validate(data)
+        transports = transport_settings(candidate['integration'])
         with self.lock:
             if any(m.busy() for m in self.monitors.values()):
                 raise ApplicationError('Stop monitoring and wait for the active window before saving settings.',409)
@@ -220,6 +263,9 @@ class Workspace:
             except OSError:
                 self.config = before
                 raise
+            if candidate['integration']!=before['integration'] or self.integration_error:
+                self.integrations.apply(transports)
+                self.integration_error=None
             for monitor in self.monitors.values():
                 monitor.events=deque(monitor.events,maxlen=candidate['eventLimit'])
                 monitor.events_store.save(list(monitor.events))
@@ -331,8 +377,60 @@ class Workspace:
                 raise ApplicationError('Connect and save a supported zone rule first.',409)
             if any(m.busy() for key,m in self.monitors.items() if key!=zone_id):
                 raise ApplicationError('Only one local SAM zone may run at a time in this checkpoint.',409)
+            sam=self.worker.status() if self.worker else None
+            if sam and sam['state']!='ready':
+                raise ApplicationError('SAM 3.1 is not ready yet. '+sam['message'],409)
             monitor.start()
             return self.status()
+
+    def propose(self,zone_id,data):
+        """Ask Muse for a complete draft (rule and area). Nothing is saved or enabled here."""
+        include_frame=data.get('includeFrame',False)
+        if type(include_frame) is not bool:
+            raise ApplicationError('includeFrame must be true or false.')
+        with self.lock:
+            zone=self.find(zone_id)
+            draft={key:zone[key] for key in ('name','target','firstRelation','persistence','outputType','output','areaSelected')}
+            connected=bool(self.cameras.get(zone_id) and self.cameras[zone_id].status()['connected'])
+        if include_frame and not connected:
+            raise ApplicationError('Connect the camera so Muse can see it, or turn off the camera view.',409)
+        # The newest original JPEG stays local for SAM; it goes to Meta only when opted in.
+        jpeg=self.snapshot(zone_id)[0] if connected else None
+        try:
+            result=self.assistant.propose(data.get('text'),draft,jpeg if include_frame else None)
+        except AssistantError as error:
+            raise ApplicationError(str(error),error.status) from None
+        proposal=result['proposal']
+        if proposal['supported']:
+            proposal['area']=self.propose_area(proposal['area'],jpeg)
+        return result
+
+    def propose_area(self,area,jpeg):
+        """Turn Muse's area choice into a polygon: SAM outline first, Muse box as fallback."""
+        method,polygon,source,note=area['method'],None,None,''
+        box=area.get('box')
+        rectangle=lambda b:[[b[0],b[1]],[b[2],b[1]],[b[2],b[3]],[b[0],b[3]]]
+        if method=='whole_frame':
+            polygon,source=rectangle([.01,.01,.99,.99]),'whole_frame'
+        elif method=='sam_object' and jpeg is None:
+            note='Connect the camera so SAM can outline “'+area['object']+'”. Draw the area yourself.'
+        elif method=='sam_object':
+            try:
+                regions=self.regions(jpeg,area['object'])
+                if regions:
+                    polygon,source=regions[0]['polygon'],'sam'
+                    note=f'SAM outlined “{area["object"]}”'+(f' (largest of {len(regions)} found).' if len(regions)>1 else '.')
+                else:
+                    note=f'SAM found no “{area["object"]}” in the current frame.'
+            except SegmentationError as error:
+                note=f'SAM could not outline “{area["object"]}”: {error}'
+            if polygon is None and box:
+                polygon,source=rectangle(box),'muse_box'
+                note+=' Using Muse’s estimated box instead.'
+        elif method=='muse_box':
+            polygon,source=rectangle(box),'muse_box'
+            note='Muse estimated this box from the camera view. Check and adjust the corners.'
+        return dict(area,polygon=polygon,source=source,note=note.strip())
 
     def analyzed(self,zone_id):
         with self.lock:
@@ -348,6 +446,7 @@ class Workspace:
             monitor.stop()
         for camera in self.cameras.values():camera.stop()
         if self.diagnostics:self.diagnostics.close()
+        self.integrations.close()
         for monitor in self.monitors.values():
             if monitor.thread:
                 monitor.thread.join(timeout=3)
