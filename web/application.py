@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
 from services.application import Workspace, ApplicationError
 from services.vlock.store import BridgeError
+from services.vision.diagnostics import Diagnostics
 
 STATIC = Path(__file__).with_name('app')
 
@@ -134,7 +135,7 @@ def main():
     parser.add_argument('--port',type=int,default=5056)
     parser.add_argument('--data-dir',type=Path,default=ROOT/'playground'/'data'/'application')
     args=parser.parse_args()
-    workspace=Workspace(args.data_dir)
+    workspace=Workspace(args.data_dir,diagnostics=Diagnostics())
     server=make_server(workspace,args.port)
     print(f'vLock-AI Vision: http://localhost:{server.server_port}',flush=True)
     try:

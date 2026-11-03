@@ -1,4 +1,5 @@
 'use strict';
+let diagnostics={};
 let apiBusy=false;
 let applicationReady=false;
 let refreshingRuntime=false;
@@ -8,8 +9,9 @@ async function appApi(path,body){
 }
 function applyWorkspace(data){
  const previous=new Map(workspace.zones.map(z=>[z.id,z]));
+ diagnostics=data.diagnostics||diagnostics;
  workspace=data.workspace;
- for(const z of workspace.zones){z.step=2;const old=previous.get(z.id);for(const key of ['showArea','guideExpanded','sourceExpanded','helperQuestion'])if(old&&key in old)z[key]=old[key];}
+ for(const z of workspace.zones){z.step=2;const old=previous.get(z.id);for(const key of ['showArea','guideExpanded','sourceExpanded','helperQuestion','preview'])if(old&&key in old)z[key]=old[key];}
  applicationReady=true;dirtyFlag=false;render();
 }
 async function saveWorkspace(quiet=false){
@@ -48,8 +50,9 @@ async function refreshStatus(force=false){
  if(refreshingRuntime||apiBusy&&!force)return;refreshingRuntime=true;
  try{
   const data=await appApi('workspace');
+  diagnostics=data.diagnostics||diagnostics;
   if(!applicationReady){applyWorkspace(data);return;}
-  for(const z of workspace.zones){const remote=data.workspace.zones.find(r=>r.id===z.id);if(remote){z.runtime=remote.runtime;z.connected=remote.connected;z.localEnabled=remote.localEnabled;z.events=remote.events;if(!dirtyFlag)z.configured=remote.configured;}}
+  for(const z of workspace.zones){const remote=data.workspace.zones.find(r=>r.id===z.id);if(remote){z.tag_path=remote.tag_path;z.runtime=remote.runtime;z.connected=remote.connected;z.localEnabled=remote.localEnabled;z.events=remote.events;if(!dirtyFlag)z.configured=remote.configured;}}
   // Keep draft inputs and polygon handles stable while editing.
   if(location.hash.startsWith('#zone/'))refreshZoneResults();else if(['#outputs','#integrations','#system'].includes(location.hash)){await refreshOutputSnapshot();refreshConnectionViews();}else if(!dirtyFlag)render();
  }catch(error){for(const z of workspace.zones){z.connected=false;z.runtime={state:'Unknown',valid:false,value:null,reason:'Application unavailable. Last values are not current.'};}outputSnapshot=null;outputReadState='Local API unavailable · values are not current';if(applicationReady){if(location.hash.startsWith('#zone/'))refreshZoneResults();else if(['#outputs','#integrations','#system'].includes(location.hash))refreshConnectionViews();else render();}$('saved').textContent='Application offline';}
@@ -61,7 +64,7 @@ function syncCameraPreviews(){
  for(const [image,pump] of previewPumps){if(!image.isConnected){pump.stop();previewPumps.delete(image);}}
  for(const image of document.querySelectorAll('.camera-frame')){
   if(previewPumps.has(image))continue;
-  const pump=createCameraPreview(image,{onFrame:connected=>{const z=workspace.zones.find(item=>item.id===image.dataset.zone);if(z)z.connected=connected;}});
+  const pump=createCameraPreview(image,{onFrame:(connected,metrics)=>{const z=workspace.zones.find(item=>item.id===image.dataset.zone);if(z)z.preview={connected,...metrics};}});
   previewPumps.set(image,pump);
  }
 }

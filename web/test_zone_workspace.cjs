@@ -57,7 +57,7 @@ function syncAnalyzedPreview(){viewerUpdates++;}
 refreshZoneResults();zone.runtime.age_seconds=2;refreshZoneResults();
 `);
 assert.equal(run('viewerUpdates'),2);
-assert.match(run('observationHolder.innerHTML'),/2.0 s/);
+assert.match(run('observationHolder.innerHTML'),/OBSERVATION/);
 // Polling must update service state/results without replacing draft inputs or geometry.
 run(`
 zone.runtime.busy=false;zone.target='draft hand';zone.zone=[[.2,.2],[.8,.2],[.8,.8],[.2,.8]];

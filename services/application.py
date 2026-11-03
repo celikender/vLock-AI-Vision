@@ -64,8 +64,8 @@ def zone_config(data, zone_id):
         result[key] = number(data.get(key,result[key]),low,high,key)
     if result['cameraAddress']:
         address(result['cameraAddress'])
-    if not re.fullmatch(r'[A-Za-z][A-Za-z0-9_]{0,63}',result['output']):
-        raise ApplicationError('Output name: use 1–64 letters, digits and underscores, starting with a letter.')
+    if not re.fullmatch(r'[A-Za-z][A-Za-z0-9_-]{0,63}',result['output']):
+        raise ApplicationError('Output name: use 1–64 letters, digits, underscores or hyphens, starting with a letter.')
     points = data.get('zone',[])
     if not isinstance(points,list) or len(points)>32:
         raise ApplicationError('Use at most 32 polygon vertices.')
@@ -89,12 +89,13 @@ def zone_config(data, zone_id):
 
 
 class Workspace:
-    def __init__(self, directory, fetch=fetch_jpeg, infer=track_video):
+    def __init__(self, directory, fetch=fetch_jpeg, infer=track_video, diagnostics=None):
         self.directory = Path(directory)
         self.path = self.directory/'workspace.json'
         self.lock = threading.RLock()
         self.fetch = fetch
         self.infer = infer
+        self.diagnostics = diagnostics
         self.cameras = {}
         self.monitors = {}
         self.ready = set()
@@ -172,6 +173,7 @@ class Workspace:
                     inference_ms=frame['elapsed_seconds']*1000 if frame and isinstance(frame.get('elapsed_seconds'),(int,float)) else None,
                     output_id=frame['output_id'] if fresh else None,count=frame.get('count') if fresh else None,
                     tracking_scope='four-frame session',actual_frames=monitor.output_id if monitor else 0)
+                record['phase']='Initializing' if enabled and frame is None and 'unavailable' not in record['reason'].lower() else 'Waiting for fresh evidence' if enabled and not valid else 'Monitoring' if enabled else 'Disabled'
                 record['publication']=dict(monitor.bridge.status) if monitor else dict(state='idle',message='Configure the zone first.')
                 if zone['outputType']=='count' and fresh:
                     record.update(state='Valid',value=frame['count'],valid=True,quality='Good',
@@ -183,8 +185,10 @@ class Workspace:
                 events=[dict(state=e['state'],value=e['type'],time=e['time']) for e in reversed(state['events'])] if state else []
                 zone.update(connected=runtime['connected'],configured=zone['id'] in self.ready,
                     localEnabled=enabled,remoteEnabled=False,step=3 if zone['id'] in self.ready else 2 if runtime['connected'] else 1,
-                    events=events[:self.config['eventLimit']],runtime=record)
+                    events=events[:self.config['eventLimit']],runtime=record,
+                    tag_path=[self.config['name'],zone['name'],zone['output']])
             return dict(schema_version=1,prototype=False,workspace=result,
+                diagnostics=self.diagnostics.snapshot() if self.diagnostics else {},
                 capabilities=dict(camera=True,monitoring=True,observation_api=True,transports=False,machine_commands=False,
                     supported_camera='Pi / HTTP',restart='Monitoring always starts disabled.'))
 
@@ -200,11 +204,13 @@ class Workspace:
                 if old.get(z['id']) != z:
                     self.ready.discard(z['id'])
                 if z['id'] not in old or z['cameraAddress'] != old[z['id']]['cameraAddress']:
-                    self.cameras.pop(z['id'],None)
+                    old_camera=self.cameras.pop(z['id'],None)
+                    if old_camera:old_camera.stop()
                     self.monitors.pop(z['id'],None)
                     z.update(zone=[],areaSelected=False,frameSize=None)
             for zone_id in set(self.cameras)-{z['id'] for z in candidate['zones']}:
-                self.cameras.pop(zone_id,None)
+                old_camera=self.cameras.pop(zone_id,None)
+                if old_camera:old_camera.stop()
                 self.monitors.pop(zone_id,None)
             candidate['revision'] += 1
             before = self.config
@@ -232,6 +238,8 @@ class Workspace:
                 raise ApplicationError('Stop monitoring before reconnecting cameras.',409)
             if zone['cameraType']!='Pi / HTTP':
                 raise ApplicationError('Only the tested Pi / HTTP camera is wired so far.')
+            previous=self.cameras.get(zone_id)
+            if previous:previous.stop()
             camera = Camera(zone['cameraAddress'],self.fetch)
             self.cameras[zone_id] = camera
         camera.snapshot()
@@ -246,6 +254,7 @@ class Workspace:
             self.ready.discard(zone_id)
             self.config['revision']+=1
             self.persist()
+            camera.start()
         return self.status()
 
     def disconnect(self, zone_id):
@@ -254,7 +263,8 @@ class Workspace:
             monitor=self.monitors.get(zone_id)
             if monitor:
                 monitor.stop()
-            self.cameras.pop(zone_id,None)
+            camera=self.cameras.pop(zone_id,None)
+            if camera:camera.stop()
             self.ready.discard(zone_id)
             return self.status()
 
@@ -336,6 +346,8 @@ class Workspace:
     def close(self):
         for monitor in self.monitors.values():
             monitor.stop()
+        for camera in self.cameras.values():camera.stop()
+        if self.diagnostics:self.diagnostics.close()
         for monitor in self.monitors.values():
             if monitor.thread:
                 monitor.thread.join(timeout=3)

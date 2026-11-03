@@ -55,34 +55,81 @@ class Camera:
         self.captured_at = None
         self.received_at = None
         self.error = None
+        self.stop_event = threading.Event()
+        self.thread = None
+        self.request_ms = None
+        self.frames_received = 0
+        self.failures = 0
+        self.started_at = None
+
+    def start(self):
+        if self.thread and self.thread.is_alive():
+            return
+        self.stop_event.clear()
+        self.started_at = time.monotonic()
+        self.thread = threading.Thread(target=self._poll, name='camera-latest-frame', daemon=True)
+        self.thread.start()
+
+    def stop(self):
+        self.stop_event.set()
+        with self.lock:self.jpeg=None
+        if self.thread and self.thread is not threading.current_thread():
+            self.thread.join(timeout=2.5)
+
+    def _poll(self):
+        while not self.stop_event.is_set():
+            began = time.monotonic()
+            try:
+                self._capture()
+                delay = max(0, .05-(time.monotonic()-began))
+            except OSError:
+                delay = .25
+            self.stop_event.wait(delay)
 
     def snapshot(self):
-        with self.lock:
-            try:
-                jpeg, headers = self.fetch(self.url)
-                sequence = headers.get('X-Frame-Sequence')
-                age = float(headers.get('X-Frame-Age-Ms','nan'))
-                if not isinstance(sequence,str) or not sequence.isdigit() or not math.isfinite(age) or not 0 <= age <= 2000:
-                    raise OSError('Camera freshness metadata is missing or stale.')
-                with Image.open(BytesIO(jpeg)) as image:
-                    size = list(image.size)
-                    if image.format != 'JPEG' or max(size) > 4096 or size[0]*size[1] > 2_000_000:
-                        raise OSError('Use a JPEG camera frame up to two megapixels.')
-                    image.verify()
-                now = time.monotonic()
+        if self.stop_event.is_set():raise OSError('Camera disconnected.')
+        if self.thread is not None:
+            with self.lock:
+                if not self.status()['connected']:
+                    raise OSError(self.error or 'No fresh camera frame is available.')
+                headers = dict(self.headers)
+                headers['X-Frame-Age-Ms'] = str(round((time.monotonic()-self.captured_at)*1000))
+                return self.jpeg, headers
+        return self._capture()
+
+    def _capture(self):
+        began = time.monotonic()
+        try:
+            jpeg, headers = self.fetch(self.url)
+            sequence = headers.get('X-Frame-Sequence')
+            age = float(headers.get('X-Frame-Age-Ms','nan'))
+            if not isinstance(sequence,str) or not sequence.isdigit() or not math.isfinite(age) or not 0 <= age <= 2000:
+                raise OSError('Camera freshness metadata is missing or stale.')
+            with Image.open(BytesIO(jpeg)) as image:
+                size = list(image.size)
+                if image.format != 'JPEG' or max(size) > 4096 or size[0]*size[1] > 2_000_000:
+                    raise OSError('Use a JPEG camera frame up to two megapixels.')
+                image.verify()
+            now = time.monotonic()
+            with self.lock:
+                if self.stop_event.is_set():raise OSError('Camera disconnected.')
                 if self.headers.get('X-Frame-Sequence') == sequence and self.received_at is not None:
-                    if now - self.received_at > 2:
+                    if now-self.received_at > 2:
                         raise OSError('The camera frame sequence stopped advancing.')
                 else:
                     self.received_at = now
+                    self.frames_received += 1
                 self.jpeg, self.headers, self.size = jpeg, dict(headers), size
-                self.captured_at = now - age/1000
+                self.captured_at = now-age/1000
+                self.request_ms = round((now-began)*1000,1)
                 self.error = None
                 return jpeg, dict(headers)
-            except Exception:
+        except Exception:
+            with self.lock:
                 self.jpeg = None
+                self.failures += 1
                 self.error = 'Camera unavailable or stale. Check its address and service.'
-                raise OSError(self.error) from None
+            raise OSError(self.error) from None
 
     def status(self):
         with self.lock:
@@ -91,4 +138,6 @@ class Camera:
                      time.monotonic()-self.received_at <= 2)
             return dict(connected=fresh, frame_size=self.size, error=self.error,
                         frame_sequence=self.headers.get('X-Frame-Sequence'),
-                        frame_age_seconds=round(time.monotonic()-self.captured_at,3) if fresh else None)
+                        frame_age_seconds=round(time.monotonic()-self.captured_at,3) if fresh else None,
+                        request_ms=self.request_ms,transport_fps=round(self.frames_received/max(.1,time.monotonic()-self.started_at),1) if self.started_at else None,
+                        failures=self.failures,streaming=bool(self.thread and self.thread.is_alive()))

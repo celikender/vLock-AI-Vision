@@ -13,6 +13,7 @@ const response=sequence=>({ok:true,blob:async()=>({}),headers:{get:()=>String(se
  requests[0].resolve(response(1));await settle();
  assert.equal(image.attributes.href,'blob:frame');assert.match(badge.textContent,/frame 1/);
  assert.equal(requests.length,1,'Wait between completed requests');
+ assert.ok(waits[0].ms<=50,'Healthy preview pacing must not regress to the old 250 ms delay');
  waits[0].resolve();await settle();assert.equal(requests.length,2,'Refresh does not depend on SVG load events');
  requests[1].reject(new Error('Camera lost'));await settle();
  assert.equal(image.attributes.href,undefined,'Never leave an old frame visible on failure');

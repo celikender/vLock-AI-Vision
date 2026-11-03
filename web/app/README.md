@@ -121,3 +121,31 @@ UI. Profile edits persist through the existing Save workspace contract. Saving a
 enabled profile does not start a transport. API availability is checked live;
 unwired adapter status is stated explicitly. Profile forms are not replaced by
 background status polling. The original playground remains intact.
+
+## Aligned views, live camera status and workspace folders
+
+The three lanes have distinct visual boundaries: Camera & area, Help &
+configuration, and Observation. Both image viewports use the same shared grid row
+and camera aspect ratio, including when connection settings expand. The compact
+zone header keeps controls close. Hardware/performance metrics sit below the SAM
+image rather than shifting that image upward.
+
+Connected cameras now keep one original-JPEG latest-frame buffer continuously
+fresh, independently from browser viewers and SAM windows. Consumers share the
+buffer without queues or extra upstream requests. Disconnect stops PC polling;
+it does not stop the Pi service. Preview pacing targets 20 FPS; the measured local
+stream in this check was about 14 FPS. Backend status owns connection truth.
+See docs/CAMERA_PERFORMANCE.md for measurements and limits.
+
+Observation shows initialization while waiting for its first result, actual
+window time, and available host CPU/GPU/VRAM diagnostics. Diagnostics run off the
+HTTP path; unavailable metrics remain absent and no hardware improvement is
+promised after a fixed warm-up time. Existing SAM and freshness rules are retained.
+
+Workspace settings is first in navigation and the workspace name links to it.
+The backend exposes each prepared tag path as [workspace name, zone name, output
+name]. SCADA tags shows that tree and local values, retaining existing stable
+zone IDs and bridge NodeIds. Names such as person_detect_A-101 are accepted by the
+app and existing observation identifier contract. No saved names were rewritten.
+Actual OPC browse-folder publication/client mapping is still the next integration
+chapter; these prepared paths are not a claim of live Ignition delivery.

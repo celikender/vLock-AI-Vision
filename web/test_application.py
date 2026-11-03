@@ -26,6 +26,54 @@ def jpeg():
 
 
 class CameraTests(unittest.TestCase):
+    def test_shared_buffer_does_not_fetch_per_consumer_or_block_status(self):
+        entered,release=threading.Event(),threading.Event()
+        calls=[]
+        body=jpeg()
+        def fetch(url):
+            calls.append(1)
+            if len(calls)==2:
+                entered.set();release.wait(1)
+            return body,{'X-Frame-Sequence':str(len(calls)),'X-Frame-Age-Ms':'0'}
+        camera=Camera('192.168.1.50',fetch)
+        camera.snapshot();camera.start()
+        try:
+            self.assertTrue(entered.wait(1))
+            began=time.monotonic()
+            for _ in range(100):
+                self.assertEqual(camera.snapshot()[0],body)
+                self.assertTrue(camera.status()['connected'])
+            self.assertLess(time.monotonic()-began,.3)
+            self.assertEqual(len(calls),2,'Consumers share the latest frame without extra upstream requests')
+            release.set();camera.stop_event.wait(2.1)
+            self.assertTrue(camera.status()['connected'],'Camera stays fresh without preview or inference consumers')
+        finally:
+            release.set();camera.stop()
+        self.assertFalse(camera.status()['connected'])
+        with self.assertRaises(OSError):camera.snapshot()
+
+    def test_camera_polling_recovers_without_claiming_failed_frames_are_fresh(self):
+        fail=threading.Event()
+        sequence=[0]
+        def fetch(url):
+            if fail.is_set():raise OSError('Injected transport failure')
+            sequence[0]+=1
+            return jpeg(),{'X-Frame-Sequence':str(sequence[0]),'X-Frame-Age-Ms':'0'}
+        camera=Camera('192.168.1.50',fetch)
+        camera.snapshot();camera.start()
+        def until(connected):
+            deadline=time.monotonic()+1.5
+            while time.monotonic()<deadline:
+                if camera.status()['connected']==connected:return
+                time.sleep(.01)
+            self.fail('Camera did not reach the expected connection state')
+        try:
+            fail.set();until(False)
+            self.assertIsNone(camera.jpeg)
+            fail.clear();until(True)
+            self.assertGreaterEqual(camera.status()['failures'],1)
+        finally:camera.stop()
+
     def test_private_camera_validation(self):
         self.assertEqual(address('192.168.1.50:8080'),('192.168.1.50',8080))
         for value in ['http://8.8.8.8','http://localhost:8080','http://user:secret@192.168.1.50',
@@ -54,6 +102,15 @@ class CameraTests(unittest.TestCase):
 
 
 class ApplicationTests(unittest.TestCase):
+    def test_workspace_tag_folders_preserve_stable_zone_identity(self):
+        zone=self.create()
+        config=self.workspace.status()['workspace']
+        config['name']='Company A'
+        config['zones'][0].update(name='A-101',output='person_detect_A-101')
+        view=self.workspace.save(config)['workspace']['zones'][0]
+        self.assertEqual(view['id'],zone)
+        self.assertEqual(view['tag_path'],['Company A','A-101','person_detect_A-101'])
+
     def setUp(self):
         self.directory=tempfile.TemporaryDirectory()
         self.frame=jpeg()

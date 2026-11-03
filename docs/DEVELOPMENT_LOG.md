@@ -606,3 +606,32 @@ Future entries should record actual changes, verification evidence, limitations,
   aligned observation layout, server/client fields, live API status and tag rows.
   Temporary profile selection was discarded. No new GPU inference or external
   adapter activation was performed. Existing services and playground unchanged.
+
+## 2026-11-02 - Shared camera buffer and aligned zone lanes
+
+- Rebuilt the three lane presentation so actual camera/SAM image viewports share
+  one grid row and aspect ratio. Browser geometry checks measured zero pixels
+  difference in image top positions with equal dimensions. Connection settings,
+  chat/rule fields and observation now have distinct visual separation.
+- Added compact scorecards with camera/monitor status, reviewed rule text,
+  measured camera FPS/window time, output value and honest delivery state.
+- Identified the four-FPS preview delay and misleading stale-cache connection
+  status. Connected cameras now own one continuous latest-original-JPEG buffer
+  shared by preview/SAM. Reads never queue frames; status is independent of slow
+  network I/O. Real failures invalidate the frame and retry. Browser preview
+  status no longer overwrites backend source connection state.
+- Added read-only worker/CPU/GPU/VRAM sampling off the HTTP path and an initial
+  pending-result message. Kept model/rule algorithms, original JPEG transport,
+  freshness limits and existing worker model intact. No Pi service changes.
+- Added backend workspace/zone/output tag paths and permitted hyphenated output
+  names supported by the existing store. Moved workspace settings to the top;
+  tag folder display preserves existing IDs and does not activate OPC publishing.
+- Twelve application/camera checks, 39 monitoring/state/output regressions and
+  three JavaScript regression scripts passed. Live relay/health checks and browser
+  alignment were verified; see CAMERA_PERFORMANCE.md for measured limits.
+- Restarted the local app after preserving its configuration hash. Reconnected
+  the Pi and restored the existing off monitoring state. Saved eight-point
+  geometry and rule were unchanged; SAM worker model_loads remained one. Current
+  stream measured about 14 FPS with zero failures and stays connected on the
+  dashboard. Cold-model initialization and sensor-to-screen latency were not
+  newly benchmarked. Existing experiments and unrelated user files untouched.

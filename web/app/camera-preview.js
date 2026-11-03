@@ -6,21 +6,25 @@ function createCameraPreview(image,options={}){
  const createURL=options.createURL||(blob=>URL.createObjectURL(blob));
  const revokeURL=options.revokeURL||(url=>URL.revokeObjectURL(url));
  const controller=new AbortController();
- let stopped=false,objectURL=null;
+ let stopped=false,objectURL=null,lastSequence=null;
+ const arrivals=[];
  function label(text){const badge=image.closest('.scene-wrap')?.querySelector('.frame-state');if(badge)badge.textContent=text;}
  function stop(){stopped=true;controller.abort();if(objectURL){revokeURL(objectURL);objectURL=null;}}
  const done=(async()=>{
   while(!stopped&&image.isConnected){
-   let delay=250;
+   const began=performance.now();let delay=50;
    try{
     const response=await fetchFrame('/api/app/zones/'+encodeURIComponent(image.dataset.zone)+'/snapshot?t='+Date.now(),{cache:'no-store',signal:controller.signal});
     if(!response.ok)throw new Error('Camera request failed');
     const blob=await response.blob();
     if(stopped||!image.isConnected)break;
+    const sequence=response.headers.get('X-Frame-Sequence');const now=performance.now();
+    if(sequence!==lastSequence){arrivals.push(now);lastSequence=sequence;}
+    while(arrivals.length&&now-arrivals[0]>2000)arrivals.shift();
     const nextURL=createURL(blob),oldURL=objectURL;objectURL=nextURL;
     image.setAttribute('href',nextURL);if(oldURL)revokeURL(oldURL);
     label('Live preview · frame '+(response.headers.get('X-Frame-Sequence')||'received'));
-    options.onFrame?.(true);
+    options.onFrame?.(true,{fps:arrivals.length>1?Math.round((arrivals.length-1)*1000/(now-arrivals[0])*10)/10:null,request_ms:Math.round(now-began)});delay=Math.max(0,50-(now-began));
    }catch(error){
     if(stopped||controller.signal.aborted)break;
     image.removeAttribute('href');if(objectURL){revokeURL(objectURL);objectURL=null;}
