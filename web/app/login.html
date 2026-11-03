@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"><title>vLock-AI Vision · Log in</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="polish.css"><script src="login.js" defer></script></head>
+<body class="login-page"><main class="login-box">
+<div class="brand login-brand"><b>v·</b><span>vLock<small>AI VISION</small></span></div>
+<h1 id="login-title">Log in</h1>
+<p id="login-help" class="helper">Use your vLock-AI Vision account.</p>
+<form id="login-form" autocomplete="on">
+<label>Username<input id="username" name="username" autocomplete="username" required minlength="3" maxlength="32"></label>
+<label>Password<input id="password" name="password" type="password" autocomplete="current-password" required minlength="10" maxlength="200"></label>
+<label id="confirm-row" hidden>Repeat password<input id="confirm" type="password" autocomplete="new-password" maxlength="200"></label>
+<button class="button primary" id="login-button" type="submit">Log in</button>
+<p id="login-error" class="login-error" role="alert" hidden></p>
+</form>
+</main></body></html>

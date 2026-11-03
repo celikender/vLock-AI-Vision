@@ -27,12 +27,17 @@ def address(value):
     return str(host), port
 
 
-def fetch_jpeg(value):
+def fetch_jpeg(value, token=''):
     host, port = address(value)
     connection = http.client.HTTPConnection(host, port, timeout=2)
     try:
-        connection.request('GET', '/snapshot.jpg', headers={'Connection':'close'})
+        headers = {'Connection':'close'}
+        if token:
+            headers['X-Camera-Token'] = token
+        connection.request('GET', '/snapshot.jpg', headers=headers)
         response = connection.getresponse()
+        if response.status == 401:
+            raise OSError('The Pi camera needs its camera token. Enter it in the connection settings.')
         if response.status != 200 or response.getheader('Content-Type','').split(';')[0] != 'image/jpeg':
             raise OSError('Camera did not return a JPEG frame.')
         jpeg = response.read(2 * 1024 * 1024 + 1)

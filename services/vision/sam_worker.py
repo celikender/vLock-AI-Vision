@@ -30,6 +30,37 @@ warmup=dict(state='idle',error=None,seconds=None)
 log=logging.getLogger('sam.video')
 GROUNDING_BATCH_SIZE=1
 MAX_AREA_VERTICES=12
+PINNED=Path(__file__).with_name('runtime')/'weights.sha256'
+verified={}
+weights_error=None
+
+
+def accepted_checksums():
+    """Pinned checksums, plus SAM_CHECKPOINT_SHA256 for a deliberately different checkpoint."""
+    values={line.split()[0].lower() for line in PINNED.read_text(encoding='utf-8').splitlines()
+            if line.strip() and not line.startswith('#')}
+    extra=os.getenv('SAM_CHECKPOINT_SHA256','').strip().lower()
+    return values|({extra} if extra else set())
+
+
+def verify_weights(path):
+    """Refuse a checkpoint whose SHA-256 is not pinned: .pt files can run code when loaded."""
+    global weights_error
+    import hashlib
+    real=os.path.realpath(path)
+    stat=os.stat(real)
+    key=(real,stat.st_size,stat.st_mtime_ns)
+    if key not in verified:
+        digest=hashlib.sha256()
+        with open(real,'rb') as file:
+            for block in iter(lambda:file.read(8*1024*1024),b''):
+                digest.update(block)
+        verified[key]=digest.hexdigest() in accepted_checksums()
+        log.info('SAM weights checksum %s',('accepted' if verified[key] else 'REJECTED'))
+    if not verified[key]:
+        weights_error='SAM weights do not match the pinned checksum. Download them again from Hugging Face.'
+        raise SegmentationError(weights_error,503)
+    weights_error=None
 
 
 def get_predictor():
@@ -42,6 +73,7 @@ def get_predictor():
         path=checkpoint()
         if not path:
             raise SegmentationError('SAM 3.1 weights missing. Complete Hugging Face access and run the download command.',503)
+        verify_weights(path)
         from sam3.model_builder import build_sam3_predictor
         model=build_sam3_predictor(version='sam3.1',checkpoint_path=path,compile=False,warm_up=False,
             use_fa3=False,use_rope_real=False,max_num_objects=8,multiplex_count=16,async_loading_frames=False)
@@ -120,8 +152,8 @@ def local_only():
 @app.get('/health')
 def health():
     import torch
-    return jsonify(ready=bool(checkpoint()) and torch.cuda.is_available(),
-                   weights=bool(checkpoint()),cuda=torch.cuda.is_available(),loaded=predictor is not None,
+    return jsonify(ready=bool(checkpoint()) and torch.cuda.is_available() and weights_error is None,
+                   weights=bool(checkpoint()),weights_error=weights_error,weights_verified=any(verified.values()),cuda=torch.cuda.is_available(),loaded=predictor is not None,
                    model_loads=model_loads, video_window_frames=WINDOW_FRAMES, warmup=warmup,
                    gpu_name=torch.cuda.get_device_name(0) if torch.cuda.is_available() else None)
 
@@ -312,7 +344,8 @@ if __name__=='__main__':
     parser=argparse.ArgumentParser(description='Local SAM 3.1 worker')
     parser.add_argument('--preload',action='store_true',help='Load and warm the model at startup.')
     args=parser.parse_args()
-    logging.basicConfig(level=logging.INFO,format='%(asctime)s %(levelname)s %(name)s %(message)s')
+    # force: libraries imported above may already have configured logging at warning level.
+    logging.basicConfig(level=logging.INFO,format='%(asctime)s %(levelname)s %(name)s %(message)s',force=True)
     # Per-request access lines (a health probe every two seconds) would grow the log without limit.
     logging.getLogger('werkzeug').setLevel(logging.WARNING)
     if args.preload:

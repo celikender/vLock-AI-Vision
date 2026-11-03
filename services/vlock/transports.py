@@ -52,6 +52,53 @@ def local_addresses():
     return [adapter['address'] for adapter in network_adapters()]
 
 
+CLIENT_ID = re.compile(r'[0-9a-f]{40}')
+MAX_PENDING = 20
+
+
+def client_folder(certificate_dir):
+    return Path(certificate_dir) / 'clients'
+
+
+def opc_clients(certificate_dir):
+    """Client certificates that asked to connect (pending) and those an Admin trusted."""
+    result = {}
+    for state in ('pending', 'trusted'):
+        folder = client_folder(certificate_dir) / state
+        rows = []
+        for der in sorted(folder.glob('*.der')) if folder.is_dir() else []:
+            try:
+                meta = json.loads(der.with_suffix('.json').read_text(encoding='utf-8'))
+            except (OSError, ValueError):
+                meta = {}
+            rows.append(dict(id=der.stem, name=str(meta.get('name', ''))[:120], application_uri=str(meta.get('application_uri', ''))[:200],
+                             subject=str(meta.get('subject', ''))[:200], first_seen=meta.get('first_seen')))
+        result[state] = rows
+    return result
+
+
+def change_client(certificate_dir, client_id, action):
+    """trust: pending -> trusted. remove: delete from either list (it can ask again)."""
+    if not isinstance(client_id, str) or not CLIENT_ID.fullmatch(client_id) or action not in ('trust', 'remove'):
+        raise BridgeError('Choose a listed client certificate.')
+    root = client_folder(certificate_dir)
+    found = False
+    for state in ('pending', 'trusted'):
+        for suffix in ('.der', '.json'):
+            source = root / state / (client_id + suffix)
+            if not source.exists():
+                continue
+            found = True
+            if action == 'trust' and state == 'pending':
+                (root / 'trusted').mkdir(parents=True, exist_ok=True)
+                source.replace(root / 'trusted' / source.name)
+            elif action == 'remove':
+                source.unlink()
+    if not found:
+        raise BridgeError('That client certificate is not listed.', 404)
+    return opc_clients(certificate_dir)
+
+
 def server_credentials():
     """Network OPC UA login from .env or the environment; values never leave this process."""
     try:
@@ -304,6 +351,28 @@ class OpcUaServer(Worker):
         der = certificate.read_bytes()
         return key, certificate, dict(sha1=hashlib.sha1(der).hexdigest(), sha256=hashlib.sha256(der).hexdigest())
 
+    def clients_dir(self):
+        return Path(self.certificate_dir or ROOT / 'data' / 'application' / 'opcua')
+
+    async def validate_client(self, certificate, application):
+        from asyncua import ua
+        from asyncua.common.utils import ServiceError
+        from cryptography.hazmat.primitives.serialization import Encoding
+        der = certificate.public_bytes(Encoding.DER)
+        client_id = hashlib.sha1(der).hexdigest()
+        root = client_folder(self.clients_dir())
+        if (root / 'trusted' / (client_id + '.der')).exists():
+            return
+        pending = root / 'pending'
+        pending.mkdir(parents=True, exist_ok=True)
+        if not (pending / (client_id + '.der')).exists() and len(list(pending.glob('*.der'))) < MAX_PENDING:
+            (pending / (client_id + '.der')).write_bytes(der)
+            (pending / (client_id + '.json')).write_text(json.dumps(dict(
+                name=getattr(getattr(application, 'ApplicationName', None), 'Text', '') or '',
+                application_uri=getattr(application, 'ApplicationUri', '') or '',
+                subject=certificate.subject.rfc4514_string(), first_seen=utc(time.time()))), encoding='utf-8')
+        raise ServiceError(ua.StatusCodes.BadCertificateUntrusted)
+
     @staticmethod
     def application_uri():
         return f'urn:{socket.gethostname()}:vlock:server'
@@ -352,6 +421,8 @@ class OpcUaServer(Worker):
             # Encrypted only, username login only: no NoSecurity endpoint and no anonymous session.
             server.set_security_policy([ua.SecurityPolicyType.Basic256Sha256_SignAndEncrypt])
             server.set_identity_tokens([ua.UserNameIdentityToken])
+            # Only client certificates an Admin trusted may open a session; others wait in a pending list.
+            server.set_certificate_validator(self.validate_client)
         else:
             server.set_security_policy([ua.SecurityPolicyType.NoSecurity])
         with self.lock:
@@ -508,6 +579,12 @@ class Integrations:
                     worker.certificate_dir = self.path.parent / 'opcua'
                 self.workers[name] = worker
                 worker.start()
+
+    def clients(self):
+        return opc_clients(self.path.parent / 'opcua')
+
+    def change_client(self, client_id, action):
+        return change_client(self.path.parent / 'opcua', client_id, action)
 
     def status(self):
         with self.lock:

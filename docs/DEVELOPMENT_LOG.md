@@ -1,5 +1,42 @@
 # Development log
 
+## 2026-11-03 - Security: login, roles, audit, client trust, weights checksum
+
+- Web login (`services/auth.py`): first start creates the admin account; users have
+  roles viewer / operator / admin, enforced per route on the server (writes not listed
+  are admin-only). PBKDF2-SHA256 (310,000 iterations) in `users.json`, constant-time
+  checks with a dummy hash for unknown names, 5 failures in 5 min lock a username for
+  5 min, server-side sessions in an HttpOnly SameSite=Strict cookie (8 h idle, 24 h
+  max), deleting a user or changing a password ends their other sessions, and roles
+  are re-read on every request. `/login` page; the app redirects there on 401.
+- Audit log (`audit.log`, JSON lines, rotated at 5 MB): logins, refusals and every
+  write with user, role, target and a summary that never contains passwords, tokens
+  or camera logins. Workspace settings shows users and the latest entries.
+- SCADA REST `/api/v1/...` stays readable on this PC; `VLOCK_API_TOKEN` makes it
+  require a bearer token (the UI session also works).
+- OPC UA network mode: a certificate validator accepts only client certificates in
+  `opcua/clients/trusted`; others are refused and stored (at most 20) under pending for
+  an admin to trust or remove on the Integrations page.
+- SAM weights: the worker hashes the checkpoint before every load (cached per path,
+  size and time) and refuses it unless its SHA-256 is pinned in
+  `services/vision/runtime/weights.sha256` (the Hugging Face LFS checksum of
+  `facebook/sam3.1` `sam3.1_multiplex.pt`, verified on the owner's file in 5 s) or set
+  in `SAM_CHECKPOINT_SHA256`. Health reports the reason and the supervisor stops
+  without retrying.
+- Pi camera: optional `VLOCK_CAMERA_TOKEN` (EnvironmentFile on the Pi) requires an
+  `X-Camera-Token` header for snapshots; the zone's camera token sends it. An empty
+  password/token field keeps the saved one; "Remove the saved ..." clears it.
+- Live (copy of the workspace, real SAM worker): `/` redirected to `/login`, which
+  showed "Create the admin account"; a throwaway test admin signed in, the sidebar
+  showed the user and role, and Workspace settings listed users and the audit entries
+  (setup and login). The worker reported `weights_verified: true` after hashing the
+  3.5 GB checkpoint (4.6 s when run alone); killing the worker twice restarted and
+  re-verified it automatically. The worker's "checksum accepted" log line does not
+  appear in its log (library logging setup); the health field is the evidence.
+- Checks: 5 auth tests, 1 HTTP role test (setup once, 302 to /login, viewer/operator/
+  admin limits, audit entries without passwords, REST token, logout), 2 weights tests,
+  trust-list steps in the OPC UA network test, Pi token tests on both sides.
+
 ## 2026-11-03 - Skills: Muse reference data and optional frame checks
 
 - `skills/<id>/skill.json` + `knowledge.md` (and `skills/_site/knowledge.md`) describe

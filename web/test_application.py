@@ -111,6 +111,14 @@ class ApplicationTests(unittest.TestCase):
         self.assertEqual(view['id'],zone)
         self.assertEqual(view['tag_path'],['Company A','A-101','person_detect_A-101'])
 
+    def admin_server(self):
+        """A server with one admin; returns it and that admin's session cookie."""
+        from services.auth import Auth
+        auth=Auth(self.directory.name)
+        if auth.setup_needed():
+            auth.create_user(None,'admin','admin-password-1','admin')
+        return make_server(self.workspace,0,auth=auth),'vlock_session='+auth.login('admin','admin-password-1')
+
     def setUp(self):
         self.directory=tempfile.TemporaryDirectory()
         self.frame=jpeg()
@@ -173,6 +181,62 @@ class ApplicationTests(unittest.TestCase):
         finally:
             server.server_close()
 
+    def test_login_roles_and_audit_over_http(self):
+        from unittest.mock import patch
+        server=make_server(self.workspace,0)
+        thread=threading.Thread(target=server.serve_forever,daemon=True)
+        thread.start()
+        host=f'127.0.0.1:{server.server_port}'
+        def call(path,body=None,cookie=None,headers=None):
+            connection=http.client.HTTPConnection('127.0.0.1',server.server_port,timeout=5)
+            sent={'Host':host,**({'Cookie':cookie} if cookie else {}),**(headers or {})}
+            if body is not None:sent.update({'Content-Type':'application/json','Origin':'http://'+host})
+            connection.request('POST' if body is not None else 'GET',path,json.dumps(body) if body is not None else None,sent)
+            response=connection.getresponse()
+            raw=response.read()
+            result=(response.status,json.loads(raw) if raw and response.getheader('Content-Type','').startswith('application/json') else raw,
+                    response.getheader('Set-Cookie'),response.getheader('Location'))
+            connection.close()
+            return result
+        def cookie_of(header):return header.split(';')[0]
+        try:
+            self.assertEqual(call('/api/app/session')[1]['setup_needed'],True)
+            self.assertEqual(call('/')[0:4:3],(302,'/login'),'The app redirects to the login page')
+            self.assertEqual(call('/login')[0],200)
+            self.assertEqual(call('/api/app/workspace')[0],401)
+            self.assertEqual(call('/api/app/zones',{'name':'x'})[0],401)
+            code,_,setcookie,_=call('/api/app/setup',{'username':'owner','password':'owner-password-1'})
+            self.assertEqual(code,200)
+            self.assertIn('HttpOnly',setcookie);self.assertIn('SameSite=Strict',setcookie)
+            admin=cookie_of(setcookie)
+            self.assertEqual(call('/api/app/setup',{'username':'x2','password':'another-pass-1'})[0],409,'Setup only once')
+            for user,role in [('viewer1','viewer'),('operator1','operator')]:
+                self.assertEqual(call('/api/app/users',{'username':user,'password':'role-password-1','role':role},admin)[0],200)
+            viewer=cookie_of(call('/api/app/login',{'username':'viewer1','password':'role-password-1'})[2])
+            operator=cookie_of(call('/api/app/login',{'username':'operator1','password':'role-password-1'})[2])
+            zone=self.create()
+            status=call('/api/app/workspace',cookie=viewer)
+            self.assertEqual((status[0],status[1]['session']['role']),(200,'viewer'))
+            self.assertEqual(call(f'/api/app/zones/{zone}/connect',{},viewer)[0],403,'Viewers only read')
+            self.assertEqual(call(f'/api/app/zones/{zone}/connect',{},operator)[0],200,'Operators connect cameras')
+            self.assertEqual(call(f'/api/app/zones/{zone}/configure',{},operator)[0],403,'Operators cannot change rules')
+            self.assertEqual(call('/api/app/users',cookie=operator)[0],403)
+            self.assertEqual(call('/api/app/users',cookie=admin)[1]['users'][0]['username'],'operator1')
+            entries=call('/api/app/audit',cookie=admin)[1]['entries']
+            self.assertIn(('configure','refused','operator1'),[(e['action'],e['result'],e['user']) for e in entries])
+            self.assertIn(('connect','ok','operator1'),[(e['action'],e['result'],e['user']) for e in entries])
+            self.assertNotIn('role-password-1',json.dumps(entries))
+            self.assertEqual(call('/api/app/login',{'username':'viewer1','password':'wrong-pass-99'})[0],401)
+            self.assertEqual(call('/api/v1/zones')[0],200,'SCADA REST stays open on this PC without a token')
+            with patch.dict('os.environ',{'VLOCK_API_TOKEN':'scada-token-123'}):
+                self.assertEqual(call('/api/v1/zones')[0],401)
+                self.assertEqual(call('/api/v1/zones',headers={'Authorization':'Bearer scada-token-123'})[0],200)
+                self.assertEqual(call('/api/v1/zones',cookie=viewer)[0],200,'The UI session also reads it')
+            self.assertEqual(call('/api/app/logout',{},viewer)[0],200)
+            self.assertEqual(call('/api/app/workspace',cookie=viewer)[0],401,'Logged out')
+        finally:
+            server.shutdown();server.server_close();thread.join()
+
     def test_damaged_workspace_restores_last_good_copy_and_keeps_the_damaged_file(self):
         self.create()
         state=self.workspace.status()['workspace']
@@ -218,13 +282,13 @@ class ApplicationTests(unittest.TestCase):
         self.assertEqual(len(list(path.parent.glob('monitor.json.damaged-*'))),1)
 
     def test_http_lifecycle_and_origin_guards(self):
-        server=make_server(self.workspace,0)
+        server,cookie=self.admin_server()
         thread=threading.Thread(target=server.serve_forever,daemon=True)
         thread.start()
         host=f'127.0.0.1:{server.server_port}'
         def request(path,body=None,origin=None,override_host=None):
             connection=http.client.HTTPConnection('127.0.0.1',server.server_port,timeout=5)
-            headers={'Host':override_host or host}
+            headers={'Host':override_host or host,'Cookie':cookie}
             if body is not None:
                 headers.update({'Content-Type':'application/json','Origin':origin or 'http://'+host})
             connection.request('POST' if body is not None else 'GET',path,json.dumps(body) if body is not None else None,headers)
@@ -404,6 +468,27 @@ class ApplicationTests(unittest.TestCase):
         self.workspace.schedule_checks()
         self.assertEqual(tags()['VlmState'],'off','Stopping monitoring turns the check tags off')
 
+    def test_pi_camera_token_is_sent_as_a_header_and_can_be_removed(self):
+        tokens=[]
+        def fetch(url,token=''):
+            tokens.append(token)
+            self.sequence+=1
+            return self.frame,{'X-Frame-Sequence':str(self.sequence),'X-Frame-Age-Ms':'0'}
+        self.workspace.fetch=fetch
+        zone=self.create()
+        state=self.workspace.status()['workspace']
+        state['zones'][0]['cameraPassword']='pi-token-123'
+        view=self.workspace.save(state)['workspace']['zones'][0]
+        self.assertTrue(view['cameraPasswordSet'])
+        self.workspace.connect(zone)
+        self.assertEqual(set(tokens),{'pi-token-123'})
+        self.workspace.disconnect(zone)
+        state=self.workspace.status()['workspace']
+        self.assertTrue(self.workspace.save(state)['workspace']['zones'][0]['cameraPasswordSet'],'Empty field keeps the token')
+        state=self.workspace.status()['workspace']
+        state['zones'][0]['cameraPasswordClear']=True
+        self.assertFalse(self.workspace.save(state)['workspace']['zones'][0]['cameraPasswordSet'])
+
     def test_rtsp_camera_password_is_write_only_and_monitoring_runs(self):
         from services.vision.test_rtsp import FakeStream
         opened=[]
@@ -467,13 +552,13 @@ class ApplicationTests(unittest.TestCase):
     def test_zone_tag_routes_and_ignition_export(self):
         zone=self.configure_with(name='A-101')
         self.workspace.configure(zone)
-        server=make_server(self.workspace,0)
+        server,cookie=self.admin_server()
         thread=threading.Thread(target=server.serve_forever,daemon=True)
         thread.start()
         try:
             def get(path):
                 connection=http.client.HTTPConnection('127.0.0.1',server.server_port,timeout=5)
-                connection.request('GET',path,headers={'Host':f'127.0.0.1:{server.server_port}'})
+                connection.request('GET',path,headers={'Host':f'127.0.0.1:{server.server_port}','Cookie':cookie})
                 response=connection.getresponse()
                 result=response.status,response.read(),response.getheader('Content-Disposition')
                 connection.close()
@@ -510,14 +595,14 @@ class ApplicationTests(unittest.TestCase):
         zone=self.create()
         before=self.workspace.status()['workspace']
         self.assertEqual(self.workspace.status()['capabilities']['assistant']['model'],'muse-spark-1.3')
-        server=make_server(self.workspace,0)
+        server,cookie=self.admin_server()
         thread=threading.Thread(target=server.serve_forever,daemon=True)
         thread.start()
         host=f'127.0.0.1:{server.server_port}'
         def post(body,origin=None):
             connection=http.client.HTTPConnection('127.0.0.1',server.server_port,timeout=5)
             connection.request('POST',f'/api/app/zones/{zone}/propose',json.dumps(body),
-                {'Host':host,'Content-Type':'application/json','Origin':origin or 'http://'+host})
+                {'Host':host,'Content-Type':'application/json','Origin':origin or 'http://'+host,'Cookie':cookie})
             response=connection.getresponse()
             result=(response.status,json.loads(response.read()))
             connection.close()

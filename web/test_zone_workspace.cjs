@@ -8,7 +8,7 @@ const context=vm.createContext({console,structuredClone,setTimeout,clearTimeout,
  location:{hash:'#zone/test'},window:{addEventListener(){}},
  document:{addEventListener(){},getElementById(){return null;},querySelectorAll(){return [];}}});
 function load(name,cut){let code=fs.readFileSync(path.join(__dirname,'app',name),'utf8');if(cut)code=code.slice(0,code.indexOf(cut));vm.runInContext(code,context);}
-load('scene.js');load('ui.js');load('configuration.js');load('app.js',"$('save').addEventListener");
+load('scene.js');load('ui.js');load('configuration.js');load('app.js',"$('save').addEventListener");load('admin.js');
 load('runtime.js','// Observe rendered previews');
 vm.runInContext(`
 const zone={id:'test',name:'Test area',cameraName:'Test camera',cameraAddress:'http://192.168.1.50:8080',
@@ -42,7 +42,8 @@ assert.equal(run("tagRows().find(r=>r[1].endsWith('/Active'))[3]"),null);
 assert.match(run('tagMonitor()'),/Not sent · enable OPC UA/);
 run("adapters={opcua:{status:'running'}}");assert.match(run('tagMonitor()'),/OPC UA server · live/);run('adapters={}');
 assert.match(run('integrationProfiles()'),/Existing|Host address/);
-assert.doesNotMatch(run('cameraFields(zone)'),/data-field="cameraPassword"/,'Pi cameras show no login fields');
+assert.doesNotMatch(run('cameraFields(zone)'),/data-field="cameraUsername"/,'Pi cameras have no username');
+assert.match(run('cameraFields(zone)'),/Camera token \(optional\)/,'Pi cameras offer the optional service token');
 run("zone.cameraType='RTSP';zone.cameraUsername='viewer';zone.cameraPasswordSet=true");
 html=run('cameraFields(zone)');
 assert.match(html,/rtsp:\/\/192\.168\.1\.64:554\/stream2/);

@@ -13,6 +13,8 @@ After=network.target
 [Service]
 User=$user
 SupplementaryGroups=video
+# Optional: VLOCK_CAMERA_TOKEN=<secret> in /etc/default/vlock-camera requires that token for snapshots.
+EnvironmentFile=-/etc/default/vlock-camera
 ExecStart=/usr/bin/python3 "$root/server.py"
 Restart=always
 RestartSec=3

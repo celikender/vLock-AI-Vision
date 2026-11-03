@@ -427,8 +427,9 @@ class Workspace:
             for z in candidate['zones']:
                 # The application owns the tag key; SCADA bindings depend on it never changing.
                 z['tagKey']=old[z['id']]['tagKey'] if z['id'] in old else ''
-                # An empty password field keeps the saved one; clearing the username clears both.
-                if not z['cameraPassword'] and z['id'] in old and z['cameraUsername']:
+                # An empty password field keeps the saved secret; "Remove saved" sends cameraPasswordClear.
+                raw=next((r for r in data.get('zones',[]) if isinstance(r,dict) and r.get('id')==z['id']),{})
+                if not z['cameraPassword'] and z['id'] in old and raw.get('cameraPasswordClear') is not True:
                     z['cameraPassword']=old[z['id']]['cameraPassword']
                 monitor=self.monitors.get(z['id'])
                 if (z['id'] in old and isinstance(monitor and monitor.bridge,ObservationOutput) and
@@ -479,6 +480,9 @@ class Workspace:
             if previous:previous.stop()
             if zone['cameraType']=='RTSP':
                 camera = RtspCamera(zone['cameraAddress'],zone['cameraUsername'],zone['cameraPassword'],self.rtsp_opener)
+            elif zone['cameraPassword']:
+                # The Pi service's optional shared token travels in a header, never in the address.
+                camera = Camera(zone['cameraAddress'],lambda url,fetch=self.fetch,token=zone['cameraPassword']:fetch(url,token=token))
             else:
                 camera = Camera(zone['cameraAddress'],self.fetch)
             self.cameras[zone_id] = camera

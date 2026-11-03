@@ -8,6 +8,7 @@ let applicationReady=false;
 let refreshingRuntime=false;
 async function appApi(path,body,timeout=8000){
  const response=await fetch('/api/app/'+path,{cache:'no-store',signal:AbortSignal.timeout(timeout),...(body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})});
+ if(response.status===401){location.replace('/login');throw new Error('Log in to continue.');}
  const data=await response.json();if(!response.ok)throw new Error(data.error||'Application request failed.');return data;
 }
 const shownNotices=new Set();
@@ -15,8 +16,9 @@ function showNotices(notices){
  // Recovery notices (damaged files kept aside) stay on screen longer than ordinary toasts.
  for(const notice of notices||[]){if(shownNotices.has(notice))continue;shownNotices.add(notice);toast(notice);clearTimeout(timer);timer=setTimeout(()=>$('toast').hidden=true,15000);}
 }
+function applySession(data){if(!data.session)return;const changed=data.session.role!==session.role;session=data.session;renderSession();if(changed)refreshAdmin();}
 function applyWorkspace(data){
- showNotices(data.notices);
+ showNotices(data.notices);applySession(data);
  const previous=new Map(workspace.zones.map(z=>[z.id,z]));
  diagnostics=data.diagnostics||diagnostics;
  capabilities=data.capabilities||capabilities;
@@ -27,7 +29,10 @@ function applyWorkspace(data){
  applicationReady=true;dirtyFlag=false;render();
 }
 async function saveWorkspace(quiet=false){
- if(apiBusy||!applicationReady)return false;apiBusy=true;
+ if(apiBusy||!applicationReady)return false;
+ // Only an admin changes configuration; operators continue with the saved workspace.
+ if(!canDo('admin')){if(!quiet)toast('Your role ('+session.role+') cannot change the configuration.');return !dirtyFlag||quiet;}
+ apiBusy=true;
  try{applyWorkspace(await appApi('workspace',workspace));if(!quiet)toast('Workspace saved by the application service.');return true;}
  catch(error){toast(error.message);return false;}finally{apiBusy=false;}
 }
@@ -66,6 +71,7 @@ async function refreshStatus(force=false){
  if(refreshingRuntime||apiBusy&&!force)return;refreshingRuntime=true;
  try{
   const data=await appApi('workspace');
+  applySession(data);
   diagnostics=data.diagnostics||diagnostics;
   samStatus=data.sam??samStatus;
   adapters=data.integrations||adapters;

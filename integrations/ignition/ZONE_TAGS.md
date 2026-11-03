@@ -74,8 +74,10 @@ restarts, with `State=Unknown` and `Reason=Zone removed from the workspace.`
    - Network: discover `opc.tcp://<vLock PC address>:4845/vlock/`, choose
      Basic256Sha256 / SignAndEncrypt, enter the username and password, then trust
      the vLock server certificate when Ignition reports it. Compare its SHA-1
-     fingerprint with the one on vLock's Integrations page. vLock also needs to
-     accept Ignition: it accepts any client certificate with the correct login.
+     fingerprint with the one on vLock's Integrations page. vLock refuses Ignition's
+     first attempt and lists its certificate under Integrations → Trusted SCADA
+     clients → Waiting; an admin clicks **Trust**, and Ignition connects on its next
+     retry.
 3. SCADA tags → **Download Ignition UDT** (`vlock-zones.json`).
 4. Designer → Tag Browser → Import Tags, choose the file. It adds the `vLockZone`
    UDT under Data Types, a `vLock` folder with one instance per zone (parameter

@@ -1,0 +1,4 @@
+# SHA-256 checksums of accepted SAM 3.1 checkpoints, one per line: <sha256>  <description>
+# The worker refuses to load a checkpoint whose checksum is not listed here.
+# facebook/sam3.1 sam3.1_multiplex.pt (Hugging Face LFS oid, revision daa63191845a41281374e725f4c9e51c7a824460, 3502755717 bytes)
+0567debeec80ba4ac6369540c6c248025283cb3ff2b92827509e57e2b3541cb6  sam3.1_multiplex.pt

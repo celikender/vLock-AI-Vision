@@ -22,6 +22,14 @@ Pi IP addresses. Camera capture starts automatically on boot; the page connects
 when you click Connect. Capture photo preserves the displayed JPEG without
 re-encoding. Disconnect stops browser requests, not the Pi camera service.
 
+## Optional camera token
+
+To stop other devices on the network from reading snapshots, create
+`/etc/default/vlock-camera` on the Pi with one line `VLOCK_CAMERA_TOKEN=<long random text>`,
+then `sudo systemctl restart vlock-playground-camera`. Enter the same text as the zone's
+**Camera token** in the app. Snapshots without the matching `X-Camera-Token` header get
+401; the Pi's own viewer page then stops showing frames. Without the file nothing changes.
+
 ## Troubleshooting and tuning
 
 ```bash

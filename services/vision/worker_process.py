@@ -162,8 +162,9 @@ class SamWorker:
                 missed = 0
                 warmup = (health.get('warmup') or {}).get('state')
                 if not health.get('ready'):
-                    # Missing CUDA or weights: a restart cannot fix it.
-                    self._set('failed', 'SAM worker is running but CUDA or the SAM 3.1 weights are unavailable.')
+                    # Missing CUDA, missing or tampered weights: a restart cannot fix it.
+                    self._set('failed', health.get('weights_error') or
+                              'SAM worker is running but CUDA or the SAM 3.1 weights are unavailable.')
                     return None
                 if warmup == 'failed':
                     return 'SAM warm-up failed.' if self.owned else self._final('SAM warm-up failed. See the worker log, then retry.')

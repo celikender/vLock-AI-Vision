@@ -90,6 +90,31 @@ two-object result arrives only every ~6.7 s, keep **Result expires after** at 15
 more; applying a two-object Muse proposal raises it to 15 s and the rule summary warns
 if it is lower. More than two objects is rejected.
 
+## Login, roles and audit
+
+The first start shows **Create the admin account**; after that the app asks for a login
+(HttpOnly, SameSite=Strict session cookie; 8 h idle, 24 h maximum; a restart logs
+everyone out). Roles, enforced by the server on every request:
+
+| Role | Can |
+|---|---|
+| viewer | See zones, cameras, SCADA tags and integrations. |
+| operator | Also connect/disconnect cameras, switch monitoring on/off, restart SAM. |
+| admin | Also change zones, rules, Muse, integrations, users and trusted OPC UA clients. |
+
+Passwords (10+ characters) are stored as PBKDF2-SHA256 hashes in
+`data/application/users.json`; five failed logins lock that username for five minutes.
+Workspace settings → **Users and audit** adds or deletes users, changes your password and
+shows the audit log (`data/application/audit.log`: logins, refusals and every change,
+never passwords). The SCADA REST API (`/api/v1/...`) stays readable on this PC without a
+login; set `VLOCK_API_TOKEN` in `.env` to require `Authorization: Bearer <token>`.
+
+Other security measures: OPC UA network mode accepts only client certificates an admin
+trusted (Integrations → Trusted SCADA clients; a refused client waits there), the SAM
+weights must match the pinned SHA-256 in `services/vision/runtime/weights.sha256`
+before they load, RTSP cameras use a write-only password, and the Pi camera service can
+require a token (`VLOCK_CAMERA_TOKEN`, entered as the zone's camera token).
+
 ## Skills and Muse frame checks (experimental)
 
 [Skills](../../skills/README.md) are scenario packages in `skills/` (a `skill.json` and a

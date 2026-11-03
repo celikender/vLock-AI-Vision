@@ -1,5 +1,6 @@
 """Working Zones application. Existing camera and bridge experiments stay separate."""
 import argparse
+import hmac
 import os
 import shutil
 import json
@@ -18,6 +19,7 @@ from services.vlock.store import BridgeError
 from services.vision.diagnostics import Diagnostics
 from services.vision.worker_process import SamWorker
 from services.vlock import zone_tags
+from services.auth import Auth, AuthError, rank
 
 STATIC = Path(__file__).with_name('app')
 DATA = ROOT/'data'/'application'
@@ -76,7 +78,15 @@ def migrate_data():
     print(f'Copied saved workspace from {LEGACY_DATA} to {DATA}.',flush=True)
 
 
-def make_server(workspace, port=5056):
+# Minimum role per write route; reads need a login (viewer). Anything not listed is admin-only.
+POST_ROLES = {'connect': 'operator', 'disconnect': 'operator', 'enable': 'operator', 'sam/restart': 'operator',
+              'configure': 'admin', 'propose': 'admin', 'workspace': 'admin', 'zones': 'admin'}
+PUBLIC_PAGES = {'/login': 'login.html', '/login.js': 'login.js', '/style.css': 'style.css', '/polish.css': 'polish.css'}
+
+
+def make_server(workspace, port=5056, auth=None):
+    auth = auth or Auth(workspace.directory)
+
     class Handler(BaseHTTPRequestHandler):
         def log_message(self,*args):
             pass
@@ -105,12 +115,57 @@ def make_server(workspace, port=5056):
             if write and origin!='http://'+host:
                 raise ApplicationError('Write requests require the local application origin.',403)
 
+        def session(self):
+            cookies=dict(part.strip().split('=',1) for part in self.headers.get('Cookie','').split(';') if '=' in part)
+            return auth.session(cookies.get('vlock_session',''))
+
+        def require(self,role,action='read'):
+            current=self.session()
+            if current is None:
+                raise ApplicationError('Log in to use vLock-AI Vision.',401)
+            if rank(current['role'])<rank(role):
+                auth.audit(current,action,self.path,'refused',f'needs {role}')
+                raise ApplicationError(f'Your role ({current["role"]}) cannot do this; it needs {role}.',403)
+            return current
+
+        def scada_reader(self):
+            """SCADA REST: open on this PC unless VLOCK_API_TOKEN is set; the UI uses its login session."""
+            token=os.environ.get('VLOCK_API_TOKEN','')
+            if not token or self.session() is not None:
+                return
+            supplied=self.headers.get('Authorization','')
+            if not hmac.compare_digest(supplied.encode(),('Bearer '+token).encode()):
+                raise ApplicationError('Send Authorization: Bearer <VLOCK_API_TOKEN>.',401)
+
         def do_GET(self):
             try:
                 self.local()
                 path = urlsplit(self.path).path
+                if path in PUBLIC_PAGES:
+                    file=STATIC/PUBLIC_PAGES[path]
+                    mime={'.html':'text/html','.js':'text/javascript','.css':'text/css'}[file.suffix]+'; charset=utf-8'
+                    return self.reply(200,file.read_bytes(),mime)
+                if path=='/api/app/session':
+                    current=self.session()
+                    return self.reply(200,dict(authenticated=current is not None,setup_needed=auth.setup_needed(),
+                        user=current and current['user'],role=current and current['role']))
+                if path.startswith('/api/v1/'):
+                    self.scada_reader()
+                elif path.startswith('/api/app/'):
+                    current=self.require('admin' if path in ('/api/app/users','/api/app/audit','/api/app/opcua/clients') else 'viewer')
+                elif path in ('/','/index.html'):
+                    if self.session() is None:
+                        return self.reply(302,b'',headers={'Location':'/login'})
+                if path=='/api/app/users':
+                    return self.reply(200,dict(users=auth.public_users()))
+                if path=='/api/app/audit':
+                    return self.reply(200,dict(entries=auth.audit_tail(200)))
+                if path=='/api/app/opcua/clients':
+                    return self.reply(200,workspace.integrations.clients())
                 if path=='/api/app/workspace':
-                    return self.reply(200,workspace.status())
+                    status=workspace.status()
+                    status['session']=dict(user=current['user'],role=current['role'])
+                    return self.reply(200,status)
                 if path in ('/api/v1/assets','/api/v1/health') or path.startswith('/api/v1/assets/'):
                     snapshot=workspace.observations.snapshot()
                     if path=='/api/v1/health':
@@ -151,7 +206,7 @@ def make_server(workspace, port=5056):
                     return self.reply(200,jpeg,'image/jpeg',headers)
                 if len(parts)==5 and parts[:3]==['api','app','zones'] and parts[4]=='analyzed':
                     return self.reply(200,workspace.analyzed(parts[3]),'image/png')
-                allowed={'/':'index.html','/index.html':'index.html','/app.js':'app.js','/ui.js':'ui.js',
+                allowed={'/':'index.html','/index.html':'index.html','/app.js':'app.js','/ui.js':'ui.js','/admin.js':'admin.js',
                     '/scene.js':'scene.js','/runtime.js':'runtime.js','/camera-preview.js':'camera-preview.js','/configuration.js':'configuration.js','/configuration.css':'configuration.css','/style.css':'style.css',
                     '/polish.css':'polish.css','/runtime.css':'runtime.css','/README.md':'README.md'}
                 if path not in allowed:
@@ -159,7 +214,7 @@ def make_server(workspace, port=5056):
                 file=STATIC/allowed[path]
                 mime={'.html':'text/html','.js':'text/javascript','.css':'text/css','.md':'text/plain'}[file.suffix]+'; charset=utf-8'
                 return self.reply(200,file.read_bytes(),mime)
-            except (ApplicationError,BridgeError) as error:
+            except (ApplicationError,BridgeError,AuthError) as error:
                 self.reply(error.status,dict(error=str(error)))
             except ValueError:
                 self.reply(400,dict(error='Check the application request.'))
@@ -190,34 +245,85 @@ def make_server(workspace, port=5056):
                 data=json.loads(self.rfile.read(length))
                 if not isinstance(data,dict):
                     raise ApplicationError('Expected a JSON object.')
-                if self.path=='/api/app/workspace':
-                    return self.reply(200,workspace.save(data))
-                if self.path=='/api/app/zones':
-                    return self.reply(201,workspace.add(data.get('name','New zone')))
-                if self.path=='/api/app/sam/restart':
-                    if not workspace.worker:
-                        raise ApplicationError('This application was started without SAM management.',409)
-                    workspace.worker.restart()
-                    return self.reply(200,workspace.status())
+                if self.path=='/api/app/login':
+                    token=auth.login(data.get('username'),data.get('password'),self.client_address[0])
+                    return self.reply(200,dict(ok=True),headers={'Set-Cookie':
+                        f'vlock_session={token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=86400'})
+                if self.path=='/api/app/logout':
+                    current=self.session()
+                    if current:auth.logout(current['token'])
+                    return self.reply(200,dict(ok=True),headers={'Set-Cookie':'vlock_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0'})
+                if self.path=='/api/app/setup':
+                    # Only while no user exists: the first account is an admin, created on this PC.
+                    if not auth.setup_needed():
+                        raise ApplicationError('Setup is already done. Log in instead.',409)
+                    auth.create_user(dict(user='setup',role=''),data.get('username'),data.get('password'),'admin')
+                    token=auth.login(data.get('username'),data.get('password'),self.client_address[0])
+                    return self.reply(200,dict(ok=True),headers={'Set-Cookie':
+                        f'vlock_session={token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=86400'})
                 parts=self.path.strip('/').split('/')
-                if len(parts)==5 and parts[:3]==['api','app','zones']:
-                    if parts[4]=='connect':
-                        return self.reply(200,workspace.connect(parts[3]))
-                    if parts[4]=='disconnect':
-                        return self.reply(200,workspace.disconnect(parts[3]))
-                    if parts[4]=='configure':
-                        return self.reply(200,workspace.configure(parts[3]))
-                    if parts[4]=='enable':
-                        return self.reply(200,workspace.enable(parts[3],data.get('enabled')))
-                    if parts[4]=='propose':
-                        return self.reply(200,workspace.propose(parts[3],data))
-                raise ApplicationError('This function is not wired yet.',404)
-            except ApplicationError as error:
+                route=parts[4] if len(parts)==5 and parts[:3]==['api','app','zones'] else self.path.removeprefix('/api/app/')
+                if self.path=='/api/app/password':
+                    current=self.require('viewer','user.password')
+                    auth.set_password(current,current['user'],data.get('password'))
+                    return self.reply(200,dict(ok=True))
+                current=self.require(POST_ROLES.get(route,'admin'),route)
+                result=self.route(route,parts,data,current)
+                auth.audit(current,route,parts[3] if len(parts)==5 else self.path,detail=self.summary(route,data))
+                return result
+            except (ApplicationError,AuthError) as error:
                 self.reply(error.status,dict(error=str(error)))
             except (ValueError,TypeError,KeyError,RecursionError):
                 self.reply(400,dict(error='Invalid request. Check the configuration fields.'))
             except (OSError,sqlite3.Error):
                 self.reply(503,dict(error='Camera or storage unavailable. Check the connection before retrying.'))
+        @staticmethod
+        def summary(route,data):
+            """Audit detail without secrets: never passwords, tokens or camera logins."""
+            if route=='enable':
+                return f"enabled={data.get('enabled')}"
+            if route=='propose':
+                return 'request: '+str(data.get('text',''))[:200]
+            if route=='workspace':
+                return 'zones: '+', '.join(str(z.get('name'))[:40] for z in data.get('zones',[])[:10] if isinstance(z,dict))
+            if route in ('users','users/delete','opcua/clients'):
+                return ' '.join(f'{k}={data.get(k)}' for k in ('username','role','id','action') if k in data)
+            return ''
+
+        def route(self,route,parts,data,current):
+            if route=='workspace':
+                return self.reply(200,workspace.save(data))
+            if route=='zones':
+                return self.reply(201,workspace.add(data.get('name','New zone')))
+            if route=='sam/restart':
+                if not workspace.worker:
+                    raise ApplicationError('This application was started without SAM management.',409)
+                workspace.worker.restart()
+                return self.reply(200,workspace.status())
+            if route=='users':
+                return self.reply(200,dict(users=auth.create_user(current,data.get('username'),data.get('password'),data.get('role'))))
+            if route=='users/delete':
+                return self.reply(200,dict(users=auth.delete_user(current,data.get('username'))))
+            if route=='users/password':
+                auth.set_password(current,data.get('username'),data.get('password'))
+                return self.reply(200,dict(users=auth.public_users()))
+            if route=='opcua/clients':
+                try:
+                    return self.reply(200,workspace.integrations.change_client(data.get('id'),data.get('action')))
+                except BridgeError as error:
+                    raise ApplicationError(str(error),error.status) from None
+            if len(parts)==5 and parts[:3]==['api','app','zones']:
+                if route=='connect':
+                    return self.reply(200,workspace.connect(parts[3]))
+                if route=='disconnect':
+                    return self.reply(200,workspace.disconnect(parts[3]))
+                if route=='configure':
+                    return self.reply(200,workspace.configure(parts[3]))
+                if route=='enable':
+                    return self.reply(200,workspace.enable(parts[3],data.get('enabled')))
+                if route=='propose':
+                    return self.reply(200,workspace.propose(parts[3],data))
+            raise ApplicationError('This function is not wired yet.',404)
     return Server(('127.0.0.1',port),Handler)
 
 

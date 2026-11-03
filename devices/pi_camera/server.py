@@ -1,5 +1,7 @@
 """Pi USB MJPEG camera service. Python standard library + system ffmpeg."""
 import argparse
+import os
+import hmac
 import json
 import subprocess
 import threading
@@ -73,7 +75,8 @@ class Camera:
             self.stop.wait(2)
 
 
-def handler(camera):
+def handler(camera, token=None):
+    """token: when set (VLOCK_CAMERA_TOKEN), snapshots need the matching X-Camera-Token header."""
     class Handler(BaseHTTPRequestHandler):
         protocol_version = 'HTTP/1.1'
 
@@ -82,7 +85,10 @@ def handler(camera):
             path = self.path.split('?')[0]
             frame, age, sequence = camera.latest()
             headers = {}
-            if path == '/':
+            supplied = self.headers.get('X-Camera-Token', '')
+            if token and path == '/snapshot.jpg' and not hmac.compare_digest(supplied.encode(), token.encode()):
+                code, mime, body = 401, 'text/plain', b'Camera token required.'
+            elif path == '/':
                 body = Path(__file__).with_name('index.html').read_bytes()
                 code, mime = 200, 'text/html; charset=utf-8'
             elif path == '/health':
@@ -121,7 +127,7 @@ if __name__ == '__main__':
     camera = Camera(args)
     worker = threading.Thread(target=camera.run, daemon=True)
     worker.start()
-    server = ThreadingHTTPServer(('0.0.0.0', args.port), handler(camera))
+    server = ThreadingHTTPServer(('0.0.0.0', args.port), handler(camera, os.environ.get('VLOCK_CAMERA_TOKEN') or None))
     server.daemon_threads = True
     print(f'Camera service listening on port {args.port}', flush=True)
     try:

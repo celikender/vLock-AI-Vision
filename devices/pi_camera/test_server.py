@@ -43,6 +43,28 @@ class Tests(unittest.TestCase):
             server.server_close()
             thread.join()
 
+    def test_optional_token_protects_snapshots(self):
+        camera = Camera(SimpleNamespace())
+        with camera.lock:
+            camera.frame, camera.timestamp, camera.sequence = b'\xff\xd8test\xff\xd9', time.monotonic(), 3
+        server = ThreadingHTTPServer(('127.0.0.1', 0), handler(camera, 'pi-token-123'))
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        url = f'http://127.0.0.1:{server.server_port}/snapshot.jpg'
+        try:
+            for supplied in (None, 'wrong'):
+                request = urllib.request.Request(url, headers={'X-Camera-Token': supplied} if supplied else {})
+                with self.assertRaises(urllib.error.HTTPError) as error:
+                    urllib.request.urlopen(request)
+                self.assertEqual(error.exception.code, 401)
+                error.exception.close()
+            with urllib.request.urlopen(urllib.request.Request(url, headers={'X-Camera-Token': 'pi-token-123'})) as response:
+                self.assertEqual(response.read(), camera.frame)
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join()
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -378,6 +378,16 @@ class OpcUaTests(unittest.TestCase):
                 endpoints = await Client(url, timeout=3).connect_and_get_server_endpoints()
                 self.assertEqual({e.SecurityMode for e in endpoints}, {ua.MessageSecurityMode.SignAndEncrypt})
                 self.assertEqual({t.TokenType for e in endpoints for t in e.UserIdentityTokens}, {ua.UserTokenType.UserName})
+                # An untrusted client certificate is refused and listed for an Admin, even with the right login.
+                with self.assertRaises(Exception):
+                    async with await secure('scada-reader', 'isolated-network-test'):
+                        pass
+                from services.vlock.transports import change_client, opc_clients
+                pending = opc_clients(root / 'opcua')['pending']
+                self.assertEqual([(c['application_uri'], c['name'] != None) for c in pending], [('urn:vlock:test:scada', True)])
+                self.assertEqual(opc_clients(root / 'opcua')['trusted'], [])
+                change_client(root / 'opcua', pending[0]['id'], 'trust')
+                self.assertEqual(len(opc_clients(root / 'opcua')['trusted']), 1)
                 client = await secure('scada-reader', 'isolated-network-test')
                 async with client:
                     index = await client.get_namespace_index(NAMESPACE)
