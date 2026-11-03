@@ -92,9 +92,15 @@ Integrations → enable **OPC UA** (Host server mode) and/or **MQTT** (client of
 on this PC), then click Save workspace. The app starts or stops the adapters promoted
 from the vLock Bridge experiment (services/vlock/transports.py) on the app's own
 observation store. Saved enabled adapters restart with the app. The OPC UA server is
-read-only at `opc.tcp://127.0.0.1:<port>/vlock/` with namespace `urn:vlock:bridge:v1`;
-a zone's condition is at `Bridge/Assets/<zone id>/Signals/vision/<output>/Active`, with
-heartbeat nodes under `Bridge/`. SCADA tags shows the exact NodeIds. Stop the separate
+read-only at `opc.tcp://127.0.0.1:<port>/vlock/` with namespace `urn:vlock:bridge:v1`.
+Every zone publishes the same fixed tags under `Bridge/Zones/<tag key>/` (Active,
+State, Quality, Reason, counts, diagnostic scores, timing and the rule text); the tag
+key is set when the rule is first saved and never changes, so renaming the zone or
+output keeps SCADA bindings. MQTT publishes `<prefix>/zones/<tag key>/state` and REST
+serves `/api/v1/zones`. SCADA tags shows the values and offers an Ignition UDT
+download; see [fixed zone tags](../../integrations/ignition/ZONE_TAGS.md). The older
+`Bridge/Assets/<zone id>/Signals/vision/<output>/...` nodes remain for existing
+bindings, with heartbeat nodes under `Bridge/`. Stop the separate
 bridge (port 5055) first if it uses the same OPC UA port. Client mode needs explicit
 node mappings and stays in the bridge experiment.
 

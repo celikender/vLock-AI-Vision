@@ -18,6 +18,7 @@ from services.vision.assistant import RuleAssistant, AssistantError
 from services.vlock.store import Store as ObservationStore, BridgeError
 from services.vlock.output import ObservationOutput
 from services.vlock.transports import Integrations, configuration as transport_configuration
+from services.vlock import zone_tags
 from collections import deque
 
 
@@ -31,7 +32,7 @@ ZONE_DEFAULTS = dict(name='New zone', cameraName='Camera', cameraAddress='', cam
     target='person', program='', output='zone_condition', outputType='condition', persistence=.5,
     validity=10, minConfidence=0, unknownPolicy='Keep Unknown + publish reason', recheck='None',
     allowRemote=False, zone=[], areaSelected=False, extraConditions=[], ruleJoin='ALL (AND)',
-    firstRelation='overlaps area')
+    firstRelation='overlaps area', tagKey='')
 
 INTEGRATION_DEFAULTS = dict(opcEnabled=False,opcMode='server',opcHost='127.0.0.1',opcPort=4845,
     opcEndpoint='opc.tcp://127.0.0.1:62541',security='Basic256Sha256 / SignAndEncrypt',profile='',
@@ -83,7 +84,7 @@ def zone_config(data, zone_id):
     for key, default in ZONE_DEFAULTS.items():
         value = data.get(key,default)
         if isinstance(default,str):
-            result[key] = label(value,key,2000 if key=='program' else 300,empty=key in ('program','cameraAddress'))
+            result[key] = label(value,key,2000 if key=='program' else 300,empty=key in ('program','cameraAddress','tagKey'))
         elif isinstance(default,bool):
             if type(value) is not bool:
                 raise ApplicationError(f'{key} must be true or false.')
@@ -94,6 +95,8 @@ def zone_config(data, zone_id):
         address(result['cameraAddress'])
     if not re.fullmatch(r'[A-Za-z][A-Za-z0-9_-]{0,63}',result['output']):
         raise ApplicationError('Output name: use 1–64 letters, digits, underscores or hyphens, starting with a letter.')
+    if result['tagKey'] and not zone_tags.KEY.fullmatch(result['tagKey']):
+        raise ApplicationError('Invalid SCADA tag key.')
     points = data.get('zone',[])
     if not isinstance(points,list) or len(points)>32:
         raise ApplicationError('Use at most 32 polygon vertices.')
@@ -140,6 +143,7 @@ class Workspace:
             except (ValueError,TypeError,KeyError,OSError):
                 raise ApplicationError('Saved workspace is invalid; it was not overwritten.',503) from None
         self.observations=ObservationStore(self.directory/'observations.sqlite3',history_limit=1000)
+        self.sync_outputs()
         # Saved enabled adapters restart with the app; they publish observations only.
         self.integrations=Integrations(self.observations,self.directory/'transports.json')
         self.integration_error=None
@@ -158,6 +162,9 @@ class Workspace:
             zones.append(zone_config(zone,zone['id']))
         if len({z['id'] for z in zones})!=len(zones):
             raise ApplicationError('Zone identities must be unique.')
+        keys=[z['tagKey'].lower() for z in zones if z['tagKey']]
+        if len(set(keys))!=len(keys):
+            raise ApplicationError('SCADA tag keys must be unique.')
         limit = data.get('eventLimit',100)
         if str(limit) not in ('5','20','50','100','500'):
             raise ApplicationError('Select a supported event limit.')
@@ -183,6 +190,13 @@ class Workspace:
             file.flush()
             os.fsync(file.fileno())
         temp.replace(self.path)
+
+    def sync_outputs(self):
+        """Keep stored signals and fixed SCADA tags in line with the saved zones."""
+        zones=self.config['zones']
+        self.observations.retain({z['id']:(z['output'],'condition' if z['outputType']=='condition' else 'measurement')
+                                  for z in zones})
+        self.observations.set_zones([zone_tags.manifest(z) for z in zones if z['tagKey']])
 
     def find(self, zone_id):
         zone = next((z for z in self.config['zones'] if z['id']==zone_id),None)
@@ -249,6 +263,12 @@ class Workspace:
                 raise ApplicationError('Workspace changed in another request. Reload before saving.',409)
             old = {z['id']:z for z in self.config['zones']}
             for z in candidate['zones']:
+                # The application owns the tag key; SCADA bindings depend on it never changing.
+                z['tagKey']=old[z['id']]['tagKey'] if z['id'] in old else ''
+                monitor=self.monitors.get(z['id'])
+                if (z['id'] in old and isinstance(monitor and monitor.bridge,ObservationOutput) and
+                        (z['output'],z['outputType'])!=(old[z['id']]['output'],old[z['id']]['outputType'])):
+                    monitor.bridge=ObservationOutput(self.observations,z)
                 if old.get(z['id']) != z:
                     self.ready.discard(z['id'])
                 if z['id'] not in old or z['cameraAddress'] != old[z['id']]['cameraAddress']:
@@ -268,6 +288,7 @@ class Workspace:
             except OSError:
                 self.config = before
                 raise
+            self.sync_outputs()
             if candidate['integration']!=before['integration'] or self.integration_error:
                 self.integrations.apply(transports)
                 self.integration_error=None
@@ -376,7 +397,13 @@ class Workspace:
                       'join':'all' if zone['ruleJoin']=='ALL (AND)' else 'any'},second=second)
             config=validate_monitor(config,monitor.config,require_zone=True)
             monitor.save(config)
+            if not zone['tagKey']:
+                # Fixed from the first saved rule; renames and rule changes keep it.
+                zone['tagKey']=zone_tags.tag_key(zone['name'],[z['tagKey'] for z in self.config['zones'] if z['tagKey']])
+                self.config['revision']+=1
+                self.persist()
             monitor.bridge=ObservationOutput(self.observations,zone)
+            self.sync_outputs()
             monitor.bridge.send(config,'Unknown','Monitoring is configured but disabled.')
             self.ready.add(zone_id)
             return self.status()

@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .store import BridgeError, encode, utc
+from . import zone_tags
 
 NAMESPACE = 'urn:vlock:bridge:v1'
 DEFAULTS = {
@@ -125,16 +126,26 @@ class MqttPublisher(Worker):
                     pass
                 if not client.is_connected():
                     raise OSError('Broker handshake unavailable')
+                published = set()
                 while not self.stop_event.is_set() and client.is_connected():
                     snapshot = self.store.snapshot()
-                    messages = [(prefix + '/state', snapshot)]
+                    zones = self.store.zones()['zones']
+                    messages = [(prefix + '/state', dict(snapshot, zones=zones))]
                     messages.extend((prefix + '/assets/' + a['asset_id'] + '/state', asset_document(snapshot, a))
                                     for a in snapshot['assets'])
+                    # Fixed per-zone documents: the topic depends only on the zone's tag key.
+                    messages.extend((prefix + '/zones/' + z['TagKey'] + '/state',
+                                     {key: value for key, value in snapshot.items() if key != 'assets'} | z) for z in zones)
+                    current = {topic for topic, _ in messages}
+                    # An empty retained message clears topics of removed zones and assets.
+                    messages.extend((topic, None) for topic in sorted(published - current))
+                    published = current
                     messages.append((availability, dict(schema_version=1,
                         status='online' if snapshot['online'] else 'offline', session_id=snapshot['session_id'],
                         **{key: snapshot[key] for key in ('heartbeat', 'online', 'heartbeat_counter',
                             'heartbeat_pulse', 'heartbeat_interval_seconds', 'offline_after_seconds')})))
-                    pending = [client.publish(topic, encode(payload), qos=1, retain=True) for topic, payload in messages]
+                    pending = [client.publish(topic, b'' if payload is None else encode(payload), qos=1, retain=True)
+                               for topic, payload in messages]
                     deadline = time.monotonic() + 3
                     while any(not info.is_published() for info in pending):
                         if not client.is_connected() or time.monotonic() >= deadline:
@@ -204,13 +215,16 @@ class OpcUaServer(Worker):
                 ServerTimestamp=datetime.now(timezone.utc)))
 
         self.variable = variable
+        self.zone_keys = set()
         await variable(root, 'Bridge/Heartbeat', 'Heartbeat', '', ua.VariantType.String)
         await variable(root, 'Bridge/SessionId', 'SessionId', self.store.session_id, ua.VariantType.String)
         await variable(root, 'Bridge/Revision', 'Revision', 0, ua.VariantType.Int64)
         await self.update(self.store.snapshot())
+        await self.update_zones(self.store.zones()['zones'])
         async with server:
             while not self.stop_event.is_set():
                 await self.update(self.store.snapshot())
+                await self.update_zones(self.store.zones()['zones'])
                 self.report('running', 'Read-only local endpoint is publishing state.', updated=True)
                 await asyncio.sleep(.5)
             await variable(root, 'Bridge/Online', 'Online', False, ua.VariantType.Boolean)
@@ -221,6 +235,45 @@ class OpcUaServer(Worker):
         if path not in self.objects:
             self.objects[path] = await parent.add_object(self.ua.NodeId(path, self.namespace), name)
         return self.objects[path]
+
+    async def update_zones(self, zones):
+        """Fixed tags under Bridge/Zones/<TagKey>; a removed zone keeps its tags as Unknown until restart."""
+        ua = self.ua
+        folder = await self.object(self.objects['Bridge'], 'Bridge/Zones', 'Zones')
+        current = {zone['TagKey'] for zone in zones}
+        for doc in zones + [zone_tags.removed(key) for key in sorted(self.zone_keys - current)]:
+            key = doc['TagKey']
+            node = await self.object(folder, 'Bridge/Zones/' + key, key)
+            missing = ua.StatusCodes.BadNoCommunication if doc['Quality'] == 'Stale' else ua.StatusCodes.BadWaitingForInitialData
+            for tag, kind, _, _ in zone_tags.TAGS:
+                value, variant = doc[tag], getattr(ua.VariantType, kind)
+                if value is None:
+                    # Bad status publishes a null value; the placeholder only keeps the node's data type.
+                    placeholder = {'Boolean': False, 'Int32': 0, 'Double': 0., 'String': ''}[kind]
+                    await self.variable(node, zone_tags.node_id(key, tag), tag, placeholder, variant, missing, doc['ObservedAt'])
+                else:
+                    await self.variable(node, zone_tags.node_id(key, tag), tag, value, variant, None,
+                                        doc['ObservedAt'] if tag in ('Active', 'State', 'Count1', 'Count2', 'Score1', 'Score2') else None)
+        self.zone_keys |= current
+
+    async def retire(self, snapshot):
+        """Removed assets and signals keep their nodes until restart, but never a last good value."""
+        ua, bad = self.ua, self.ua.StatusCodes.BadNoCommunication
+        assets = {'Bridge/Assets/' + a['asset_id'] for a in snapshot['assets']}
+        signals = {'Bridge/Assets/' + a['asset_id'] + '/Signals/' + s['source_id'] + '/' + s['signal_id']
+                   for a in snapshot['assets'] for s in a['signals']}
+        for path in list(self.objects):
+            if not path.startswith('Bridge/Assets/'):
+                continue
+            if '/Signals/' in path and path not in signals:
+                await self.variable(None, path + '/Status', 'Status', 'removed', ua.VariantType.String)
+                for name, kind, placeholder in [('Active', 'Boolean', False), ('NumericValue', 'Double', 0.), ('ValueJson', 'String', '')]:
+                    if path + '/' + name in self.nodes:
+                        await self.variable(None, path + '/' + name, name, placeholder, getattr(ua.VariantType, kind), bad)
+            elif '/Signals/' not in path and path not in assets:
+                await self.variable(None, path + '/Inhibit', 'Inhibit', True, ua.VariantType.Boolean, bad)
+                await self.variable(None, path + '/InhibitKnown', 'InhibitKnown', False, ua.VariantType.Boolean)
+                await self.variable(None, path + '/ObservationStatus', 'ObservationStatus', 'removed', ua.VariantType.String)
 
     async def update(self, snapshot):
         ua = self.ua
@@ -258,6 +311,7 @@ class OpcUaServer(Worker):
                         numeric = math.nan
                     await self.variable(node, signal_path + '/NumericValue', 'NumericValue', numeric if math.isfinite(numeric) else 0.,
                         ua.VariantType.Double, sample_status if math.isfinite(numeric) else ua.StatusCodes.BadTypeMismatch, signal['observed_at'])
+        await self.retire(snapshot)
         await self.variable(root, 'Bridge/Heartbeat', 'Heartbeat', snapshot['heartbeat'], ua.VariantType.String)
         await self.variable(root, 'Bridge/Online', 'Online', snapshot['online'], ua.VariantType.Boolean)
         await self.variable(root, 'Bridge/Status', 'Status', 'online' if snapshot['online'] else 'offline', ua.VariantType.String)

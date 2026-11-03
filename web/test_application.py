@@ -255,6 +255,72 @@ class ApplicationTests(unittest.TestCase):
         with self.assertRaises(ApplicationError):
             self.workspace.analyzed(zone)
 
+    def test_fixed_zone_tags_survive_output_rename_and_zone_removal(self):
+        def infer(frames,prompt,revision):
+            for index,frame in enumerate(frames):
+                yield dict(type='frame',frame_index=index,frame_sequence=frame['sequence'],prompt=prompt,
+                    prompt_revision=revision,width=100,height=80,count=0,objects=[],session_id='isolated',elapsed_seconds=.01)
+        self.workspace.infer=infer
+        zone=self.configure_with(name='A-101',persistence=0)
+        self.assertEqual(self.workspace.status()['workspace']['zones'][0]['tagKey'],'','No key before the first rule')
+        self.workspace.configure(zone)
+        self.assertEqual(self.workspace.status()['workspace']['zones'][0]['tagKey'],'A-101')
+        self.workspace.enable(zone,True)
+        deadline=time.monotonic()+7
+        while time.monotonic()<deadline and self.workspace.observations.zones()['zones'][0]['State']!='Clear':
+            time.sleep(.03)
+        self.assertEqual(self.workspace.observations.zones()['zones'][0]['State'],'Clear')
+        self.workspace.enable(zone,False)
+        while self.workspace.monitors[zone].busy():
+            time.sleep(.03)
+        config=self.workspace.status()['workspace']
+        config['zones'][0].update(name='Desk',output='person_on_desk',tagKey='Hijack')
+        self.workspace.save(config)
+        self.workspace.configure(zone)
+        view=self.workspace.status()['workspace']['zones'][0]
+        self.assertEqual(view['tagKey'],'A-101','Renames and client edits keep the tag key')
+        signals=self.workspace.observations.snapshot()['assets'][0]['signals']
+        self.assertEqual([s['signal_id'] for s in signals],['person_on_desk'],'The old output is removed, not left Unknown')
+        tags=self.workspace.observations.zones()['zones'][0]
+        self.assertEqual((tags['TagKey'],tags['OutputName'],tags['ZoneName']),('A-101','person_on_desk','Desk'))
+        restored=Workspace(self.directory.name,fetch=self.workspace.fetch)
+        try:
+            self.assertEqual(restored.observations.zones()['zones'][0]['TagKey'],'A-101')
+        finally:
+            restored.close()
+        config=self.workspace.status()['workspace']
+        config['zones']=[]
+        self.workspace.save(config)
+        self.assertEqual(self.workspace.observations.snapshot()['assets'],[])
+        self.assertEqual(self.workspace.observations.zones()['zones'],[])
+
+    def test_zone_tag_routes_and_ignition_export(self):
+        zone=self.configure_with(name='A-101')
+        self.workspace.configure(zone)
+        server=make_server(self.workspace,0)
+        thread=threading.Thread(target=server.serve_forever,daemon=True)
+        thread.start()
+        try:
+            def get(path):
+                connection=http.client.HTTPConnection('127.0.0.1',server.server_port,timeout=5)
+                connection.request('GET',path,headers={'Host':f'127.0.0.1:{server.server_port}'})
+                response=connection.getresponse()
+                result=response.status,response.read(),response.getheader('Content-Disposition')
+                connection.close()
+                return result
+            code,body,_=get('/api/v1/zones')
+            self.assertEqual(code,200)
+            self.assertEqual(json.loads(body)['zones'][0]['TagKey'],'A-101')
+            code,body,_=get('/api/v1/zones/A-101')
+            self.assertEqual((code,json.loads(body)['State']),(200,'Unknown'))
+            self.assertEqual(get('/api/v1/zones/missing')[0],404)
+            code,body,disposition=get('/api/app/ignition/vlock-zones.json')
+            self.assertEqual(code,200)
+            self.assertIn('attachment',disposition)
+            self.assertEqual(json.loads(body)['tags'][1]['tags'][1]['name'],'A-101')
+        finally:
+            server.shutdown();server.server_close();thread.join()
+
     def test_muse_proposal_route_sends_frame_only_on_request_and_saves_nothing(self):
         from services.vision.assistant import AssistantError
         calls=[]

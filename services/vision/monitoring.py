@@ -197,6 +197,9 @@ class Monitoring:
         objects = ([dict(obj, concept=name) for name, r in zip(names, results) for obj in r['objects']]
                    if len(results) > 1 else results[0]['objects'])
         counts = {name: r['count'] for name, r in zip(names, results)}
+        # Highest SAM score per object for SCADA diagnostics; never used for the rule.
+        scores = {name: max((o['score'] for o in r['objects'] if isinstance(o.get('score'), (int, float))
+                             and not isinstance(o.get('score'), bool)), default=None) for name, r in zip(names, results)}
         result = {**results[0], 'objects': objects, 'count': len(objects), 'counts': counts,
                   'object_matches': dict(zip(names, outcomes)), 'check_seconds': check_seconds}
         if render_overlay:
@@ -222,7 +225,8 @@ class Monitoring:
                 self.bridge.send(config, self.rule.state, self.rule.reason, frame['captured_at'],
                                  counts if len(counts) > 1 else result['count'],
                                  {'run_id': self.run_id, 'frame_sequence': result['frame_sequence'],
-                                  'condition_matched': matched})
+                                  'condition_matched': matched, 'counts': counts, 'scores': scores,
+                                  'check_seconds': check_seconds})
 
     def loop(self):
         previous = None

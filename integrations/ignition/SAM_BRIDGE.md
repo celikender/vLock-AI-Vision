@@ -32,7 +32,9 @@ The app's asset is the **zone ID** and its source is **vision**, so the Active n
 is `Bridge/Assets/<zone id>/Signals/vision/<output>/Active` instead of the bridge's
 `conveyor_01/sam/zone_condition` path. Copy the exact NodeId from the app's
 **SCADA tags** page and re-point the Ignition OPC tag (or the Tag Change event's
-watched path) to it. This re-pointing has not yet been owner-tested.
+watched path) to it. This re-pointing has not yet been owner-tested. Prefer the
+fixed zone tag `Bridge/Zones/<tag key>/Active` ([fixed zone tags](ZONE_TAGS.md)): it
+does not change when the output is renamed.
 
 ## OPC UA connection and tags
 

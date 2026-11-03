@@ -10,6 +10,7 @@ from pathlib import Path
 from uuid import uuid4
 from .heartbeat import Heartbeat
 from .store_time import utc
+from . import zone_tags
 
 
 class BridgeError(ValueError):
@@ -82,6 +83,7 @@ class Store:
         self.clock = clock
         self.history_limit = history_limit
         self.lock = threading.RLock()
+        self.zone_manifest = []
         self.session_id = str(uuid4())
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         self.db = sqlite3.connect(path, check_same_thread=False)
@@ -214,6 +216,36 @@ class Store:
             revision = self.db.execute('SELECT COALESCE(MAX(revision),0) FROM events').fetchone()[0]
             return dict(schema_version=1, session_id=self.session_id, **self.heartbeat.snapshot(),
                         revision=revision, assets=output)
+
+    def set_zones(self, zones):
+        """Zones that publish fixed SCADA tags, as zone_tags.manifest() entries."""
+        with self.lock:
+            self.zone_manifest = [dict(zone) for zone in zones]
+
+    def zones(self):
+        snapshot = self.snapshot()
+        with self.lock:
+            manifest = list(self.zone_manifest)
+        return {key: value for key, value in snapshot.items() if key != 'assets'} | dict(
+            zones=zone_tags.documents(snapshot, manifest, self.clock()))
+
+    def retain(self, keep, source_id='vision'):
+        """Delete signals of one source that no zone publishes any more: {asset_id: (signal_id, kind)}.
+
+        A renamed output, a changed output kind or a removed zone would otherwise
+        leave an old signal that holds its asset at Unknown forever.
+        """
+        removed = []
+        with self.lock, self.db:
+            for row in self.db.execute('SELECT asset_id, signal_id, kind FROM signals WHERE source_id=?',
+                                       (source_id,)).fetchall():
+                if keep.get(row['asset_id']) != (row['signal_id'], row['kind']):
+                    self.db.execute('DELETE FROM signals WHERE asset_id=? AND source_id=? AND signal_id=?',
+                                    (row['asset_id'], source_id, row['signal_id']))
+                    self._event('removed', row['asset_id'], dict(source_id=source_id, signal_id=row['signal_id'],
+                                reason='Output renamed or changed, or zone removed.'))
+                    removed.append((row['asset_id'], row['signal_id']))
+        return removed
 
     def events(self, after=None, limit=50):
         with self.lock, self.db:

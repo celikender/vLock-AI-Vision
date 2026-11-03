@@ -27,10 +27,15 @@ observation history retains up to 1000 entries. Run one application process per
 data directory. Consumers must check validity, timestamps and their own heartbeat
 watchdog. Local publication is not external SCADA delivery or machine acknowledgement.
 
-Renamed output streams remain in observation history and their old current paths
-become unknown on Stop/expiry. Use the configured signal path rather than assuming
-that a multi-stream asset aggregate has become Clear. Stream retirement and adapter
-mapping migrations need an explicit later contract.
+Renamed output streams remain in observation history. The application deletes a
+zone's old current signal when its output is renamed, its kind changes or the zone is
+removed (`Store.retain`, recorded as a `removed` event), so a leftover signal cannot
+hold the asset at Unknown. Removed OPC UA nodes stay until restart with Bad quality.
+
+`zone_tags.py` builds the fixed per-zone SCADA tags (`Bridge/Zones/<tag key>/...`,
+MQTT `zones/<tag key>/state`, REST `/api/v1/zones`) from the zone manifest set by the
+application and the current observations, plus the Ignition UDT export. See
+[fixed zone tags](../../integrations/ignition/ZONE_TAGS.md).
 
 ## OPC UA and MQTT adapters
 

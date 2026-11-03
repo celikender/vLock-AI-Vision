@@ -16,6 +16,7 @@ from services.application import Workspace, ApplicationError
 from services.vlock.store import BridgeError
 from services.vision.diagnostics import Diagnostics
 from services.vision.worker_process import SamWorker
+from services.vlock import zone_tags
 
 STATIC = Path(__file__).with_name('app')
 DATA = ROOT/'data'/'application'
@@ -76,6 +77,19 @@ def make_server(workspace, port=5056):
                     if asset is None:
                         raise ApplicationError('No observations for this asset.',404)
                     return self.reply(200,{key:value for key,value in snapshot.items() if key!='assets'}|asset)
+                if path=='/api/v1/zones' or path.startswith('/api/v1/zones/'):
+                    zones=workspace.observations.zones()
+                    if path=='/api/v1/zones':
+                        return self.reply(200,zones)
+                    key=path.removeprefix('/api/v1/zones/')
+                    zone=next((z for z in zones['zones'] if z['TagKey']==key),None)
+                    if zone is None:
+                        raise ApplicationError('No zone publishes this tag key.',404)
+                    return self.reply(200,{k:v for k,v in zones.items() if k!='zones'}|zone)
+                if path=='/api/app/ignition/vlock-zones.json':
+                    body=json.dumps(zone_tags.ignition_export(workspace.observations.zones()['zones']),indent=2).encode()
+                    return self.reply(200,body,'application/json; charset=utf-8',
+                                      {'Content-Disposition':'attachment; filename="vlock-zones.json"'})
                 if path=='/api/v1/events':
                     query=parse_qs(urlsplit(self.path).query)
                     limit=int(query.get('limit',['5'])[0])

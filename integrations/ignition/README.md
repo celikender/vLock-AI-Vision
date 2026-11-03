@@ -2,6 +2,9 @@
 
 Reference integration for the standalone vLock application. The application is not hosted inside Perspective.
 
+Start new SCADA work from the [fixed zone tags](ZONE_TAGS.md): every zone publishes
+the same tag names under a fixed tag key, with an Ignition UDT download.
+
 The bridge also offers an experimental [Ignition OPC UA client mode](OPC_UA_CLIENT.md)
 for mapped machine-status reads and observation writes to Memory tags. Isolated
 read/write and encrypted login tests pass; live Ignition client-mode validation

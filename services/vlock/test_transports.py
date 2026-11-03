@@ -124,10 +124,16 @@ class MqttTests(unittest.TestCase):
         broker.start()
         prefix = 'bridge-test/' + uuid4().hex
         latest = {}
+        cleared = set()
         message_lock = threading.Lock()
 
         def receive(client, userdata, message):
             with message_lock:
+                if not message.payload:
+                    # An empty retained message clears the topic of a removed zone.
+                    cleared.add(message.topic)
+                    latest.pop(message.topic, None)
+                    return
                 latest[message.topic] = json.loads(message.payload)
 
         def current(topic):
@@ -145,12 +151,18 @@ class MqttTests(unittest.TestCase):
             sample = dict(asset_id='conveyor_01', source_id='manual', signal_id='presence', status='active')
             store.submit(sample)
             store.submit(dict(asset_id='conveyor_01', source_id='manual', signal_id='count', kind='measurement', status='valid', value=12))
+            store.set_zones([dict(TagKey='A-101', ZoneName='A-101', ZoneId='zone-1', OutputName='present',
+                                  OutputType='condition', Rule='', Object1='person', Object2='')])
             worker = MqttPublisher(store, dict(enabled=True, host='127.0.0.1', port=broker.port, topic_prefix=prefix))
             worker.start()
             try:
                 until(lambda: current('assets/conveyor_01/state') and current('assets/conveyor_01/state')['inhibit'] is True)
                 state = current('state')
                 self.assertEqual(state['assets'][0]['signals'][0]['value'], 12)
+                zone = until(lambda: current('zones/A-101/state'))
+                self.assertEqual((zone['State'], zone['Active'], zone['online']), ('Unknown', None, True))
+                store.set_zones([])
+                until(lambda: (prefix + '/zones/A-101/state') in cleared)
                 until(lambda: worker.status()['status'] == 'connected')
                 self.assertIsNotNone(worker.status()['last_update'])
                 available = until(lambda: current('availability'))
@@ -256,6 +268,60 @@ class OpcUaTests(unittest.TestCase):
                         self.assertTrue(value.StatusCode.is_good())
                         self.assertIs(value.Value.Value, False)
                         self.assertTrue(await node('Assets/conveyor_01/InhibitKnown').read_value())
+                asyncio.run(verify())
+            finally:
+                worker.stop()
+                store.close()
+
+    def test_fixed_zone_tags_keep_their_node_ids(self):
+        from asyncua import Client, ua
+        logging.getLogger('asyncua').setLevel(logging.CRITICAL)
+        zone = dict(TagKey='A-101', ZoneName='A-101', ZoneId='zone-1', OutputName='present', OutputType='condition',
+                    Rule='person overlaps the area for 1 s', Object1='person', Object2='')
+        with tempfile.TemporaryDirectory() as directory:
+            store = Store(Path(directory) / 'bridge.sqlite3')
+            store.set_zones([zone])
+            port = free_port()
+            worker = OpcUaServer(store, dict(enabled=True, port=port))
+            worker.start()
+            try:
+                until(lambda: worker.status()['status'] in ('running', 'error'))
+                self.assertEqual(worker.status()['status'], 'running')
+
+                async def read(client, index, tag):
+                    return await client.get_node(ua.NodeId('Bridge/Zones/A-101/' + tag, index)).read_data_value(raise_on_bad_status=False)
+
+                async def until_value(client, index, tag, predicate):
+                    deadline = time.monotonic() + 5
+                    while time.monotonic() < deadline:
+                        value = await read(client, index, tag)
+                        if predicate(value):
+                            return value
+                        await asyncio.sleep(.1)
+                    self.fail(f'{tag} did not reach the expected value')
+
+                async def verify():
+                    async with Client(f'opc.tcp://127.0.0.1:{port}/vlock/') as client:
+                        index = await client.get_namespace_index(NAMESPACE)
+                        active = await read(client, index, 'Active')
+                        self.assertTrue(active.StatusCode.is_bad(), 'No observation is never a good Clear')
+                        self.assertEqual((await read(client, index, 'State')).Value.Value, 'Unknown')
+                        store.submit(dict(asset_id='zone-1', source_id='vision', signal_id='present', status='clear',
+                                          details=dict(counts={'person': 0}, scores={'person': None})))
+                        active = await until_value(client, index, 'Active', lambda v: v.StatusCode.is_good())
+                        self.assertIs(active.Value.Value, False)
+                        self.assertEqual((await read(client, index, 'Count1')).Value.Value, 0)
+                        self.assertTrue((await read(client, index, 'Score1')).StatusCode.is_bad())
+                        self.assertTrue((await read(client, index, 'Count2')).StatusCode.is_bad(), 'Unused object is Bad')
+                        # Renaming the output changes a value, not the node ids.
+                        store.retain({'zone-1': ('renamed', 'condition')})
+                        store.set_zones([dict(zone, OutputName='renamed')])
+                        await until_value(client, index, 'OutputName', lambda v: v.Value.Value == 'renamed')
+                        self.assertTrue((await read(client, index, 'Active')).StatusCode.is_bad())
+                        store.set_zones([])
+                        reason = await until_value(client, index, 'Reason', lambda v: 'removed' in (v.Value.Value or ''))
+                        self.assertIn('removed', reason.Value.Value)
+                        self.assertTrue((await read(client, index, 'Active')).StatusCode.is_bad())
                 asyncio.run(verify())
             finally:
                 worker.stop()

@@ -1,5 +1,35 @@
 # Development log
 
+## 2026-11-03 - Fixed zone tags for SCADA; restart lock fix
+
+- Review findings fixed: (A) pressing Restart SAM while the worker was starting or
+  ready deadlocked on the worker's own lock and froze the operator status (UI showed
+  "Application offline" while monitoring and outputs continued); (B) renaming a
+  zone's output left the old signal behind, holding the asset at Unknown in REST,
+  OPC UA and MQTT while the UI showed Clear. Both were reproduced live on a copy.
+- A: `SamWorker.restart()` reads its state under the lock and returns status after
+  releasing it. Live, three restarts during monitoring answered in 0.02 s each.
+- Fixed zone tags: every zone publishes the same tags (Active, State, Quality,
+  Reason, Count1/2, Score1/2, ObservedAt, AgeSeconds, CheckSeconds, ZoneName, ZoneId,
+  OutputName, OutputType, Rule, Object1/2) under a tag key set from the zone name when
+  the rule is first saved and owned by the application afterwards. OPC UA
+  `Bridge/Zones/<key>/<tag>`, MQTT `<prefix>/zones/<key>/state` (cleared with an empty
+  retained message when removed), REST `/api/v1/zones[/<key>]`. Unknown keeps Bad
+  quality on Active, counts and scores. Scores are SAM's highest score per object,
+  diagnostic only. SCADA tags shows the tree and values and downloads an Ignition
+  UDT (`vLockZone`, one instance per zone); the import itself is not yet tested in
+  Ignition. The older `Bridge/Assets/...` nodes stay for existing bindings.
+- B: `Store.retain` deletes a zone's signal when its output is renamed, its kind
+  changes or the zone is removed (on save, configure and startup), recorded as a
+  `removed` event. Removed OPC UA nodes stay until restart with Bad quality.
+- Live check, copy of the owner's workspace, OPC UA on port 4899 (not Ignition's
+  4845), MQTT off: the tag key A-101 was assigned on the first rule; REST and OPC UA
+  showed Clear/Good with Count1 0 and Score1 Bad (nothing detected); after renaming
+  the zone and output, the same NodeIds showed the new OutputName and Clear, and the
+  raw asset was clear (inhibit false) with only the new signal.
+- Checks: services 83 (new: 7 zone tag/store, 1 OPC UA zone tags; worker restart 1),
+  web 21 (new: 2), UI check rewritten for the zone tag page.
+
 ## 2026-11-03 - Application independent of the playground; two-object rules
 
 - The application no longer uses the playground folder. Moved with history:
