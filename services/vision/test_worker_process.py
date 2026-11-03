@@ -1,5 +1,6 @@
 """SAM worker supervisor checks with injected probes and processes; nothing is launched."""
 import tempfile
+import threading
 import time
 import unittest
 from pathlib import Path
@@ -114,6 +115,20 @@ class SamWorkerTests(unittest.TestCase):
         worker.probe = lambda: READY
         worker.restart()
         self.until(worker, 'ready')
+
+    def test_restart_while_running_returns_status_without_relaunch(self):
+        worker = self.worker([READY])
+        worker.start()
+        self.until(worker, 'ready')
+        result = []
+        caller = threading.Thread(target=lambda: result.append(worker.restart()), daemon=True)
+        caller.start()
+        caller.join(1)
+        self.assertFalse(caller.is_alive(), 'restart() blocked while the worker was ready')
+        self.assertEqual(result[0]['state'], 'ready')
+        self.assertEqual(self.launched, [])
+        self.assertEqual(worker.status()['state'], 'ready')
+        worker.stop(wait=True)
 
 
 if __name__ == '__main__':

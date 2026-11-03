@@ -68,9 +68,11 @@ class SamWorker:
 
     def restart(self):
         """Explicit retry from the UI after a failed or stopped worker."""
+        # status() takes the same non-reentrant lock, so call it only after releasing it.
         with self.lock:
-            if self.value['state'] in ('starting', 'loading', 'ready'):
-                return self.status()
+            running = self.value['state'] in ('starting', 'loading', 'ready')
+        if running:
+            return self.status()
         self.stop(wait=True)
         self.start()
         return self.status()
