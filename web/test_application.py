@@ -294,6 +294,25 @@ class ApplicationTests(unittest.TestCase):
         self.assertEqual(self.workspace.observations.snapshot()['assets'],[])
         self.assertEqual(self.workspace.observations.zones()['zones'],[])
 
+    def test_opc_ua_network_access_needs_a_local_address_and_login(self):
+        from unittest.mock import patch
+        from services.application import transport_settings,INTEGRATION_DEFAULTS
+        base=dict(INTEGRATION_DEFAULTS,opcEnabled=True,opcAccess='Network',opcHost='192.168.1.236')
+        with patch('services.application.local_addresses',return_value=['192.168.1.236']):
+            with patch('services.application.credentials_ready',return_value=False),self.assertRaises(ApplicationError) as caught:
+                transport_settings(base)
+            self.assertIn('VLOCK_OPCUA_SERVER_PASSWORD',str(caught.exception))
+            with patch('services.application.credentials_ready',return_value=True):
+                opcua=transport_settings(base)['opcua']
+                self.assertEqual((opcua['access'],opcua['host']),('network','192.168.1.236'))
+                with self.assertRaises(ApplicationError):
+                    transport_settings(dict(base,opcHost='192.168.1.99'))
+        with self.assertRaises(ApplicationError):
+            transport_settings(dict(base,opcAccess='Everyone'))
+        local=transport_settings(dict(INTEGRATION_DEFAULTS,opcEnabled=True))['opcua']
+        self.assertEqual((local['access'],local['host']),('local','127.0.0.1'))
+        self.assertIn('adapters',self.workspace.status()['capabilities']['opcua'])
+
     def test_zone_tag_routes_and_ignition_export(self):
         zone=self.configure_with(name='A-101')
         self.workspace.configure(zone)

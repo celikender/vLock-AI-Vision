@@ -17,7 +17,7 @@ from services.vision.configuration import validate as validate_monitor
 from services.vision.assistant import RuleAssistant, AssistantError
 from services.vlock.store import Store as ObservationStore, BridgeError
 from services.vlock.output import ObservationOutput
-from services.vlock.transports import Integrations, configuration as transport_configuration
+from services.vlock.transports import Integrations, configuration as transport_configuration, local_addresses, network_adapters, credentials_ready
 from services.vlock import zone_tags
 from collections import deque
 
@@ -34,7 +34,7 @@ ZONE_DEFAULTS = dict(name='New zone', cameraName='Camera', cameraAddress='', cam
     allowRemote=False, zone=[], areaSelected=False, extraConditions=[], ruleJoin='ALL (AND)',
     firstRelation='overlaps area', tagKey='')
 
-INTEGRATION_DEFAULTS = dict(opcEnabled=False,opcMode='server',opcHost='127.0.0.1',opcPort=4845,
+INTEGRATION_DEFAULTS = dict(opcEnabled=False,opcMode='server',opcAccess='This PC only',opcHost='127.0.0.1',opcPort=4845,
     opcEndpoint='opc.tcp://127.0.0.1:62541',security='None — local test only',profile='',
     mqttEnabled=False,mqttMode='client',mqttHost='127.0.0.1',mqttPort=1883,topic='vlock/v1',
     httpEnabled=True,httpBase='http://localhost:5056/api/v1',heartbeat=5)
@@ -57,8 +57,18 @@ def transport_settings(integration):
     i=integration
     if i['opcEnabled'] and i['opcMode']!='server':
         raise ApplicationError('OPC UA client mode needs explicit node mappings. Use Host server mode in this app.')
-    if i['opcEnabled'] and i['opcHost'] not in ('127.0.0.1','localhost'):
-        raise ApplicationError('The OPC UA server listens on this PC only: use host 127.0.0.1.')
+    network=i.get('opcAccess')=='Network'
+    if i.get('opcAccess') not in ('This PC only','Network'):
+        raise ApplicationError('Choose OPC UA access: This PC only or Network.')
+    if i['opcEnabled'] and not network and i['opcHost'] not in ('127.0.0.1','localhost'):
+        raise ApplicationError('This PC only access listens on 127.0.0.1. Choose Network to accept other PCs.')
+    if i['opcEnabled'] and network:
+        if i['opcHost'] not in local_addresses():
+            raise ApplicationError('Choose a private network address of this PC for the OPC UA server.')
+        if not credentials_ready():
+            raise ApplicationError('Network access needs VLOCK_OPCUA_SERVER_USERNAME and a VLOCK_OPCUA_SERVER_PASSWORD '
+                                   'of 12+ characters in .env. Add them, then save again.')
+    network=network and i['opcEnabled']
     if i['mqttEnabled'] and i['mqttMode']!='client':
         raise ApplicationError('Hosting an MQTT broker is not supported. Use client mode with a local broker.')
     try:
@@ -69,7 +79,8 @@ def transport_settings(integration):
         raise ApplicationError('Ports must be whole numbers.')
     data=dict(mqtt=dict(enabled=bool(i['mqttEnabled']),host=str(i['mqttHost']) if i['mqttEnabled'] else '127.0.0.1',
                         port=ports[1],topic_prefix=str(i['topic'])),
-              opcua=dict(enabled=bool(i['opcEnabled']),port=ports[0],mode='server',endpoint='opc.tcp://127.0.0.1:62541',
+              opcua=dict(enabled=bool(i['opcEnabled']),port=ports[0],mode='server',access='network' if network else 'local',
+                         host=i['opcHost'] if network else '127.0.0.1',endpoint='opc.tcp://127.0.0.1:62541',
                          security='Basic256Sha256',reads=[],writes=[],heartbeat_node_id=''))
     try:
         return transport_configuration(data)
@@ -170,7 +181,7 @@ class Workspace:
             raise ApplicationError('Select a supported event limit.')
         # Integration values are draft profiles until the output checkpoint.
         integration = data.get('integration',{})
-        allowed = {'opcEnabled','opcMode','opcHost','opcPort','opcEndpoint','security','profile',
+        allowed = {'opcEnabled','opcMode','opcAccess','opcHost','opcPort','opcEndpoint','security','profile',
                    'mqttEnabled','mqttMode','mqttHost','mqttPort','topic','httpEnabled','httpBase','heartbeat'}
         if not isinstance(integration,dict) or set(integration)-allowed:
             raise ApplicationError('Check shared integration settings.')
@@ -251,6 +262,7 @@ class Workspace:
                 diagnostics=self.diagnostics.snapshot() if self.diagnostics else {},
                 capabilities=dict(camera=True,monitoring=True,observation_api=True,transports=True,machine_commands=False,
                     supported_camera='Pi / HTTP',restart='Monitoring always starts disabled.',
+                    opcua=dict(adapters=network_adapters(),login_ready=credentials_ready()),
                     assistant=self.assistant.status()))
 
     def save(self, data):

@@ -1,5 +1,31 @@
 # Development log
 
+## 2026-11-03 - OPC UA network access for SCADA on another PC
+
+- vLock acts like a PLC with a built-in OPC UA server: any SCADA's standard OPC UA
+  client connects by address; no vendor driver is needed. Integrations → OPC UA →
+  Access is now *This PC only* (unchanged: 127.0.0.1, no security, anonymous) or
+  *Network*: the server listens on a chosen private address of this PC (adapters are
+  listed by name; the WSL adapter is not preselected), offers only Basic256Sha256
+  Sign & Encrypt and only a username login. The login comes from
+  `VLOCK_OPCUA_SERVER_USERNAME` / `VLOCK_OPCUA_SERVER_PASSWORD` (12+ characters) in
+  `.env`; without it the server refuses to open. Passwords are compared in constant
+  time and never sent to the browser. A self-signed server certificate is created
+  once in `data/application/opcua/` (ignored); its SHA-1 is shown on the page. Any
+  client certificate with the correct login is accepted (a client trust list is
+  later work). Nodes stay read-only; asyncua's default ruleset gives logged-in users
+  read/browse/write requests only, and every vLock node rejects writes.
+- Saved adapter settings from before this change load as This PC only.
+- Live check (copy of the workspace, port 4899 so Ignition on 4845 was not
+  involved, throwaway login in the process environment only, `.env` unchanged):
+  the endpoint `opc.tcp://192.168.1.236:4899/vlock/` was discovered with one
+  endpoint (Basic256Sha256, SignAndEncrypt) and UserName login only; an encrypted
+  login read `Bridge/Online` and the `Zones/A-101` tags; an unencrypted anonymous
+  connection was refused; nothing listened on 127.0.0.1. A connection from a second
+  PC, the Windows Firewall rule and Ignition's certificate trust are not yet tested.
+- Checks: services 85 (new: network mode security, settings validation), web 22
+  (new: access validation), UI check extended for the Access choice.
+
 ## 2026-11-03 - Fixed zone tags for SCADA; restart lock fix
 
 - Review findings fixed: (A) pressing Restart SAM while the worker was starting or

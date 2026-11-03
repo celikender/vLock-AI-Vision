@@ -35,10 +35,20 @@ bridge heartbeat (`Bridge/Online`, `Bridge/HeartbeatCounter`).
 
 ## Where the tags are
 
-- **OPC UA** (read-only, this PC only, no security):
-  `opc.tcp://127.0.0.1:<port>/vlock/`, namespace `urn:vlock:bridge:v1`, NodeId
+- **OPC UA** (read-only), namespace `urn:vlock:bridge:v1`, NodeId
   `Bridge/Zones/<tag key>/<tag>`, for example
-  `nsu=urn:vlock:bridge:v1;s=Bridge/Zones/A-101/Active`.
+  `nsu=urn:vlock:bridge:v1;s=Bridge/Zones/A-101/Active`. Two access modes
+  (Integrations → OPC UA → Access):
+  - **This PC only** (default): `opc.tcp://127.0.0.1:<port>/vlock/`, no security,
+    anonymous. For SCADA on the same PC.
+  - **Network**: `opc.tcp://<this PC's address>:<port>/vlock/`, Basic256Sha256
+    Sign & Encrypt only and a username login only (no unencrypted or anonymous
+    access). For SCADA on another PC. Set `VLOCK_OPCUA_SERVER_USERNAME` and
+    `VLOCK_OPCUA_SERVER_PASSWORD` (12+ characters) in `.env` first, and allow the
+    TCP port in Windows Firewall for the plant network. The server then listens only
+    on that address, so SCADA on the same PC also uses it instead of 127.0.0.1. The
+    self-signed server certificate is created once in `data/application/opcua/`
+    (not in Git) and its SHA-1 fingerprint is shown on the Integrations page.
 - **MQTT** (retained JSON): `<topic prefix>/zones/<tag key>/state`, for example
   `vlock/v1/zones/A-101/state`. A removed zone's topic is cleared with an empty
   retained message.
@@ -49,9 +59,15 @@ restarts, with `State=Unknown` and `Reason=Zone removed from the workspace.`
 
 ## Ignition import (UDT)
 
-1. Gateway → Connections → OPC → Connections: add an OPC UA connection named
-   `vLock Bridge` to `opc.tcp://127.0.0.1:4845/vlock/` (Anonymous, Security None).
-2. In the app: Integrations → enable OPC UA → Save workspace.
+1. In the app: Integrations → enable OPC UA, choose the Access → Save workspace.
+2. Gateway → Connections → OPC → Connections: add an OPC UA connection named
+   `vLock Bridge`.
+   - This PC only: `opc.tcp://127.0.0.1:4845/vlock/`, Security None, Anonymous.
+   - Network: discover `opc.tcp://<vLock PC address>:4845/vlock/`, choose
+     Basic256Sha256 / SignAndEncrypt, enter the username and password, then trust
+     the vLock server certificate when Ignition reports it. Compare its SHA-1
+     fingerprint with the one on vLock's Integrations page. vLock also needs to
+     accept Ignition: it accepts any client certificate with the correct login.
 3. SCADA tags → **Download Ignition UDT** (`vlock-zones.json`).
 4. Designer → Tag Browser → Import Tags, choose the file. It adds the `vLockZone`
    UDT under Data Types, a `vLock` folder with one instance per zone (parameter

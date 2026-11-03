@@ -273,6 +273,89 @@ class OpcUaTests(unittest.TestCase):
                 worker.stop()
                 store.close()
 
+    def test_network_mode_is_encrypted_with_login_and_read_only(self):
+        asyncio.run(self.network_mode())
+
+    async def network_mode(self):
+        from asyncua import Client, ua
+        from asyncua.crypto import cert_gen
+        from asyncua.crypto.security_policies import SecurityPolicyBasic256Sha256
+        from cryptography.x509.oid import ExtendedKeyUsageOID
+        logging.getLogger('asyncua').setLevel(logging.CRITICAL)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            await cert_gen.setup_self_signed_certificate(root / 'client.pem', root / 'client.der', 'urn:vlock:test:scada',
+                'localhost', [ExtendedKeyUsageOID.CLIENT_AUTH], {'commonName': 'test SCADA'})
+            store = Store(root / 'bridge.sqlite3')
+            port = free_port()
+            # Loopback stands in for the plant network address in this isolated test.
+            settings = dict(enabled=True, port=port, access='network', host='127.0.0.1')
+            missing = OpcUaServer(store, settings)
+            missing.credentials = lambda: ('scada-reader', 'short')
+            missing.certificate_dir = root / 'opcua'
+            missing.start()
+            await asyncio.to_thread(until, lambda: missing.status()['status'] == 'error')
+            self.assertIn('VLOCK_OPCUA_SERVER_PASSWORD', missing.status()['message'])
+            await asyncio.to_thread(missing.stop)
+            worker = OpcUaServer(store, settings)
+            worker.credentials = lambda: ('scada-reader', 'isolated-network-test')
+            worker.certificate_dir = root / 'opcua'
+            worker.start()
+            url = f'opc.tcp://127.0.0.1:{port}/vlock/'
+            try:
+                await asyncio.to_thread(until, lambda: worker.status()['status'] in ('running', 'error'))
+                status = worker.status()
+                self.assertEqual(status['status'], 'running')
+                self.assertEqual((status['access'], status['endpoint']), ('network', url))
+                self.assertEqual(len(status['certificate']['sha1']), 40)
+                self.assertTrue((root / 'opcua' / 'server-certificate.der').exists())
+
+                async def secure(username=None, password=None, encrypted=True):
+                    client = Client(url, timeout=3)
+                    client.application_uri = 'urn:vlock:test:scada'
+                    if encrypted:
+                        await client.set_security(SecurityPolicyBasic256Sha256, str(root / 'client.der'), str(root / 'client.pem'),
+                                                  mode=ua.MessageSecurityMode.SignAndEncrypt)
+                    if username:
+                        client.set_user(username)
+                        client.set_password(password)
+                    return client
+
+                endpoints = await Client(url, timeout=3).connect_and_get_server_endpoints()
+                self.assertEqual({e.SecurityMode for e in endpoints}, {ua.MessageSecurityMode.SignAndEncrypt})
+                self.assertEqual({t.TokenType for e in endpoints for t in e.UserIdentityTokens}, {ua.UserTokenType.UserName})
+                client = await secure('scada-reader', 'isolated-network-test')
+                async with client:
+                    index = await client.get_namespace_index(NAMESPACE)
+                    online = client.get_node(ua.NodeId('Bridge/Online', index))
+                    self.assertTrue(await online.read_value())
+                    with self.assertRaises(ua.UaStatusCodeError):
+                        await online.write_value(False)
+                for username, password, encrypted in [('scada-reader', 'wrong-password-123', True), (None, None, True),
+                                                      ('scada-reader', 'isolated-network-test', False)]:
+                    with self.subTest(username=username, encrypted=encrypted):
+                        client = await secure(username, password, encrypted)
+                        with self.assertRaises(Exception):
+                            async with client:
+                                await client.nodes.objects.read_browse_name()
+            finally:
+                await asyncio.to_thread(worker.stop)
+                store.close()
+
+    def test_network_settings_require_a_private_address(self):
+        for access, host in [('local', '192.168.1.20'), ('network', '127.0.0.1'), ('network', '8.8.8.8'), ('everyone', '127.0.0.1')]:
+            settings = copy.deepcopy(DEFAULTS)
+            settings['opcua'].update(access=access, host=host)
+            with self.subTest(access=access, host=host), self.assertRaises(BridgeError):
+                configuration(settings)
+        settings = copy.deepcopy(DEFAULTS)
+        settings['opcua'].update(access='network', host='192.168.1.20')
+        self.assertEqual(configuration(settings)['opcua']['host'], '192.168.1.20')
+        old = copy.deepcopy(DEFAULTS)
+        for key in ('access', 'host'):
+            del old['opcua'][key]
+        self.assertEqual(configuration(old)['opcua']['access'], 'local', 'Saved settings from before network mode stay local')
+
     def test_fixed_zone_tags_keep_their_node_ids(self):
         from asyncua import Client, ua
         logging.getLogger('asyncua').setLevel(logging.CRITICAL)

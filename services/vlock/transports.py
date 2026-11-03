@@ -1,10 +1,14 @@
 """Optional local MQTT publisher and read-only OPC UA server over one Store."""
 import asyncio
 import copy
+import hashlib
+import hmac
+import ipaddress
 import json
 import math
 import os
 import re
+import socket
 import threading
 import time
 from datetime import datetime, timezone
@@ -14,12 +18,53 @@ from .store import BridgeError, encode, utc
 from . import zone_tags
 
 NAMESPACE = 'urn:vlock:bridge:v1'
+ROOT = Path(__file__).resolve().parents[2]
 DEFAULTS = {
     'mqtt': {'enabled': False, 'host': '127.0.0.1', 'port': 1883, 'topic_prefix': 'vlock/v1'},
-    'opcua': {'enabled': False, 'port': 4845, 'mode': 'server',
+    'opcua': {'enabled': False, 'port': 4845, 'mode': 'server', 'access': 'local', 'host': '127.0.0.1',
               'endpoint': 'opc.tcp://127.0.0.1:62541', 'security': 'Basic256Sha256',
               'reads': [], 'writes': [], 'heartbeat_node_id': ''},
 }
+PRIVATE_NETWORKS = [ipaddress.ip_network(n) for n in ('10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16')]
+MINIMUM_PASSWORD = 12
+
+
+def private_address(value):
+    try:
+        address = ipaddress.IPv4Address(value)
+    except (ipaddress.AddressValueError, TypeError, ValueError):
+        return False
+    return any(address in network for network in PRIVATE_NETWORKS)
+
+
+def network_adapters():
+    """Private IPv4 addresses of this PC with their adapter names, for the network OPC UA endpoint."""
+    try:
+        import psutil
+        found = {(entry.address, name) for name, entries in psutil.net_if_addrs().items() for entry in entries
+                 if entry.family == socket.AF_INET}
+    except (ImportError, OSError):
+        found = set()
+    return [dict(address=address, adapter=name) for address, name in sorted(found) if private_address(address)]
+
+
+def local_addresses():
+    return [adapter['address'] for adapter in network_adapters()]
+
+
+def server_credentials():
+    """Network OPC UA login from .env or the environment; values never leave this process."""
+    try:
+        from dotenv import dotenv_values
+        values = {**dotenv_values(ROOT / '.env'), **os.environ}
+    except ImportError:
+        values = dict(os.environ)
+    return values.get('VLOCK_OPCUA_SERVER_USERNAME') or '', values.get('VLOCK_OPCUA_SERVER_PASSWORD') or ''
+
+
+def credentials_ready(credentials=None):
+    username, password = credentials or server_credentials()
+    return bool(re.fullmatch(r'[A-Za-z0-9_.@-]{1,64}', username)) and len(password) >= MINIMUM_PASSWORD
 
 
 def configuration(data):
@@ -44,6 +89,13 @@ def configuration(data):
         raise BridgeError('Use a topic prefix of letters, digits, hyphens, underscores and single slashes (up to 120 characters).')
     if data['mqtt']['port'] == data['opcua']['port']:
         raise BridgeError('MQTT and OPC UA must use different ports.')
+    access, host = data['opcua']['access'], data['opcua']['host']
+    if access == 'local' and host != '127.0.0.1':
+        raise BridgeError('This PC only access listens on 127.0.0.1.')
+    if access == 'network' and not private_address(host):
+        raise BridgeError('Network access needs a private IPv4 address of this PC (10.x, 172.16-31.x or 192.168.x).')
+    if access not in ('local', 'network'):
+        raise BridgeError('OPC UA access must be local or network.')
     from .opc_client import validate_client_settings
     validate_client_settings(data['opcua'])
     return copy.deepcopy(data)
@@ -175,13 +227,40 @@ class MqttPublisher(Worker):
 
 
 class OpcUaServer(Worker):
+    """Read-only OPC UA server: this PC only without security, or the plant network encrypted with a login."""
+    certificate_dir = None
+    credentials = staticmethod(server_credentials)
+
     def run(self):
         try:
             asyncio.run(self.serve())
         except ImportError:
             self.report('unavailable', 'Install requirements.txt to enable OPC UA.')
         except Exception:
-            self.report('error', 'OPC UA could not run. Check its port and adapter dependencies, then apply settings again.')
+            self.report('error', 'OPC UA could not run. Check its port, network address and adapter dependencies, then apply settings again.')
+
+    def network(self):
+        return self.settings.get('access') == 'network'
+
+    def endpoint(self):
+        host = self.settings.get('host', '127.0.0.1') if self.network() else '127.0.0.1'
+        return f'opc.tcp://{host}:{self.settings["port"]}/vlock/'
+
+    async def certificate(self):
+        """Self-signed server certificate, created once and kept so SCADA trust survives restarts."""
+        from asyncua.crypto import cert_gen
+        from cryptography.x509.oid import ExtendedKeyUsageOID
+        folder = Path(self.certificate_dir or ROOT / 'data' / 'application' / 'opcua')
+        folder.mkdir(parents=True, exist_ok=True)
+        key, certificate = folder / 'server-key.pem', folder / 'server-certificate.der'
+        await cert_gen.setup_self_signed_certificate(key, certificate, self.application_uri(), socket.gethostname(),
+            [ExtendedKeyUsageOID.SERVER_AUTH], {'commonName': 'vLock-AI Vision OPC UA server'})
+        der = certificate.read_bytes()
+        return key, certificate, dict(sha1=hashlib.sha1(der).hexdigest(), sha256=hashlib.sha256(der).hexdigest())
+
+    @staticmethod
+    def application_uri():
+        return f'urn:{socket.gethostname()}:vlock:server'
 
     async def serve(self):
         from asyncua import Server, ua
@@ -192,11 +271,44 @@ class OpcUaServer(Worker):
                 # No special username can become an administrator over this local endpoint.
                 return User(role=UserRole.User)
 
-        server = Server(user_manager=ReaderUsers())
+        class NetworkUsers:
+            """One reader login; anonymous and wrong logins get no session."""
+            def __init__(self, username, password):
+                self.username, self.password = username.encode(), password.encode()
+
+            def get_user(self, iserver, username=None, password=None, certificate=None):
+                if not isinstance(username, str) or not isinstance(password, str):
+                    return None
+                same = hmac.compare_digest(username.encode(), self.username)
+                same &= hmac.compare_digest(password.encode(), self.password)
+                return User(role=UserRole.User) if same else None
+
+        fingerprints = None
+        if self.network():
+            credentials = self.credentials()
+            if not credentials_ready(credentials):
+                self.report('error', 'Network access needs VLOCK_OPCUA_SERVER_USERNAME and a '
+                            f'VLOCK_OPCUA_SERVER_PASSWORD of {MINIMUM_PASSWORD}+ characters in .env. Nothing was opened.')
+                return
+            server = Server(user_manager=NetworkUsers(*credentials))
+        else:
+            server = Server(user_manager=ReaderUsers())
         await server.init()
-        server.set_endpoint(f'opc.tcp://127.0.0.1:{self.settings["port"]}/vlock/')
+        server.set_endpoint(self.endpoint())
         server.set_server_name('vLock Bridge')
-        server.set_security_policy([ua.SecurityPolicyType.NoSecurity])
+        if self.network():
+            await server.set_application_uri(self.application_uri())
+            key, certificate, fingerprints = await self.certificate()
+            await server.load_certificate(str(certificate))
+            await server.load_private_key(str(key))
+            # Encrypted only, username login only: no NoSecurity endpoint and no anonymous session.
+            server.set_security_policy([ua.SecurityPolicyType.Basic256Sha256_SignAndEncrypt])
+            server.set_identity_tokens([ua.UserNameIdentityToken])
+        else:
+            server.set_security_policy([ua.SecurityPolicyType.NoSecurity])
+        with self.lock:
+            self.state.update(endpoint=self.endpoint(), access='network' if self.network() else 'local',
+                              certificate=fingerprints)
         namespace = await server.register_namespace(NAMESPACE)
         self.nodes = {}
         self.objects = {}
@@ -225,7 +337,8 @@ class OpcUaServer(Worker):
             while not self.stop_event.is_set():
                 await self.update(self.store.snapshot())
                 await self.update_zones(self.store.zones()['zones'])
-                self.report('running', 'Read-only local endpoint is publishing state.', updated=True)
+                self.report('running', ('Encrypted read-only network endpoint ' if self.network() else 'Read-only local endpoint ')
+                            + 'is publishing state.', updated=True)
                 await asyncio.sleep(.5)
             await variable(root, 'Bridge/Online', 'Online', False, ua.VariantType.Boolean)
             await variable(root, 'Bridge/Status', 'Status', 'offline', ua.VariantType.String)
@@ -343,6 +456,8 @@ class Integrations:
         for name, factory in [('mqtt', MqttPublisher), ('opcua', opc_factory)]:
             if self.settings[name]['enabled'] and name not in self.workers:
                 worker = factory(self.store, self.settings[name])
+                if factory is OpcUaServer:
+                    worker.certificate_dir = self.path.parent / 'opcua'
                 self.workers[name] = worker
                 worker.start()
 
@@ -351,6 +466,7 @@ class Integrations:
             return dict(schema_version=1, settings=copy.deepcopy(self.settings), settings_error=self.settings_error,
                 credentials_configured=bool(os.environ.get('VLOCK_BRIDGE_MQTT_USERNAME')),
                 opcua_credentials_configured=bool(os.environ.get('VLOCK_BRIDGE_OPCUA_USERNAME')),
+                opcua_server_login_ready=credentials_ready(),
                 adapters={name: worker.status() if (worker := self.workers.get(name)) else
                     dict(status='disabled', message='Adapter is disabled.', last_update=None,
                          online=False, heartbeat_counter=0, offline_after_seconds=5) for name in DEFAULTS})

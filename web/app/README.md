@@ -89,7 +89,10 @@ if it is lower. More than two objects is rejected.
 ## OPC UA and MQTT outputs
 
 Integrations → enable **OPC UA** (Host server mode) and/or **MQTT** (client of a broker
-on this PC), then click Save workspace. The app starts or stops the adapters promoted
+on this PC), then click Save workspace. OPC UA **Access** is *This PC only* (127.0.0.1,
+no security) or *Network* (a private address of this PC, Basic256Sha256 Sign & Encrypt
+and a username/password from `.env`, no anonymous or unencrypted access) for SCADA on
+another PC; see [fixed zone tags](../../integrations/ignition/ZONE_TAGS.md). The app starts or stops the adapters promoted
 from the vLock Bridge experiment (services/vlock/transports.py) on the app's own
 observation store. Saved enabled adapters restart with the app. The OPC UA server is
 read-only at `opc.tcp://127.0.0.1:<port>/vlock/` with namespace `urn:vlock:bridge:v1`.
