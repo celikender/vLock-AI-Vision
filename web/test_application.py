@@ -365,10 +365,74 @@ class ApplicationTests(unittest.TestCase):
         self.assertEqual(caught.exception.status,409)
         self.assertEqual(self.workspace.status()['sam']['state'],'loading')
 
+    def configure_with(self,**changes):
+        zone=self.create()
+        self.workspace.connect(zone)
+        config=self.workspace.status()['workspace']
+        config['zones'][0].update(dict(zone=[[.1,.1],[.9,.1],[.9,.9],[.1,.9]],areaSelected=True)|changes)
+        self.workspace.save(config)
+        return zone
+
+    def test_configure_two_objects_and_reject_more(self):
+        zone=self.configure_with(target='person',extraConditions=[dict(object='dog',relation='entirely inside area')],ruleJoin='ANY (OR)')
+        self.workspace.configure(zone)
+        monitor=self.workspace.monitors[zone].config
+        self.assertEqual(monitor['second'],{'prompt':'dog','condition':'mask_inside_zone'})
+        self.assertEqual(monitor['rule']['join'],'any')
+        self.assertEqual(self.workspace.status()['workspace']['zones'][0]['runtime']['objects'],2)
+        for changes in [dict(extraConditions=[dict(object='dog',relation='overlaps area'),dict(object='cat',relation='overlaps area')]),
+                        dict(extraConditions=[dict(object='Person',relation='overlaps area')]),
+                        dict(extraConditions=[dict(object='dog',relation='crosses line')]),
+                        dict(extraConditions=[dict(object='dog',relation='overlaps area')],ruleJoin='XOR')]:
+            config=self.workspace.status()['workspace']
+            config['zones'][0].update(changes)
+            self.workspace.save(config)
+            with self.subTest(changes=changes),self.assertRaises(ApplicationError):
+                self.workspace.configure(zone)
+        config=self.workspace.status()['workspace']
+        config['zones'][0].update(extraConditions=[],ruleJoin='ALL (AND)')
+        self.workspace.save(config)
+        self.workspace.configure(zone)
+        self.assertIsNone(self.workspace.monitors[zone].config['second'],'Removing the second object clears it')
+
+    def test_saved_one_object_workspace_still_configures(self):
+        zone=self.configure_with(target='hand',extraConditions=[],ruleJoin='ANY (OR)')
+        restored=Workspace(self.directory.name,fetch=self.workspace.fetch)
+        try:
+            restored.connect(zone)
+            restored.configure(zone)
+            self.assertIsNone(restored.monitors[zone].config['second'])
+            self.assertEqual(restored.monitors[zone].config['sam_prompt'],'hand')
+        finally:
+            restored.close()
+
+    def test_two_object_count_and_check_time_in_status(self):
+        def infer(frames,prompt,revision):
+            mask=Image.new('L',(100,80))
+            ImageDraw.Draw(mask).rectangle((20,20,40,40),fill=255)
+            objects=[dict(object_id=1,score=.9,mask=encode_mask(mask),bbox_xywh=[.2,.25,.2,.25])]*(2 if prompt=='person' else 1)
+            for index,frame in enumerate(frames):
+                yield dict(type='frame',frame_index=index,frame_sequence=frame['sequence'],prompt=prompt,prompt_revision=revision,
+                    width=100,height=80,count=len(objects),objects=objects,session_id='isolated',elapsed_seconds=.01)
+        self.workspace.infer=infer
+        zone=self.configure_with(target='person',outputType='count',extraConditions=[dict(object='dog',relation='overlaps area')],persistence=0)
+        self.workspace.configure(zone)
+        self.workspace.enable(zone,True)
+        deadline=time.monotonic()+7
+        while time.monotonic()<deadline:
+            runtime=self.workspace.status()['workspace']['zones'][0]['runtime']
+            if runtime['state']=='Valid':break
+            time.sleep(.03)
+        self.assertEqual(runtime['value'],{'person':2,'dog':1})
+        self.assertIsInstance(runtime['check_ms'],float)
+        signal=self.workspace.observations.snapshot()['assets'][0]['signals'][0]
+        self.assertEqual(signal['value'],{'person':2,'dog':1})
+        self.workspace.enable(zone,False)
+
     def test_unsupported_rule_features_are_not_silently_ignored(self):
         zone=self.create()
         self.workspace.connect(zone)
-        for changes in [dict(extraConditions=[dict(object='dog',relation='overlaps area')]),
+        for changes in [dict(extraConditions=[dict(object='dog',relation='overlaps area'),dict(object='cat',relation='overlaps area')]),
                         dict(allowRemote=True),dict(minConfidence=75),dict(recheck='Cloud vision model — planned')]:
             config=self.workspace.status()['workspace']
             config['zones'][0].update(dict(zone=[[.1,.1],[.9,.1],[.9,.9],[.1,.9]],areaSelected=True,

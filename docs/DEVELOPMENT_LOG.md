@@ -1,5 +1,44 @@
 # Development log
 
+## 2026-11-03 - Application independent of the playground; two-object rules
+
+- The application no longer uses the playground folder. Moved with history:
+  Pi camera service to devices/pi_camera (systemd unit name kept so installed Pis
+  keep working), the Ignition/Bambu P1S project to integrations/ignition/p1s_printer,
+  SAM runtime scripts to services/vision/runtime (setup now in docs/SAM_RUNTIME.md),
+  reports to docs/reports. App data now lives in ignored data/application; the first
+  default start copies the former playground/data/application once. The retired 5051
+  camera/monitoring app (web/server.py, its pages and 16 tests) was removed; it
+  imported playground modules and is kept in Git history. Docs no longer point into
+  the playground; OPC_UA_CLIENT.md is marked as an archived bridge reference.
+- Independence check: with playground renamed away, services (74), web (19), three
+  UI checks, Pi camera (2) and printer project (7) tests passed, and the live check
+  below ran end to end.
+- Two-object rules: a zone takes an optional second object (own relation) and
+  ALL (AND) / ANY (OR). Monitoring runs one SAM prompt per object on the same four
+  frames, sequentially on the loaded worker; the rule engine evaluates each object on
+  the same frame and combines before persistence. A missing, failed, mismatched or
+  stale object result gives Unknown and publishes nothing from the window. Count
+  output is one number per object. More than two objects is rejected in configure().
+- Muse schema/prompt: secondTarget, secondRelation and join; same object twice,
+  unknown join or relation are rejected; three or more objects stay unsupported.
+- UI: proposal card and rule sentence show both objects and the join; Edit rule
+  manually has Second object, its condition and Combine; Observation and zone cards
+  show the measured check time for all objects together.
+- Live check, port 5066, copy of the owner's workspace, playground disabled: Muse
+  (with camera view) turned "Raise an alert when both a person and a laptop are on
+  the desk for one second" into person AND laptop / overlaps / 1 s / condition in
+  15.3 s; SAM found no "desk" in the dark frame, so the saved area was kept. Measured
+  per check on the RTX 3070 Ti Laptop GPU, same scene: one object 2.86-2.92 s (9
+  checks), two objects 5.73-5.97 s (8 checks), i.e. 2.0x. Finding: with the default
+  10 s expiry a two-object result aged past expiry between checks (up to ~12.5 s) and
+  showed Unknown; with 15 s it stayed Clear for 25 s (max age 12.0 s). Applying a
+  two-object proposal now raises expiry to 15 s and the summary warns below that.
+  No person or laptop was in view (dark room), so positive two-object detection on
+  the live camera is not yet owner-verified.
+- Checks: services 74 (new: 9 two-object rule/monitoring, 1 Muse), web 19 (new: 3),
+  three UI checks extended for two-object sentences, editor and check time.
+
 ## 2026-11-03 - One-click start, Muse configures area and rule, OPC UA/MQTT in the app
 
 - Owner report: SAM "did not open". Cause: the separately started worker was not

@@ -136,19 +136,11 @@ The final normal-worker cold warmup request took 99.25 seconds including model
 load, first inference, and first cleanup; startup latency remains outside this
 warm optimization. Old startup observations remain unusable for rule decisions.
 
-Start from the project folder in two PowerShell terminals:
+These measurements were taken with the former playground monitor (5051) and a
+separately started worker; that monitoring code is now services/vision/monitoring.py
+and the worker is services/vision/sam_worker.py, started by `Start vLock.cmd`.
 
-```powershell
-.\playground\segmentation\start_local.ps1
-```
-
-```powershell
-.\.venv\Scripts\python.exe web/server.py
-```
-
-Open http://localhost:5051/monitoring and explicitly start the saved rule.
-Existing tests can be run using the commands in the monitoring and segmentation
-READMEs. Private camera clips, full mask JSON, telemetry, and diagnostic harnesses
+Tests: `python -m unittest discover -s services -t .` from the project root. Private camera clips, full mask JSON, telemetry, and diagnostic harnesses
 are retained only under ignored playground/outputs/performance_pass/. Its
 summary.json indexes the measurements; batch_runs.json and batch_comparisons.json
 contain matched-frame evidence; before/ and after_normal/ hold the final live

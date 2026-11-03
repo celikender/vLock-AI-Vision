@@ -79,3 +79,4 @@
 .sam-chip.green::before{background:#3ea36b}.sam-chip.amber::before{background:#e0a030}.sam-chip.red::before{background:#d05050}
 .sam-chip+.button{margin-right:8px}
 .zone-proposed{fill:rgba(90,140,220,.18);stroke:#7fb0ff;stroke-width:2.5;stroke-dasharray:8 6;pointer-events:none}
+.second-object{margin-top:4px;padding-top:10px;border-top:1px dashed #dfe8e3}

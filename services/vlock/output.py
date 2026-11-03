@@ -23,7 +23,8 @@ class ObservationOutput:
         kind='condition' if output_type=='condition' else 'measurement'
         payload=dict(observation_id=str(uuid4()),asset_id=self.zone['id'],source_id='vision',
             signal_id=self.zone['output'],kind=kind,observed_at=observed,ttl_seconds=ttl,
-            reason=str(reason)[:240],details=dict(target=config['sam_prompt'],zone=self.zone['name'],
+            reason=str(reason)[:240],details=dict(target=config['sam_prompt'],second_target=(config.get('second') or {}).get('prompt'),
+                join=(config.get('rule') or {}).get('join','all'),zone=self.zone['name'],
                 output_type=output_type,**(details or {})))
         if kind=='condition':
             payload['status']={'Warning':'active','Normal':'clear'}.get(state,'unknown') if fresh else 'unknown'

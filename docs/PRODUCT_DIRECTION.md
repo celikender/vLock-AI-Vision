@@ -90,5 +90,5 @@ If the printer application later needs its own releases and maintenance, decide
 then whether it merits a separate package or repository. No branch or repository
 split is required just to record this direction.
 
-See [the development plan](PLAN.md) and [the SCADA experiment](../playground/scada/README.md)
+See [the development plan](PLAN.md) and [the SCADA experiment](../integrations/ignition/p1s_printer/README.md)
 for the current sequence and implemented evidence.

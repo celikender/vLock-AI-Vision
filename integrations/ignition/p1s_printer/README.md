@@ -12,7 +12,7 @@ is unchanged; the additional tags/event are configured separately.
 
 ## Development milestone - October 30, 2026
 
-This playground experiment prepares a small physical test machine before industrial
+This experiment prepares a small physical test machine before industrial
 integration. We built an Ignition Perspective SCADA screen and a local MQTT bridge
 connecting SCADA to a Bambu Lab P1S. This is an intermediate development milestone,
 not the finished industrial application.
@@ -58,15 +58,15 @@ Use Python 3.12. From the repository root:
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r playground/scada/connector/requirements.txt
-Copy-Item playground/scada/connector/.env.example playground/scada/connector/.env
+.\.venv\Scripts\python.exe -m pip install -r integrations/ignition/p1s_printer/connector/requirements.txt
+Copy-Item integrations/ignition/p1s_printer/connector/.env.example integrations/ignition/p1s_printer/connector/.env
 ```
 
 Edit that local `.env` with the actual IP, printer serial and LAN access code. Then:
 
 ```powershell
-.\.venv\Scripts\python.exe playground/scada/connector/p1s_service.py --check-config
-.\.venv\Scripts\python.exe playground/scada/connector/p1s_service.py
+.\.venv\Scripts\python.exe integrations/ignition/p1s_printer/connector/p1s_service.py --check-config
+.\.venv\Scripts\python.exe integrations/ignition/p1s_printer/connector/p1s_service.py
 ```
 
 Keep the terminal running. If the existing BambuP1SConnector Windows service is
@@ -105,7 +105,7 @@ No camera panel, print-job launch, farm simulation, or additional printer data.
    supports it), open PowerShell **as administrator** from the repository root and run:
 
    ```powershell
-   .\.venv\Scripts\python.exe playground/scada/enable_resume.py
+   .\.venv\Scripts\python.exe integrations/ignition/p1s_printer/enable_resume.py
    Restart-Service -Name BambuP1SConnector
    ```
 
@@ -174,8 +174,8 @@ These temperatures are last reported readings, not a measurement accuracy claim.
 From the project folder:
 
 ```powershell
-.\.venv\Scripts\python.exe playground/scada/build_project.py
-.\.venv\Scripts\python.exe playground/scada/test_project.py
+.\.venv\Scripts\python.exe integrations/ignition/p1s_printer/build_project.py
+.\.venv\Scripts\python.exe integrations/ignition/p1s_printer/test_project.py
 ```
 
 Seven offline checks cover: temperature and disconnect handling; missing/NaN

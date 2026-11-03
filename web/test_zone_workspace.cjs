@@ -80,5 +80,12 @@ appApi=async()=>({workspace:{zones:[{id:'test',target:'server person',configured
  await run('refreshStatus()');
  assert.equal(run('zone.runtime.valid'),false);assert.equal(run('zone.runtime.value'),null);
  assert.equal(run('fullRenders'),0);assert.equal(run('zone.target'),'draft hand');
- console.log('Zone workspace checks passed: preview-free dashboard, single camera, controls, editing locks and stable runtime polling.');
+ run("zone.extraConditions=[{object:'dog',relation:'entirely inside area'}];zone.ruleJoin='ANY (OR)';zone.outputType='condition'");
+ assert.match(run('ruleSentence(zone)'),/OR dog is entirely inside the selected area/);
+ assert.match(run('simpleConfigure(zone)'),/data-second="object" value="dog"/);
+ assert.doesNotMatch(run('supportedDraftWarning(zone)'),/not wired/,'Two objects are a supported draft');
+ run('zone.validity=10');assert.match(run('simpleConfigure(zone)'),/15 s or more/);
+ run('zone.validity=15');assert.doesNotMatch(run('simpleConfigure(zone)'),/15 s or more/);
+ run("zone.runtime={objects:2,check_ms:6800}");assert.match(run('observationMetrics(zone)'),/2 OBJECTS[\s\S]*6\.8 s/);
+ console.log('Zone workspace checks passed: preview-free dashboard, single camera, controls, editing locks, stable runtime polling and two-object rules.');
 })().catch(error=>{console.error(error);process.exitCode=1;});

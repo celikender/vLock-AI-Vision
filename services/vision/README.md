@@ -13,7 +13,7 @@ No inference starts from camera preview alone. Inference starts only through an
 explicit enable request. Stop immediately invalidates the observation and
 discards in-flight results; restart requires reconnection/configuration/enable.
 
-The original playground copies are preserved independently. Eighteen promoted
+The playground originals are retired; the application uses only these modules. Eighteen promoted
 regression checks and nine application checks cover the production boundary.
 These use synthetic results and do not establish live hardware inference.
 Remote protocols, assisted configuration, combined concepts and interactive
@@ -27,5 +27,8 @@ SAM selection remain unwired and are rejected where relevant.
 - `worker_process.py`: starts the worker in Ubuntu/WSL from the project root, watches
   `/health`, reuses an existing worker, never stops an unidentified program, and
   stops only a worker it started.
-- `assistant.py`: Muse Spark rule proposals with a JSON-schema response, strict
+- `zone_rules.py` / `monitoring.py`: one or two objects per zone, one SAM prompt
+  per object on the same camera window, ALL/ANY combination, Unknown on any missing
+  object result. `configuration.py` keeps saved one-object files valid.
+- `assistant.py`: Muse Spark rule proposals (one or two objects) with a JSON-schema response, strict
   validation and an area choice that SAM turns into a polygon (`transport.segment_regions`).

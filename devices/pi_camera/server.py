@@ -1,4 +1,4 @@
-"""Pi USB MJPEG playground. Python standard library + system ffmpeg."""
+"""Pi USB MJPEG camera service. Python standard library + system ffmpeg."""
 import argparse
 import json
 import subprocess
@@ -123,7 +123,7 @@ if __name__ == '__main__':
     worker.start()
     server = ThreadingHTTPServer(('0.0.0.0', args.port), handler(camera))
     server.daemon_threads = True
-    print(f'Camera playground listening on port {args.port}', flush=True)
+    print(f'Camera service listening on port {args.port}', flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

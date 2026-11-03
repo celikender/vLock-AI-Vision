@@ -1,6 +1,7 @@
 """Working Zones application. Existing camera and bridge experiments stay separate."""
 import argparse
 import os
+import shutil
 import json
 import sys
 import sqlite3
@@ -17,6 +18,16 @@ from services.vision.diagnostics import Diagnostics
 from services.vision.worker_process import SamWorker
 
 STATIC = Path(__file__).with_name('app')
+DATA = ROOT/'data'/'application'
+LEGACY_DATA = ROOT/'playground'/'data'/'application'
+
+
+def migrate_data():
+    """One-time copy of zones and history saved before the data folder moved."""
+    if DATA.exists() or not LEGACY_DATA.is_dir():
+        return
+    shutil.copytree(LEGACY_DATA,DATA,ignore=shutil.ignore_patterns('*.tmp','sam_worker.log'))
+    print(f'Copied saved workspace from {LEGACY_DATA} to {DATA}.',flush=True)
 
 
 def make_server(workspace, port=5056):
@@ -155,10 +166,12 @@ def on_console_close(callback):
 def main():
     parser=argparse.ArgumentParser(description='vLock-AI Vision application')
     parser.add_argument('--port',type=int,default=5056)
-    parser.add_argument('--data-dir',type=Path,default=ROOT/'playground'/'data'/'application')
+    parser.add_argument('--data-dir',type=Path,default=DATA)
     parser.add_argument('--no-sam',action='store_true',help='Do not start or manage the local SAM worker.')
     parser.add_argument('--open',action='store_true',help='Open the application in the default browser.')
     args=parser.parse_args()
+    if args.data_dir==DATA:
+        migrate_data()
     worker=None if args.no_sam else SamWorker(args.data_dir/'sam_worker.log')
     workspace=Workspace(args.data_dir,diagnostics=Diagnostics(),worker=worker)
     server=make_server(workspace,args.port)

@@ -70,3 +70,14 @@ Continue development only in vLock-AI-Vision. Existing phase goals above remain 
 Next: bring explicit captured-photo analysis into the main UI, configure Meta access,
 then validate Muse/SAM using the captured frame. The Anthropic key exists locally;
 the Meta key is not configured. Do not treat local configuration as verified API access.
+
+## To do
+
+- [x] Two-object rules (for example person AND dog in one zone): run one SAM prompt
+  per object on the same camera window, combine results with AND/OR in the rule
+  engine, publish one output. Let Muse configure it from one sentence. Show the
+  measured time per check; on the 8 GB laptop GPU expect about twice the
+  single-object time (about 7 s), much less on a larger GPU.
+  **Done 2026-11-03.** Measured on the RTX 3070 Ti Laptop GPU: 2.86-2.92 s per
+  one-object check, 5.73-5.97 s per two-object check. Two-object zones need a
+  result expiry of 15 s or more. See the development log.

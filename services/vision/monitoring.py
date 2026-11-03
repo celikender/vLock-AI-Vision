@@ -14,11 +14,11 @@ from .masks import render
 from .transport import track_video
 from .video import WINDOW_FRAMES, decode_mask
 from .configuration import Store, validate, public, text, DEFAULT
-from .zone_rules import RuleState, evaluate
+from .zone_rules import RuleState, evaluate_all, targets
 from .output import UnwiredOutput
 
 
-DATA = Path(__file__).resolve().parents[2]/'playground'/'data'/'application'/'default_monitor'
+DATA = Path(__file__).resolve().parents[2]/'data'/'application'/'default_monitor'
 
 
 class Monitoring:
@@ -190,11 +190,18 @@ class Monitoring:
             self.event('prompt_changed')
             self.bridge_unknown()
 
-    def publish(self, result, frame, revision, config, render_overlay=True):
-        matched, details = evaluate(result,config)
+    def publish(self, result, frame, revision, config, render_overlay=True, check_seconds=None):
+        results = result if isinstance(result, list) else [result]
+        matched, details, outcomes = evaluate_all(results, config)
+        names = [prompt for prompt, _ in targets(config)]
+        objects = ([dict(obj, concept=name) for name, r in zip(names, results) for obj in r['objects']]
+                   if len(results) > 1 else results[0]['objects'])
+        counts = {name: r['count'] for name, r in zip(names, results)}
+        result = {**results[0], 'objects': objects, 'count': len(objects), 'counts': counts,
+                  'object_matches': dict(zip(names, outcomes)), 'check_seconds': check_seconds}
         if render_overlay:
             with Image.open(BytesIO(frame['jpeg'])) as image:
-                annotated = render(image,[decode_mask(obj['mask']) for obj in result['objects']])
+                annotated = render(image,[decode_mask(obj['mask']) for obj in objects])
         with self.lock:
             if self.cancel.is_set() or revision != self.revision:
                 return
@@ -212,7 +219,8 @@ class Monitoring:
                 kind = ('warning' if config['rule']['action']=='warning' else 'rule_triggered') if self.rule.state=='Warning' else 'cleared' if self.rule.state=='Normal' else 'unavailable'
                 self.event(kind,result)
             if changed or render_overlay:
-                self.bridge.send(config, self.rule.state, self.rule.reason, frame['captured_at'], result['count'],
+                self.bridge.send(config, self.rule.state, self.rule.reason, frame['captured_at'],
+                                 counts if len(counts) > 1 else result['count'],
                                  {'run_id': self.run_id, 'frame_sequence': result['frame_sequence'],
                                   'condition_matched': matched})
 
@@ -242,14 +250,32 @@ class Monitoring:
                     return
                 if revision != self.revision:
                     continue
-                stream = self.infer(frames,config['sam_prompt'],revision)
-                for result in stream:
+                # One SAM pass per object over the same frames, one after another on the
+                # loaded worker; publish only when every object has every frame.
+                began_check = time.monotonic()
+                collected = []
+                for prompt, _ in targets(config):
+                    rows = {}
+                    stream = self.infer(frames,prompt,revision)
+                    for result in stream:
+                        if self.cancel.is_set() or revision != self.revision:
+                            break
+                        index = result['frame_index']
+                        if result['frame_sequence'] != frames[index]['sequence']:
+                            raise ValueError('SAM result does not match its camera frame.')
+                        rows[index] = result
+                    stream.close()
+                    stream = None
                     if self.cancel.is_set() or revision != self.revision:
                         break
-                    index = result['frame_index']
-                    if result['frame_sequence'] != frames[index]['sequence']:
-                        raise ValueError('SAM result does not match its camera frame.')
-                    self.publish(result,frames[index],revision,config,render_overlay=index==len(frames)-1)
+                    if set(rows) != set(range(len(frames))):
+                        raise ValueError('SAM did not return every frame for one object.')
+                    collected.append(rows)
+                else:
+                    check_seconds = round(time.monotonic()-began_check, 2)
+                    for index in range(len(frames)):
+                        self.publish([rows[index] for rows in collected],frames[index],revision,config,
+                                     render_overlay=index==len(frames)-1,check_seconds=check_seconds)
             except Exception:
                 with self.lock:
                     if not self.cancel.is_set() and revision == self.revision:

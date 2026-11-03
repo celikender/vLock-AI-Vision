@@ -17,27 +17,22 @@ The printer is home test equipment for a generic observation bridge. SCADA/PLC
 owns machine actions, permissives, interlocks and reset. This experimental path
 is not a safety-rated protective function.
 
-## Start the existing services
+## Start the application (current setup)
 
-Use separate terminals in the project root:
+The October 31 checkpoint used the separate playground monitor (5051) and vLock
+Bridge (5055). Both are retired. The working application now hosts the same
+read-only OPC UA server contract itself:
 
-```powershell
-.\playground\segmentation\start_local.ps1
-```
-
-```powershell
-.\.venv\Scripts\python.exe web/server.py
-```
-
-```powershell
-.\.venv\Scripts\python.exe playground/vlock_bridge/server.py
-```
+1. Double-click `Start vLock.cmd`. The app starts the SAM worker by itself.
+2. Integrations: enable **OPC UA** in Host server mode, port 4845, then Save workspace.
+3. Configure the zone (Muse or manually), save the rule and enable monitoring.
 
 Keep the existing printer connector running; do not start a duplicate service.
-At http://localhost:5051/monitoring, connect the camera, select target `person`,
-review the polygon, overlap and persistence, enable **Send to vLock Bridge** for
-asset `conveyor_01`, save and start monitoring. Confirm fresh observations at
-http://localhost:5055/. The bridge keeps manual and SAM sources separate.
+The app's asset is the **zone ID** and its source is **vision**, so the Active node
+is `Bridge/Assets/<zone id>/Signals/vision/<output>/Active` instead of the bridge's
+`conveyor_01/sam/zone_condition` path. Copy the exact NodeId from the app's
+**SCADA tags** page and re-point the Ignition OPC tag (or the Tag Change event's
+watched path) to it. This re-pointing has not yet been owner-tested.
 
 ## OPC UA connection and tags
 
@@ -47,7 +42,8 @@ This endpoint is for local connections on the same PC. Leave native keep-alive
 settings at their initial defaults. The optional bridge HeartbeatPulse is an
 application pulse, not evidence that the camera/model has fresh data.
 
-Designer: Tag Browser > Browse Devices > vLock Bridge > vLock > conveyor_01.
+Designer: Tag Browser > Browse Devices > vLock Bridge > vLock > conveyor_01
+(with the application: the zone ID folder instead of conveyor_01).
 Refresh after SAM publishes its first observation to discover new nodes. Import
 the SAM zone condition Active node; existing values update by subscription, but
 new nodes need a browse/import. The owner's final mapping is:

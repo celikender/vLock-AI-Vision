@@ -1,7 +1,9 @@
-# Pi USB camera playground
+# Pi USB camera service
 
-Independent experiment: USB webcam → Pi 5 → browser on PC. Existing local camera
-and Claude playground remain available separately. No model calls in this service.
+USB webcam → Pi 5 → the vLock-AI Vision application on the PC. No model calls in
+this service. The systemd unit keeps its original name, `vlock-playground-camera`,
+so Pis that are already installed keep working; it does not depend on the PC's
+playground folder.
 
 ## Install on Pi
 
@@ -12,7 +14,7 @@ sudo apt-get update && sudo apt-get install -y git
 git clone https://github.com/celikender/vLock-AI-Vision.git
 cd vLock-AI-Vision
 git checkout main
-bash playground/pi_camera/install.sh
+bash devices/pi_camera/install.sh
 ```
 
 Open `http://<Pi-IP>:8080` on your PC and click Connect. The installer prints the
@@ -27,7 +29,7 @@ v4l2-ctl --list-devices
 v4l2-ctl -d /dev/video0 --list-formats-ext
 journalctl -u vlock-playground-camera -n 50 --no-pager
 sudo systemctl stop vlock-playground-camera
-python3 playground/pi_camera/server.py --device /dev/video0 --size 640x480 --fps 30
+python3 devices/pi_camera/server.py --device /dev/video0 --size 640x480 --fps 30
 ```
 
 The webcam MUST support MJPEG at the requested resolution/frame rate. Choose a
@@ -53,7 +55,7 @@ with your chosen flags. Restart the service afterward. Prefer a stable
   quality. Ethernet is a useful baseline. Model consumers should request a new
   snapshot when ready rather than queue every preview frame.
 
-This is an unauthenticated trusted-LAN playground; do not port-forward it.
+This is an unauthenticated trusted-LAN service; do not port-forward it.
 No CORS is enabled: the included page uses the same origin. Later app integration
 should fetch snapshots through its backend. No production service files changed.
 
@@ -67,4 +69,4 @@ should fetch snapshots through its backend. No production service files changed.
 
 Disable boot capture: `sudo systemctl disable --now vlock-playground-camera`.
 
-Offline tests: `python -m unittest discover -s playground/pi_camera -p 'test_*.py'`.
+Offline tests: `python -m unittest discover -s devices/pi_camera -p 'test_*.py'`.

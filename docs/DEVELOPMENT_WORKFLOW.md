@@ -7,7 +7,7 @@ Use this project folder as the shared source of truth for implementation and rev
 
 ## Where code will live
 
-- playground/: first small, runnable experiments, before app integration.
+- playground/: retired experiments (kept only until removal; the app does not use it).
 - services/vision/: camera-frame analysis with Muse Spark and SAM 3.1 segmentation.
 - services/vlock/: deterministic rules and application state.
 - web/: camera UI, configuration review, and frame overlays.

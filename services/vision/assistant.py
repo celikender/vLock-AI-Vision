@@ -18,12 +18,16 @@ ROOT = Path(__file__).resolve().parents[2]
 RELATIONS = ('overlaps area', 'entirely inside area', 'absent from area')
 OUTPUT_TYPES = ('condition', 'count', 'event')
 AREA_METHODS = ('sam_object', 'muse_box', 'whole_frame', 'keep_current')
+JOINS = ('all', 'any')
 OUTPUT_NAME = re.compile(r'[A-Za-z][A-Za-z0-9_-]{0,63}')
 
 SCHEMA = {'type': 'object', 'additionalProperties': False, 'properties': {
     'supported': {'type': 'boolean'},
     'target': {'type': 'string', 'description': 'One short SAM object phrase, or empty if unsupported.'},
     'firstRelation': {'type': 'string', 'enum': list(RELATIONS)},
+    'secondTarget': {'type': 'string', 'description': 'Optional second SAM object phrase, or empty.'},
+    'secondRelation': {'type': 'string', 'enum': list(RELATIONS)},
+    'join': {'type': 'string', 'enum': list(JOINS)},
     'persistence': {'type': 'number', 'minimum': 0, 'maximum': 60},
     'outputType': {'type': 'string', 'enum': list(OUTPUT_TYPES)},
     'output': {'type': 'string', 'description': 'Output tag name: letter first, then letters, digits, _ or -.'},
@@ -36,7 +40,8 @@ SCHEMA = {'type': 'object', 'additionalProperties': False, 'properties': {
     'areaBox': {'type': 'array', 'items': {'type': 'number', 'minimum': 0, 'maximum': 1}, 'maxItems': 4,
                 'description': '[left, top, right, bottom] as fractions of the image, or empty.'},
     'areaDescription': {'type': 'string'}},
-    'required': ['supported', 'target', 'firstRelation', 'persistence', 'outputType', 'output',
+    'required': ['supported', 'target', 'firstRelation', 'secondTarget', 'secondRelation', 'join',
+                 'persistence', 'outputType', 'output',
                  'explanation', 'limitations', 'unsupportedReason', 'sceneConcepts',
                  'areaMethod', 'areaObject', 'areaBox', 'areaDescription']}
 
@@ -44,8 +49,14 @@ SYSTEM = '''You configure one monitoring zone in vLock-AI Vision, an industrial 
 Return JSON only, matching the schema. An engineer reviews your proposal before anything is saved.
 
 What the runtime can execute, exactly:
-- target: ONE short object phrase that SAM 3.1 segments, such as "person", "hand", "forklift",
-  "cardboard box". One concept only. No attributes that need reasoning ("person without helmet").
+- target: one short object phrase that SAM 3.1 segments, such as "person", "hand", "forklift",
+  "cardboard box". No attributes that need reasoning ("person without helmet").
+- Optionally ONE second object: secondTarget (another short phrase, different from target) with
+  its own secondRelation, combined by join: "all" (AND: both conditions hold on the same camera
+  observation) or "any" (OR: at least one holds). Use it for requests such as "a person and a
+  dog are both in the yard" (all) or "a person or a forklift enters the aisle" (any). Each
+  object adds one SAM pass, so a two-object check takes about twice as long. Without a second
+  object, set secondTarget to "", secondRelation to "overlaps area" and join to "all".
 - The monitoring area is one polygon on the camera image. Choose how to create it (areaMethod):
   "sam_object": the area is a visible object or surface that SAM can outline from a short phrase
   in areaObject, such as "conveyor belt", "table", "doorway", "machine", "pallet". Preferred
@@ -63,13 +74,15 @@ What the runtime can execute, exactly:
   Observations arrive about once per second, so 0.5 to 2 seconds is typical; 0 confirms on two
   consecutive observations.
 - outputType: "condition" (Active/Clear/Unknown boolean, the usual choice for SCADA interlocks
-  and supervisory inhibits), "count" (fresh whole-frame object count, not limited to the area),
+  and supervisory inhibits), "count" (fresh whole-frame count, one number per object, not limited
+  to the area; counting several instances of one object needs no second object),
   or "event" (state-change history only).
 - output: a tag name such as person_in_area or forklift_in_aisle_A1.
 Missing, stale or failed observations are Unknown, never Clear.
 
 Set supported=false and explain in unsupportedReason when the request needs anything else:
-several objects or AND/OR logic, actions, gestures, posture, speed, direction, line crossing,
+three or more objects, nested or mixed AND/OR logic, actions, gestures, posture, speed,
+direction, line crossing,
 identity, counting thresholds, colors or light states, defects, PPE compliance, machine commands,
 or certified safety functions. Never drop part of a request to make it fit. You may suggest the
 closest supported rule in the explanation, clearly labeled as a different rule.
@@ -138,6 +151,11 @@ def validate(result):
             raise AssistantError('Muse marked the request unsupported without a reason.')
         return proposal
     target = bounded(result.get('target'), 'target', 200)
+    second = bounded(result.get('secondTarget'), 'second object', 200)
+    if result.get('secondRelation') not in RELATIONS or result.get('join') not in JOINS:
+        raise AssistantError('Muse proposed an unsupported second-object condition or join.')
+    if second and second.lower() == target.lower():
+        raise AssistantError('Muse proposed the same object twice.')
     persistence = result.get('persistence')
     if not target:
         raise AssistantError('Muse proposed a rule without an object to find.')
@@ -148,6 +166,8 @@ def validate(result):
     output = bounded(result.get('output'), 'output name', 64)
     if not OUTPUT_NAME.fullmatch(output):
         raise AssistantError('Muse proposed an invalid output name.')
+    proposal.update(second=dict(target=second, relation=result['secondRelation']) if second else None,
+                    join=result['join'] if second else 'all')
     proposal.update(target=target, firstRelation=result['firstRelation'], persistence=persistence,
                     outputType=result['outputType'], output=output)
     return proposal

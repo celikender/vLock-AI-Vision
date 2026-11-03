@@ -10,6 +10,7 @@ KEY = 'test-only-key'
 DRAFT = dict(name='A-101', target='person', firstRelation='overlaps area', persistence=.5,
              outputType='condition', output='zone_condition', areaSelected=True)
 GOOD = dict(supported=True, target='person', firstRelation='overlaps area', persistence=.5,
+            secondTarget='', secondRelation='overlaps area', join='all',
             outputType='condition', output='person_in_cutter_area', explanation='Active when a person overlaps the area.',
             limitations='Sampled about once per second.', unsupportedReason='', sceneConcepts=[],
             areaMethod='sam_object', areaObject='glass cutter table', areaBox=[], areaDescription='Cutter table')
@@ -74,6 +75,28 @@ class AssistantTests(unittest.TestCase):
         self.assertNotIn('target', proposal)
         with self.assertRaises(AssistantError):
             assistant(reply(json.dumps(answer | {'unsupportedReason': ''}))).propose('Waving', DRAFT)
+
+    def test_two_objects_with_and_or(self):
+        one = assistant(reply(json.dumps(GOOD))).propose('Watch the cutter', DRAFT)['proposal']
+        self.assertIsNone(one['second'])
+        self.assertEqual(one['join'], 'all')
+        both = GOOD | dict(target='person', secondTarget='dog', secondRelation='entirely inside area', join='all')
+        proposal = assistant(reply(json.dumps(both))).propose('A person and a dog both in the yard', DRAFT)['proposal']
+        self.assertEqual(proposal['second'], dict(target='dog', relation='entirely inside area'))
+        self.assertEqual(proposal['join'], 'all')
+        either = assistant(reply(json.dumps(both | dict(join='any')))).propose('Person or dog', DRAFT)['proposal']
+        self.assertEqual(either['join'], 'any')
+        for change in [dict(secondTarget='Person'), dict(join='xor'), dict(secondRelation='crosses line'),
+                       dict(secondTarget='x'*201)]:
+            with self.subTest(change=change), self.assertRaises(AssistantError):
+                assistant(reply(json.dumps(both | change))).propose('Watch', DRAFT)
+        three = GOOD | dict(supported=False, target='', unsupportedReason='Three objects are not supported.')
+        self.assertFalse(assistant(reply(json.dumps(three))).propose('Person, dog and cat', DRAFT)['proposal']['supported'])
+        request = []
+        assistant(reply(json.dumps(both)), request).propose('Watch', DRAFT)
+        schema = request[0]['response_format']['json_schema']['schema']
+        self.assertEqual(schema['properties']['join']['enum'], ['all', 'any'])
+        self.assertIn('secondTarget', schema['required'])
 
     def test_area_choice_is_validated(self):
         proposal = assistant(reply(json.dumps(GOOD))).propose('Watch the cutter', DRAFT)['proposal']

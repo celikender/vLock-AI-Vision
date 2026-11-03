@@ -16,7 +16,7 @@ a worker the app started. `--no-sam` runs without managing a worker.
 
 Add a zone, enter the Pi camera's private LAN address, connect, then configure the
 zone with Muse or by hand. Workspace configuration is stored by the backend under
-ignored playground/data/application. Enable monitoring is available once SAM is ready
+ignored data/application (copied once from the former playground location). Enable monitoring is available once SAM is ready
 and a rule is saved. Only one local-SAM zone runs at once.
 
 Current observations are recorded through services/vlock and exposed at
@@ -24,8 +24,8 @@ Current observations are recorded through services/vlock and exposed at
 IDs, source `vision` and the configured output name. Integrations can also start
 the OPC UA server and MQTT publisher described below. No adapter sends a machine command.
 
-AND/OR rules, point/box object selection, second-check models, remote enable and
-score filtering are not wired. Unsupported settings are rejected when saving a rule.
+Point/box object selection, rules with more than two objects, second-check models,
+remote enable and score filtering are not wired. Unsupported settings are rejected when saving a rule.
 Available positive object scores remain diagnostic, and Clear has no fabricated
 confidence score. The working app uses no synthetic detections or latency values.
 Worker window time and observation age are shown separately. Masks are displayed
@@ -47,7 +47,8 @@ for half a second", and click **Configure with Muse**:
    zone's current draft. With "Muse sees the camera view" ticked (default when the
    camera is connected) it also receives the newest original JPEG. Untick it to keep
    the frame on this PC.
-2. Muse returns one proposal limited to what the runtime executes: one object phrase,
+2. Muse returns one proposal limited to what the runtime executes: one or two object
+   phrases (with AND/OR),
    overlap/inside/absent relation, confirmation seconds, output type and name, and
    how to make the area: a region SAM can outline (`sam_object`, e.g. "conveyor belt"),
    its own estimated box (`muse_box`, only with the camera view), the whole view, or
@@ -64,6 +65,26 @@ The backend rejects proposals it cannot execute instead of repairing them. One M
 request at a time, no automatic retries, sanitized errors; the key never reaches the
 browser. Set META_API_KEY in the root .env. The rule can still be edited manually
 under **Edit rule manually**.
+
+## Two-object rules
+
+A zone can watch two objects, for example "person AND dog in the area" or "person OR
+forklift". Muse proposes them from one sentence; manually, open **Edit rule manually**
+and fill **Second object** with its condition and **Combine** (ALL (AND) / ANY (OR)).
+
+For each 4-frame camera window the app runs one SAM prompt per object on the same
+frames, one after another on the already loaded worker (no second model, unchanged
+worker protocol). Each object is evaluated with its own condition on the same frame,
+then combined; persistence and confirmation apply to the combined result as before.
+If either object's result is missing, failed or stale, the zone is Unknown, never
+Clear. One output per zone: a condition, an event, or, for count, one whole-frame
+number per object (for example `{"person": 2, "dog": 1}`).
+
+Observation shows **Check time**: both prompts together. Measured on the RTX 3070 Ti
+Laptop GPU (8 GB): about 2.9 s for one object and 5.8 s for two. Because a new
+two-object result arrives only every ~6.7 s, keep **Result expires after** at 15 s or
+more; applying a two-object Muse proposal raises it to 15 s and the rule summary warns
+if it is lower. More than two objects is rejected.
 
 ## OPC UA and MQTT outputs
 
@@ -143,7 +164,7 @@ local API troubleshooting and a link to the independent bridge connection/status
 UI. Profile edits persist through the existing Save workspace contract; saving an
 enabled OPC UA server or MQTT profile now starts that adapter, and its real status
 is shown. API availability is checked live. Profile forms are not replaced by
-background status polling. The original playground remains intact.
+background status polling.
 
 ## Aligned views, live camera status and workspace folders
 

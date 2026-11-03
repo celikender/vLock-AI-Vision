@@ -17,9 +17,11 @@ DEFAULT = {
     'sam_prompt': 'person',
     'bridge': {'enabled': False, 'asset_id': 'conveyor_01'},
     'zone': {'name': 'Conveyor Zone A', 'polygon': [], 'frame_size': None},
+    'second': None,
     'rule': {'condition': 'mask_overlaps_zone', 'min_overlap_ratio': 0.1,
-             'persistence_seconds': 0.5, 'action': 'warning'},
+             'persistence_seconds': 0.5, 'action': 'warning', 'join': 'all'},
 }
+CONDITIONS = ('mask_overlaps_zone', 'mask_inside_zone', 'object_absent')
 
 
 def text(value, label, limit=200):
@@ -133,8 +135,20 @@ def validate(data, previous=None, require_zone=False):
     result['zone']['frame_size'] = frame_size(zone.get('frame_size', old['zone']['frame_size']))
     result['zone']['polygon'] = polygon(zone.get('polygon', old['zone']['polygon']), result['zone']['frame_size'])
     result['rule']['condition'] = rule.get('condition', old['rule']['condition'])
-    if result['rule']['condition'] not in ('mask_overlaps_zone', 'mask_inside_zone', 'object_absent'):
+    if result['rule']['condition'] not in CONDITIONS:
         raise ValueError('Select a supported zone condition.')
+    # Optional second object, evaluated on the same frames; saved one-object files have none.
+    second = data.get('second', old.get('second'))
+    if second is not None:
+        if not isinstance(second, dict) or second.get('condition') not in CONDITIONS:
+            raise ValueError('Select a supported condition for the second object.')
+        prompt = text(second.get('prompt'), 'a second detection target')
+        if prompt.lower() == result['sam_prompt'].lower():
+            raise ValueError('Use two different objects.')
+        result['second'] = {'prompt': prompt, 'condition': second['condition']}
+    result['rule']['join'] = rule.get('join', old['rule'].get('join', 'all'))
+    if result['rule']['join'] not in ('all', 'any'):
+        raise ValueError('Combine two objects with ALL (AND) or ANY (OR).')
     result['rule']['action'] = rule.get('action', old['rule']['action'])
     if result['rule']['action'] not in ('warning', 'event_log'):
         raise ValueError('SCADA output is not configured. Select warning or event log.')

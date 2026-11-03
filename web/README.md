@@ -1,86 +1,27 @@
-# Main camera UI
+# Web application
 
-## Working Zones application — incremental wiring
-
-The approved Zones layout is now available separately from these existing tools:
-
-```powershell
-.\.venv\Scripts\python.exe web/application.py
-```
-
-Open http://localhost:5056. Start the existing local SAM worker separately with
-`.\playground\segmentation\start_local.ps1` before explicitly enabling a reviewed
-monitoring rule. See [working application scope and limits](app/README.md) and
-[chapter checkpoints](../docs/WIRING_PLAN.md).
-
-The existing server.py, camera/photo page and Monitoring Setup described below
-remain unchanged. Their saved settings and SCADA integration are not migrated
-or overwritten by the new application.
-
-## Monitoring Setup
-
-Open http://localhost:5051/monitoring after starting the existing local GPU worker
-and `web/server.py`. Connect the Pi camera, enter a detection target, draw and
-adjust a polygon, configure the overlap/persistence rule, save it and start
-monitoring. Dynamic prompt changes preserve the saved zone. Actual SAM masks,
-boxes, scores, per-frame JSON, local warning events and Unknown/stale states are
-shown in the same application. Configuration and recent events survive restart;
-monitoring starts stopped. No LLM, new model or SCADA command is involved.
-
-See [monitoring behavior, limits and tests](../playground/monitoring/README.md).
-The original camera/photo tools below remain at http://localhost:5051/.
-
-Run on the PC with the project virtual environment:
+`web/application.py` serves the working vLock-AI Vision application on
+http://localhost:5056, with the browser UI under `web/app/`. Start it with
+`Start vLock.cmd` in the project root, or:
 
 ```powershell
-.\.venv\Scripts\python.exe -m pip install -r playground/camera/requirements.txt
-.\.venv\Scripts\python.exe web/server.py
+.\.venv\Scripts\python.exe web/application.py --open
 ```
 
-Open http://localhost:5051. Enter the Pi LAN IPv4 address (for example
-192.168.1.50 or 192.168.1.50:8080), then Connect. Both devices must be on the
-same network. The Pi needs the existing playground camera service installed.
-Capture photo saves the displayed original JPEG for download. Disconnect ends
-PC frame requests; the Pi service continues capturing.
+Options: `--port`, `--data-dir` (default `data/application`, ignored by Git),
+`--no-sam` (do not start the local SAM worker), `--open` (open the browser).
+On the first start after the data folder moved, saved zones and history are copied
+once from the former `playground/data/application`.
 
-The local backend relays one JPEG per request without re-encoding. The browser
-has at most one frame request in flight and targets at most 20 FPS. Frames are
-not queued for model processing. Network failures clear the preview and retry.
-Request+decode timing includes the relay; Pi frame age is not sensor latency.
-Automatic camera discovery is not implemented. Claude captured-photo analysis is available below.
+See the [application guide](app/README.md) for camera, Muse, SAM monitoring and
+OPC UA/MQTT behavior, and [Pi camera service](../devices/pi_camera/README.md) for
+the camera side.
 
-The server binds only to localhost. Camera targets must be private LAN IPv4
-addresses; hostnames, redirects and public IP addresses are not accepted.
+The server binds to localhost only, accepts private-LAN camera addresses only and
+rejects cross-site requests. Tests: from `web/`, run
+`..\.venv\Scripts\python.exe -m unittest discover -p "test_*.py"`; from the project
+root, run `node web/test_zone_workspace.cjs`, `node web/test_camera_preview.cjs` and
+`node web/test_analyzed_preview.cjs`.
 
-On the Pi, confirm boot startup:
-
-```bash
-systemctl is-enabled vlock-playground-camera
-systemctl status vlock-playground-camera
-```
-
-If needed: `sudo systemctl enable --now vlock-playground-camera`.
-## Claude photo analysis
-
-Set ANTHROPIC_API_KEY and ANTHROPIC_MODEL in the root local .env. Existing settings
-reload on every request; the browser never receives the key.
-Connect, Capture photo, enter a prompt, and click Analyze and draw.
-Examples: "Draw boxes around my eyes", "Find the cups and count them", or
-"Describe the scene and mark the tools". Blank prompts describe and mark main objects.
-The original capture remains visible. Text and a separately downloadable annotated
-PNG appear below it. Only the selected photo and prompt are sent to Claude.
-The live feed continues while analysis runs; captures are disabled during that request.
-Annotations are labeled rectangles with approximate coordinates, not SAM masks.
-No visible target is a valid answer with no boxes. Verify positioning visually.
-
-The adapter remains in playground/camera/annotations.py while this behavior is tested.
-The local server allows one model request at a time and applies image/prompt limits,
-same-origin checks, bounded timeouts, and sanitized errors. No automatic paid retries.
-Offline tests: run unittest discovery in playground/camera and web separately.
-
-## SAM 3.1 local/cloud experiment
-
-After capturing, use the SAM section to select Local GPU or Cloud API, enter an
-object phrase such as monitor, and Segment captured photo. Check setup shows
-credential and local-runtime readiness. See [setup instructions](../playground/segmentation/README.md).
-Cloud requests send the capture to Meta; local requests stay on the laptop.
+The earlier camera/photo and monitoring pages on port 5051 were retired with the
+playground; they remain in Git history.

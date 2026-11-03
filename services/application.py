@@ -210,13 +210,18 @@ class Workspace:
                     quality='Good' if valid else 'Unavailable',score=max(scores)*100 if scores else None,
                     age_seconds=frame['age_seconds'] if frame else None,
                     inference_ms=frame['elapsed_seconds']*1000 if frame and isinstance(frame.get('elapsed_seconds'),(int,float)) else None,
+                    check_ms=frame['check_seconds']*1000 if frame and isinstance(frame.get('check_seconds'),(int,float)) else None,
+                    objects=len(zone['extraConditions'][:1])+1,
                     output_id=frame['output_id'] if fresh else None,count=frame.get('count') if fresh else None,
+                    counts=frame.get('counts') if fresh else None,
                     tracking_scope='four-frame session',actual_frames=monitor.output_id if monitor else 0)
                 record['phase']='Initializing' if enabled and frame is None and 'unavailable' not in record['reason'].lower() else 'Waiting for fresh evidence' if enabled and not valid else 'Monitoring' if enabled else 'Disabled'
                 record['publication']=dict(monitor.bridge.status) if monitor else dict(state='idle',message='Configure the zone first.')
                 if zone['outputType']=='count' and fresh:
-                    record.update(state='Valid',value=frame['count'],valid=True,quality='Good',
-                        reason='Whole-frame detection count; not a zone count or cumulative visitor count.')
+                    counts=frame.get('counts') or {}
+                    record.update(state='Valid',value=counts if len(counts)>1 else frame['count'],valid=True,quality='Good',
+                        reason='Whole-frame detection count per object; not a zone count or cumulative visitor count.'
+                        if len(counts)>1 else 'Whole-frame detection count; not a zone count or cumulative visitor count.')
                 elif zone['outputType']=='event' and valid:
                     record['value']={'state':state['state']}
                 if not enabled:
@@ -340,23 +345,35 @@ class Workspace:
                 raise ApplicationError('Connect the camera first.',409)
             if not zone['areaSelected']:
                 raise ApplicationError('Select a monitoring area before saving the rule.')
-            if zone['extraConditions']:
-                raise ApplicationError('Multiple concepts and AND/OR rules are not wired yet. Use one reviewed condition.')
+            if len(zone['extraConditions'])>1:
+                raise ApplicationError('Use at most two objects per zone.')
+            if zone['ruleJoin'] not in ('ALL (AND)','ANY (OR)'):
+                raise ApplicationError('Combine two objects with ALL (AND) or ANY (OR).')
             if zone['allowRemote']:
                 raise ApplicationError('Remote monitoring enable is not wired yet. Disable that option.')
             if zone['recheck']!='None' or zone['unknownPolicy']!='Keep Unknown + publish reason':
                 raise ApplicationError('Second-check models are not wired yet. Keep Unknown explicitly.')
             if zone['minConfidence']!=0:
                 raise ApplicationError('Calibrated score filtering is not wired. Set the minimum score to zero; scores remain diagnostic.')
-            relation={'overlaps area':'mask_overlaps_zone','entirely inside area':'mask_inside_zone','absent from area':'object_absent'}.get(zone['firstRelation'])
+            relations={'overlaps area':'mask_overlaps_zone','entirely inside area':'mask_inside_zone','absent from area':'object_absent'}
+            relation=relations.get(zone['firstRelation'])
             if relation is None:
                 raise ApplicationError('Choose a supported geometric condition.')
+            second=None
+            if zone['extraConditions']:
+                extra=zone['extraConditions'][0]
+                if extra['relation'] not in relations or not 1<=len(extra['object'])<=200:
+                    raise ApplicationError('Check the second object and its condition.')
+                if extra['object'].lower()==zone['target'].strip().lower():
+                    raise ApplicationError('Use two different objects.')
+                second={'prompt':extra['object'],'condition':relations[extra['relation']]}
             size=camera.size
             config=dict(camera={'name':zone['cameraName'],'url':zone['cameraAddress']},sam_prompt=zone['target'],
                 validity_seconds=zone['validity'],bridge={'enabled':False,'asset_id':zone_id},
                 zone={'name':zone['name'],'polygon':[[p[0]*(size[0]-1),p[1]*(size[1]-1)] for p in zone['zone']],
                       'frame_size':size},rule={'condition':relation,'min_overlap_ratio':.1,
-                      'persistence_seconds':zone['persistence'],'action':'event_log' if zone['outputType']=='event' else 'warning'})
+                      'persistence_seconds':zone['persistence'],'action':'event_log' if zone['outputType']=='event' else 'warning',
+                      'join':'all' if zone['ruleJoin']=='ALL (AND)' else 'any'},second=second)
             config=validate_monitor(config,monitor.config,require_zone=True)
             monitor.save(config)
             monitor.bridge=ObservationOutput(self.observations,zone)
@@ -390,7 +407,7 @@ class Workspace:
             raise ApplicationError('includeFrame must be true or false.')
         with self.lock:
             zone=self.find(zone_id)
-            draft={key:zone[key] for key in ('name','target','firstRelation','persistence','outputType','output','areaSelected')}
+            draft={key:zone[key] for key in ('name','target','firstRelation','extraConditions','ruleJoin','persistence','outputType','output','areaSelected')}
             connected=bool(self.cameras.get(zone_id) and self.cameras[zone_id].status()['connected'])
         if include_frame and not connected:
             raise ApplicationError('Connect the camera so Muse can see it, or turn off the camera view.',409)

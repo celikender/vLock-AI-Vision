@@ -1,5 +1,10 @@
 # vLock Bridge as an Ignition OPC UA client
 
+> **Archived reference.** OPC UA client mode lived in the standalone vLock Bridge
+> experiment, which was retired with the playground. The working application hosts
+> OPC UA in server mode only (Integrations). The bridge code remains in git history
+> (commit 16f210a, `playground/vlock_bridge/`); the commands below refer to it.
+
 The experimental bridge now has two selectable OPC UA modes:
 
 - **Host server**: the existing read-only bridge endpoint; Ignition subscribes.

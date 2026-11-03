@@ -11,7 +11,7 @@ The owner confirmed live SAM person detection through vLock Bridge and OPC UA in
 
 ## Single-printer experiment
 
-The [plain P1S Perspective project](../../playground/scada/README.md) provides a native
+The [plain P1S Perspective project](p1s_printer/README.md) provides a native
 SCADA display, a Gateway HTTP-to-tag bridge, and separate printer/supervisory
 controls. It uses the existing local MQTT connector. The original standalone
 application remains separate. The owner verified live telemetry, the imported screen and Stop/cancel of a real

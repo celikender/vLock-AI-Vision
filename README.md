@@ -30,23 +30,25 @@ Two service boundaries (vision and vLock) will be developed independently and co
 
 ## Development phases
 
-1. Learn and validate SAM 3.1 and Muse in the playground.
+1. Learn and validate SAM 3.1 and Muse in experiments (done; retired playground in Git history).
 2. Develop the standalone vLock application and integration contract.
 3. Connect both services into one application.
 4. Test model limitations, state logic, communication, and recovery.
 5. Record a three-minute working demonstration.
 6. Publish installation instructions and submit the project.
 
-See [the plan](docs/PLAN.md), [playground guide](playground/README.md), [integration guide](docs/INTEGRATION.md), and [development log](docs/DEVELOPMENT_LOG.md).
+See [the plan](docs/PLAN.md), [integration guide](docs/INTEGRATION.md), and [development log](docs/DEVELOPMENT_LOG.md).
 
 ## Structure
 
-- `playground/`: learning experiments and performance/limitation reports.
-- `services/vision/`: planned SAM/Muse service.
-- `services/vlock/`: planned independent vLock state service.
-- `web/`: main PC camera UI with Pi IP address connection, preview, and capture.
-- `integrations/ignition/`: planned reference SCADA integration.
-- `docs/`: architecture, roadmap, integration contract, and public progress.
+- `Start vLock.cmd`: double-click to start the application and its SAM worker.
+- `web/`: application server (port 5056) and browser UI.
+- `services/vision/`: camera, SAM 3.1 worker and supervisor, Muse assistant, monitoring and zone rules.
+- `services/vlock/`: observation store, heartbeat, REST output and OPC UA/MQTT adapters.
+- `devices/pi_camera/`: Raspberry Pi 5 USB camera service and installer.
+- `integrations/ignition/`: Ignition reference integration and the Bambu P1S Perspective project.
+- `docs/`: plan, setup, SAM runtime, integration contract, reports and development log.
+- `playground/`: retired experiments; the application does not use it.
 
 ## Existing work and new contributions
 
@@ -56,7 +58,7 @@ Worker-applied locks and AI-generated supervisory inhibits are separate conditio
 
 ## Reproducibility and progress
 
-See [Python setup](docs/SETUP.md) and [camera playground](playground/camera/README.md) for dependency versions and run commands. Never commit API keys, private footage, machine credentials, or generated model files.
+See [Python setup](docs/SETUP.md) and [SAM runtime](docs/SAM_RUNTIME.md) for dependency versions and run commands. Never commit API keys, private footage, machine credentials, or generated model files.
 
 Use meaningful commits for completed steps and update the development log with evidence and limitations. Do not present planned features as working features.
 
@@ -87,8 +89,8 @@ Same thing from a terminal in the project folder:
 In a zone: connect the Pi camera, describe what to watch, click **Configure with Muse**,
 review the proposal and click **Use this configuration**, then **Enable monitoring**.
 For SCADA, enable the OPC UA server under Integrations and click Save workspace.
-See the [application guide](web/app/README.md), [Pi installation](playground/pi_camera/README.md)
-and [SAM runtime setup](playground/segmentation/README.md).
+See the [application guide](web/app/README.md), [Pi installation](devices/pi_camera/README.md)
+and [SAM runtime setup](docs/SAM_RUNTIME.md).
 
 This repository is the active source of truth: https://github.com/celikender/vLock-AI-Vision.
 Open `vLock-AI-Vision.code-workspace` or the project folder in VS Code.

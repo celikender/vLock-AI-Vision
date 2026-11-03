@@ -4,7 +4,16 @@ from PIL import Image, ImageDraw, ImageChops
 from .video import decode_mask
 
 
-def evaluate(result, config):
+def targets(config):
+    """(prompt, condition) for each configured object: one, or two with a join."""
+    items = [(config['sam_prompt'], config['rule']['condition'])]
+    if config.get('second'):
+        items.append((config['second']['prompt'], config['second']['condition']))
+    return items
+
+
+def evaluate(result, config, condition=None):
+    condition = condition or config['rule']['condition']
     size = config['zone']['frame_size']
     if [result.get('width'), result.get('height')] != size:
         raise ValueError('Camera resolution changed. Reconnect and redraw the zone.')
@@ -24,11 +33,30 @@ def evaluate(result, config):
         overlap = ImageChops.multiply(mask, zone).histogram()[255]
         detections.append({'object_id': obj.get('object_id'), 'overlap_ratio': overlap/area,
                            'mask_pixels': area, 'zone_overlap_pixels': overlap})
-    threshold = 1.0 if config['rule']['condition'] == 'mask_inside_zone' else config['rule']['min_overlap_ratio']
+    threshold = 1.0 if condition == 'mask_inside_zone' else config['rule']['min_overlap_ratio']
     matched = any(d['overlap_ratio'] >= threshold for d in detections)
-    if config['rule']['condition'] == 'object_absent':
+    if condition == 'object_absent':
         matched = not matched
     return matched, detections
+
+
+def evaluate_all(results, config):
+    """Every object on the same camera frame, combined with ALL (AND) or ANY (OR).
+
+    A missing or mismatched result raises, so the caller reports Unknown, never Clear.
+    """
+    items = targets(config)
+    if len(results) != len(items) or any(r is None for r in results):
+        raise ValueError('A SAM result is missing for one of the objects.')
+    if len({r.get('frame_sequence') for r in results}) != 1:
+        raise ValueError('Object results come from different camera frames.')
+    outcomes, details = [], []
+    for (prompt, condition), result in zip(items, results):
+        matched, found = evaluate(result, config, condition)
+        outcomes.append(matched)
+        details.extend(dict(d, concept=prompt) if len(items) > 1 else d for d in found)
+    combined = all(outcomes) if config['rule'].get('join', 'all') == 'all' else any(outcomes)
+    return combined, details, outcomes
 
 
 class RuleState:
