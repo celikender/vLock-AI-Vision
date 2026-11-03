@@ -1,5 +1,26 @@
 # Development log
 
+## 2026-11-03 - MQTT retained-state fix and documentation refresh
+
+- Defect (found in an external review, reproduced with an isolated broker): a zone
+  removed while the MQTT publisher was stopped kept its retained
+  `zones/<key>/state` (Active=true in the reproduction) after restart, because the
+  list of published topics started empty on every connection.
+- Fix: on each connection the publisher subscribes briefly to its own
+  `zones/+/state` and `assets/+/state`, collects the retained topics and clears every
+  one that no current zone or asset uses. On a normal stop it republishes every zone
+  as Unknown ("MQTT publisher stopped") before the offline availability message. A
+  crash still relies on the availability last will. The reproduction now shows no
+  retained topic for the removed zone; a new test covers stop → remove → restart
+  with one zone removed and one kept.
+- Docs: the root README linked a removed playground page and called SCADA
+  integration planned; it now states what is owner-tested, what is tested only by
+  automated/local checks (fixed tags, network OPC UA), what is not yet tested (UDT
+  import into Ignition, a second PC, positive two-object detection) and what is
+  planned (worker-lock lifecycle, multi-zone).
+  The application guide no longer describes the old output-name NodeIds or says OPC
+  publication is the next chapter, and lists `/api/v1/zones`.
+
 ## 2026-11-03 - OPC UA network access for SCADA on another PC
 
 - vLock acts like a PLC with a built-in OPC UA server: any SCADA's standard OPC UA

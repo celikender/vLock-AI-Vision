@@ -20,9 +20,10 @@ ignored data/application (copied once from the former playground location). Enab
 and a rule is saved. Only one local-SAM zone runs at once.
 
 Current observations are recorded through services/vlock and exposed at
-`/api/v1/assets`, `/api/v1/events?limit=5` and `/api/v1/health`. They use stable zone
-IDs, source `vision` and the configured output name. Integrations can also start
-the OPC UA server and MQTT publisher described below. No adapter sends a machine command.
+`/api/v1/zones` (the fixed zone tags), `/api/v1/assets` (raw signals by zone ID,
+source `vision` and output name), `/api/v1/events?limit=5` and `/api/v1/health`.
+Integrations can also start the OPC UA server and MQTT publisher described below.
+No adapter sends a machine command.
 
 Point/box object selection, rules with more than two objects, second-check models,
 remote enable and score filtering are not wired. Unsupported settings are rejected when saving a rule.
@@ -161,12 +162,13 @@ monitoring; hiding the outline never disables monitoring or removes the saved
 geometry. Starting a new drawing makes the outline visible again. The event-flow
 card is removed; five recent events and expandable history remain.
 
-SCADA tags replaces System monitor in the sidebar. It lists configured output
-names/types and predefined server NodeId strings from the existing bridge contract,
-with local values and publication metadata. False, zero and unavailable/null stay
-distinct. These are local diagnostics and mapping previews, not OPC readbacks or
-proof of delivery. The Delivery column shows whether the app's OPC UA server is
-live (see OPC UA and MQTT outputs above). Client mode needs explicit node mappings.
+SCADA tags replaces System monitor in the sidebar. It lists each zone's fixed tag
+key, output name and MQTT topic, the fixed tags with their local values and
+OPC UA NodeIds (`Bridge/Zones/<tag key>/<tag>`), and the Ignition UDT download.
+False, zero and unavailable/null stay distinct. Values are read from the app's own
+REST output, not OPC readbacks or proof of delivery; the Delivery column shows
+whether the app's OPC UA server is live (see OPC UA and MQTT outputs above).
+Client mode needs explicit node mappings and is not offered in this app.
 
 Integrations restores compact OPC UA server/client, MQTT and HTTP profile fields,
 local API troubleshooting and a link to the independent bridge connection/status
@@ -196,9 +198,8 @@ HTTP path; unavailable metrics remain absent and no hardware improvement is
 promised after a fixed warm-up time. Existing SAM and freshness rules are retained.
 
 Workspace settings is first in navigation and the workspace name links to it.
-The backend exposes each prepared tag path as [workspace name, zone name, output
-name]. SCADA tags shows that tree and local values, retaining existing stable
-zone IDs and bridge NodeIds. Names such as person_detect_A-101 are accepted by the
-app and existing observation identifier contract. No saved names were rewritten.
-Actual OPC browse-folder publication/client mapping is still the next integration
-chapter; these prepared paths are not a claim of live Ignition delivery.
+SCADA tag paths no longer depend on the workspace, zone or output names: each zone
+publishes under its fixed tag key (see [fixed zone tags](../../integrations/ignition/ZONE_TAGS.md)).
+Names such as person_detect_A-101 are accepted as output names. OPC UA publication
+of the fixed tags is tested locally with an OPC UA client; the UDT import and
+delivery into the owner's Ignition are not yet verified.

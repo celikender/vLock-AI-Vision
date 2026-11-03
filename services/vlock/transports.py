@@ -144,6 +144,38 @@ class Worker:
 
 class MqttPublisher(Worker):
     """A new client on each reconnect drops its old outgoing queue."""
+    def retained_topics(self, client, prefix):
+        """State topics the broker still retains under this prefix, also from earlier runs.
+
+        Zones or assets removed while no publisher was connected are found here and
+        cleared, so an old retained Active or Clear cannot outlive its zone.
+        """
+        found, lock, subscribed = set(), threading.Lock(), threading.Event()
+        patterns = [prefix + '/zones/+/state', prefix + '/assets/+/state']
+
+        def receive(client, userdata, message):
+            if message.retain and message.payload:
+                with lock:
+                    found.add(message.topic)
+        client.on_message = receive
+        client.on_subscribe = lambda *args: subscribed.set()
+        client.subscribe([(pattern, 1) for pattern in patterns])
+        if subscribed.wait(2):
+            # Retained messages follow the subscription acknowledgement.
+            self.stop_event.wait(.5)
+        client.unsubscribe(patterns)
+        client.on_message = None
+        with lock:
+            return set(found)
+
+    def stopped_documents(self, prefix, zones):
+        """Unknown documents for a normal stop, so no zone keeps a retained Active or Clear."""
+        manifest = ('TagKey', 'ZoneName', 'ZoneId', 'OutputName', 'OutputType', 'Rule', 'Object1', 'Object2')
+        return [(prefix + '/zones/' + z['TagKey'] + '/state',
+                 zone_tags.document({key: z[key] for key in manifest}, None, 0)
+                 | dict(Reason='MQTT publisher stopped; values are not current.', online=False, status='offline'))
+                for z in zones]
+
     def run(self):
         try:
             import paho.mqtt.client as mqtt
@@ -157,7 +189,7 @@ class MqttPublisher(Worker):
             heartbeat_pulse=None, heartbeat_interval_seconds=self.store.heartbeat.interval,
             offline_after_seconds=self.store.heartbeat.timeout))
         while not self.stop_event.is_set():
-            client = None
+            client, zones = None, []
             try:
                 self.report('connecting', 'Connecting to the local broker.')
                 client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2,
@@ -178,7 +210,7 @@ class MqttPublisher(Worker):
                     pass
                 if not client.is_connected():
                     raise OSError('Broker handshake unavailable')
-                published = set()
+                published = self.retained_topics(client, prefix)
                 while not self.stop_event.is_set() and client.is_connected():
                     snapshot = self.store.snapshot()
                     zones = self.store.zones()['zones']
@@ -216,6 +248,9 @@ class MqttPublisher(Worker):
                 if client:
                     try:
                         if client.is_connected():
+                            if self.stop_event.is_set():
+                                for topic, document in self.stopped_documents(prefix, zones):
+                                    client.publish(topic, encode(document), qos=1, retain=True).wait_for_publish(timeout=1)
                             result = client.publish(availability, offline, qos=1, retain=True)
                             result.wait_for_publish(timeout=1)
                         client.disconnect()

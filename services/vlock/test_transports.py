@@ -205,6 +205,60 @@ class MqttTests(unittest.TestCase):
                 store.close()
 
 
+    def test_zone_removed_while_stopped_is_cleared_after_restart(self):
+        import paho.mqtt.client as mqtt
+        logging.getLogger('amqtt').setLevel(logging.CRITICAL)
+        broker = LocalBroker()
+        broker.start()
+        prefix = 'restart-test/' + uuid4().hex
+        zone = lambda key, asset: dict(TagKey=key, ZoneName=key, ZoneId=asset, OutputName='present',
+                                       OutputType='condition', Rule='', Object1='person', Object2='')
+
+        def retained():
+            found, lock = {}, threading.Lock()
+            def receive(client, userdata, message):
+                with lock:
+                    found[message.topic[len(prefix) + 1:]] = json.loads(message.payload) if message.payload else None
+            client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+            client.on_connect = lambda c, u, f, r, p: c.subscribe(prefix + '/zones/#', qos=1)
+            client.on_message = receive
+            client.connect('127.0.0.1', broker.port)
+            client.loop_start()
+            time.sleep(1.5)
+            client.loop_stop()
+            client.disconnect()
+            with lock:
+                return {topic: value for topic, value in found.items() if value is not None}
+
+        with tempfile.TemporaryDirectory() as directory:
+            store = Store(Path(directory) / 'bridge.sqlite3')
+            settings = dict(enabled=True, host='127.0.0.1', port=broker.port, topic_prefix=prefix)
+            try:
+                store.set_zones([zone('A-101', 'zone-1'), zone('B-202', 'zone-2')])
+                for asset in ('zone-1', 'zone-2'):
+                    store.submit(dict(asset_id=asset, source_id='vision', signal_id='present', status='active', ttl_seconds=3600))
+                first = MqttPublisher(store, settings)
+                first.start()
+                until(lambda: first.status()['status'] == 'connected')
+                first.stop()
+                stopped = retained()
+                self.assertEqual(stopped['zones/A-101/state']['State'], 'Unknown', 'A normal stop leaves no retained Active')
+                self.assertIsNone(stopped['zones/A-101/state']['Active'])
+                store.set_zones([zone('B-202', 'zone-2')])  # A-101 removed while no publisher runs
+                store.retain({'zone-2': ('present', 'condition')})
+                second = MqttPublisher(store, settings)
+                second.start()
+                until(lambda: second.status()['status'] == 'connected')
+                time.sleep(1.5)
+                after = retained()
+                self.assertNotIn('zones/A-101/state', after, 'The removed zone was cleared from the broker')
+                self.assertEqual(after['zones/B-202/state']['State'], 'Active', 'A current zone is kept')
+                second.stop()
+            finally:
+                store.close()
+                broker.stop()
+
+
 @unittest.skipUnless(importlib.util.find_spec('asyncua'), 'Install requirements.txt for OPC UA checks.')
 class OpcUaTests(unittest.TestCase):
     def test_readonly_nodes_numeric_value_expiry_and_stable_node_ids(self):

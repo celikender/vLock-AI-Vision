@@ -51,7 +51,12 @@ bridge heartbeat (`Bridge/Online`, `Bridge/HeartbeatCounter`).
     (not in Git) and its SHA-1 fingerprint is shown on the Integrations page.
 - **MQTT** (retained JSON): `<topic prefix>/zones/<tag key>/state`, for example
   `vlock/v1/zones/A-101/state`. A removed zone's topic is cleared with an empty
-  retained message.
+  retained message, also when it was removed while MQTT was off: on every connection
+  the publisher reads the state topics still retained under its prefix and clears
+  those that no zone uses. Give each vLock installation its own topic prefix. On a
+  normal stop every zone is republished as `Unknown` ("MQTT publisher stopped");
+  after a crash only `<prefix>/availability` turns offline (last will), so consumers
+  must check availability and `ObservedAt`.
 - **REST**: `GET http://localhost:5056/api/v1/zones` and `/api/v1/zones/<tag key>`.
 
 A zone removed from the workspace keeps its OPC UA nodes until the application
