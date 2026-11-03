@@ -80,3 +80,5 @@
 .sam-chip+.button{margin-right:8px}
 .zone-proposed{fill:rgba(90,140,220,.18);stroke:#7fb0ff;stroke-width:2.5;stroke-dasharray:8 6;pointer-events:none}
 .second-object{margin-top:4px;padding-top:10px;border-top:1px dashed #dfe8e3}
+
+.security-fact{margin:4px 0 14px}.security-fact small{display:block;font-size:10px;letter-spacing:.06em;color:#7f9387;margin-bottom:4px}.security-fact strong{font-size:13px}.security-fact .helper{margin-top:6px}

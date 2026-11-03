@@ -29,6 +29,11 @@
   raw asset was clear (inhibit false) with only the new signal.
 - Checks: services 83 (new: 7 zone tag/store, 1 OPC UA zone tags; worker restart 1),
   web 21 (new: 2), UI check rewritten for the zone tag page.
+- (C) Honest OPC UA label: in server mode Integrations no longer offers
+  "Basic256Sha256 / SignAndEncrypt" (the server always runs NoSecurity, anonymous,
+  read-only, bound to 127.0.0.1); it shows that fact instead. The dropdown remains
+  only for client mode; the default security value is now "None — local test only".
+  OPC UA behaviour is unchanged. UI check extended; all suites pass.
 
 ## 2026-11-03 - Application independent of the playground; two-object rules
 

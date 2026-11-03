@@ -35,7 +35,7 @@ ZONE_DEFAULTS = dict(name='New zone', cameraName='Camera', cameraAddress='', cam
     firstRelation='overlaps area', tagKey='')
 
 INTEGRATION_DEFAULTS = dict(opcEnabled=False,opcMode='server',opcHost='127.0.0.1',opcPort=4845,
-    opcEndpoint='opc.tcp://127.0.0.1:62541',security='Basic256Sha256 / SignAndEncrypt',profile='',
+    opcEndpoint='opc.tcp://127.0.0.1:62541',security='None — local test only',profile='',
     mqttEnabled=False,mqttMode='client',mqttHost='127.0.0.1',mqttPort=1883,topic='vlock/v1',
     httpEnabled=True,httpBase='http://localhost:5056/api/v1',heartbeat=5)
 

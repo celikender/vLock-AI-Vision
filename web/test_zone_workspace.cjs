@@ -42,6 +42,10 @@ assert.equal(run("tagRows().find(r=>r[1].endsWith('/Active'))[3]"),null);
 assert.match(run('tagMonitor()'),/Not sent · enable OPC UA/);
 run("adapters={opcua:{status:'running'}}");assert.match(run('tagMonitor()'),/OPC UA server · live/);run('adapters={}');
 assert.match(run('integrationProfiles()'),/Existing|Host address/);
+run("workspace.integration={opcMode:'server',opcPort:4845,security:'Basic256Sha256 / SignAndEncrypt'}");
+assert.match(run('integrationProfiles()'),/No security · this PC only \(127\.0\.0\.1\) · read-only/);
+assert.doesNotMatch(run('integrationProfiles()'),/SignAndEncrypt/,'Server mode never claims encryption');
+run("workspace.integration.opcMode='client'");assert.match(run('integrationProfiles()'),/SignAndEncrypt/);run('workspace.integration={}');
 
 assert.match(run('zoneControls(zone)'),/Rule saved/);
 run('dirtyFlag=true');
