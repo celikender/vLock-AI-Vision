@@ -90,6 +90,18 @@ two-object result arrives only every ~6.7 s, keep **Result expires after** at 15
 more; applying a two-object Muse proposal raises it to 15 s and the rule summary warns
 if it is lower. More than two objects is rejected.
 
+## Skills and Muse frame checks (experimental)
+
+[Skills](../../skills/README.md) are scenario packages in `skills/` (a `skill.json` and a
+`knowledge.md`). When you ask Muse to configure a zone, the three best-matching skills
+and the site notes go to Muse as reference data; the proposal card shows the skill it
+followed. A skill can add an optional **Muse frame check** for things SAM alone cannot
+judge (a real person or a poster, helmets, camera blocked, stack light colour). It runs
+only when the zone's *Allow Muse frame checks* box is ticked, sends a camera frame to
+Meta, and writes its answer to the `VlmState`, `VlmReason` and `VlmCheckedAt` tags and
+the Observation panel. SAM still decides Active / Clear / Unknown; the answer never
+changes them.
+
 ## Reliability
 
 - **SAM worker:** if a worker the app started crashes, stops answering (three missed

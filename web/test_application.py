@@ -347,6 +347,63 @@ class ApplicationTests(unittest.TestCase):
         self.assertEqual(self.workspace.observations.snapshot()['assets'],[])
         self.assertEqual(self.workspace.observations.zones()['zones'],[])
 
+    def test_skill_frame_check_is_opt_in_and_never_changes_active(self):
+        checks=[]
+        class Assistant:
+            def status(self):return dict(provider='Meta Model API',model='muse-spark-1.3',configured=True)
+            def check_image(self,question,answers,jpeg,context=''):
+                checks.append((question,answers,context))
+                return dict(answer='no',reason='Only a poster is visible.',model='muse-spark-1.3')
+        def infer(frames,prompt,revision):
+            mask=Image.new('L',(100,80))
+            ImageDraw.Draw(mask).rectangle((20,20,40,40),fill=255)
+            for index,frame in enumerate(frames):
+                yield dict(type='frame',frame_index=index,frame_sequence=frame['sequence'],prompt=prompt,prompt_revision=revision,
+                    width=100,height=80,count=1,objects=[dict(object_id=1,score=.9,mask=encode_mask(mask),bbox_xywh=[.2,.25,.2,.25])],
+                    session_id='isolated',elapsed_seconds=.01)
+        self.workspace.assistant=Assistant()
+        self.workspace.infer=infer
+        zone=self.configure_with(name='Desk',skill='ghost-skill',persistence=0)
+        with self.assertRaises(ApplicationError):
+            self.workspace.configure(zone)
+        config=self.workspace.status()['workspace']
+        config['zones'][0].update(skill='person-confirmed')
+        self.workspace.save(config)
+        self.workspace.configure(zone)
+        view=self.workspace.status()['workspace']['zones'][0]
+        self.assertEqual(view['skillInfo']['name'],'Person in area, confirmed by Muse')
+        self.assertFalse(view['vlmEnabled'],'Frame checks are off until the operator allows them')
+        self.workspace.enable(zone,True)
+        def tags():
+            return self.workspace.observations.zones()['zones'][0]
+        deadline=time.monotonic()+7
+        while time.monotonic()<deadline and tags()['State']!='Active':time.sleep(.05)
+        self.assertEqual(tags()['State'],'Active')
+        self.assertIsNone(self.workspace.schedule_checks(),'No check without the operator opt-in')
+        self.assertEqual((tags()['VlmState'],checks),('off',[]))
+        self.workspace.enable(zone,False)
+        while self.workspace.monitors[zone].busy():time.sleep(.03)
+        config=self.workspace.status()['workspace']
+        config['zones'][0]['vlmEnabled']=True
+        self.workspace.save(config)
+        self.workspace.configure(zone)
+        self.workspace.enable(zone,True)
+        deadline=time.monotonic()+7
+        while time.monotonic()<deadline and tags()['VlmState']!='no':
+            self.workspace.schedule_checks()
+            time.sleep(.1)
+        zone_tags_now=tags()
+        self.assertEqual((zone_tags_now['VlmState'],zone_tags_now['VlmReason']),('no','Only a poster is visible.'))
+        self.assertIs(zone_tags_now['Active'],True,'The Muse answer never changes Active')
+        self.assertEqual(zone_tags_now['Skill'],'person-confirmed')
+        self.assertEqual(checks[0][1],['yes','no','unsure'])
+        self.assertIn('Rule: person overlaps the area',checks[0][2])
+        self.assertEqual(len(checks),1,'One check per activation, not one per poll')
+        self.assertEqual(self.workspace.status()['workspace']['zones'][0]['runtime']['check']['VlmState'],'no')
+        self.workspace.enable(zone,False)
+        self.workspace.schedule_checks()
+        self.assertEqual(tags()['VlmState'],'off','Stopping monitoring turns the check tags off')
+
     def test_rtsp_camera_password_is_write_only_and_monitoring_runs(self):
         from services.vision.test_rtsp import FakeStream
         opened=[]
@@ -439,7 +496,7 @@ class ApplicationTests(unittest.TestCase):
         calls=[]
         class Assistant:
             def status(self):return dict(provider='Meta Model API',model='muse-spark-1.3',configured=True)
-            def propose(self,text,draft,jpeg=None):
+            def propose(self,text,draft,jpeg=None,reference=None):
                 calls.append((text,draft,jpeg))
                 if text=='fail':raise AssistantError('Meta rate limit or quota reached. Wait and try again.',502)
                 area=dict(method='sam_object',object='aisle',description='Aisle',box=[.1,.1,.6,.9])

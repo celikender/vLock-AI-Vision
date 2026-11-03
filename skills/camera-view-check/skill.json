@@ -1,0 +1,38 @@
+{
+  "id": "camera-view-check",
+  "name": "Camera view check",
+  "status": "experimental",
+  "summary": "Muse checks every few minutes whether the camera view is usable (not blocked, covered, dark or moved).",
+  "keywords": [
+    "camera",
+    "view",
+    "blocked",
+    "covered",
+    "dark",
+    "lights",
+    "moved",
+    "glare",
+    "obstructed",
+    "blind",
+    "tampered",
+    "health"
+  ],
+  "rule": {
+    "target": "person",
+    "firstRelation": "overlaps area",
+    "persistence": 1,
+    "outputType": "condition",
+    "output": "person_in_area"
+  },
+  "vlm": {
+    "mode": "scene",
+    "trigger": "periodic",
+    "interval_seconds": 300,
+    "question": "Is this camera view usable for monitoring the marked area: not blocked, covered, too dark, out of focus or pointed away?",
+    "answers": [
+      "usable",
+      "not usable",
+      "unsure"
+    ]
+  }
+}

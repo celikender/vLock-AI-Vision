@@ -27,7 +27,13 @@ TAGS = [
     ('Rule', 'String', 'String', 'The rule in plain words.'),
     ('Object1', 'String', 'String', 'First object SAM looks for.'),
     ('Object2', 'String', 'String', 'Second object; empty for one-object zones.'),
+    ('Skill', 'String', 'String', 'Skill (scenario package) this zone follows, or empty.'),
+    ('VlmState', 'String', 'String', 'Answer of the optional Muse frame check (for example yes, no, unsure), '
+     'or off, pending or error. Advisory: never changes Active or State.'),
+    ('VlmReason', 'String', 'String', 'Muse frame-check reason, or why no check ran.'),
+    ('VlmCheckedAt', 'String', 'String', 'UTC time of the last Muse frame check.'),
 ]
+VLM_OFF = dict(VlmState='off', VlmReason='', VlmCheckedAt='')
 BRIDGE_TAGS = [('Online', 'Boolean', 'Boolean'), ('Status', 'String', 'String'),
                ('Heartbeat', 'String', 'String'), ('HeartbeatCounter', 'Int64', 'Int8')]
 
@@ -64,7 +70,7 @@ def manifest(zone):
     extra = zone['extraConditions'][:1]
     return dict(TagKey=zone['tagKey'], ZoneName=zone['name'], ZoneId=zone['id'], OutputName=zone['output'],
                 OutputType=zone['outputType'], Rule=rule_text(zone), Object1=zone['target'],
-                Object2=extra[0]['object'] if extra else '')
+                Object2=extra[0]['object'] if extra else '', Skill=zone.get('skill', ''))
 
 
 def seconds(stamp):
@@ -102,20 +108,21 @@ def document(zone, signal, now):
     return doc
 
 
-def documents(snapshot, zones, now):
+def documents(snapshot, zones, now, checks=None):
     assets = {asset['asset_id']: asset for asset in snapshot['assets']}
     result = []
     for zone in zones:
         signals = assets.get(zone['ZoneId'], {}).get('signals', [])
         signal = next((s for s in signals if s['source_id'] == 'vision' and s['signal_id'] == zone['OutputName']), None)
-        result.append(document(zone, signal, now))
+        # The frame check sits beside the SAM result and never alters it.
+        result.append(dict(Skill='') | document(zone, signal, now) | VLM_OFF | ((checks or {}).get(zone['ZoneId']) or {}))
     return result
 
 
 def removed(key):
     """Values kept for a key whose zone left the workspace, until the next restart."""
-    empty = dict(TagKey=key, ZoneName='', ZoneId='', OutputName='', OutputType='', Rule='', Object1='', Object2='')
-    return document(empty, None, 0) | dict(Reason='Zone removed from the workspace.')
+    empty = dict(TagKey=key, ZoneName='', ZoneId='', OutputName='', OutputType='', Rule='', Object1='', Object2='', Skill='')
+    return document(empty, None, 0) | VLM_OFF | dict(Reason='Zone removed from the workspace.')
 
 
 def node_id(key, tag):

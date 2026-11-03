@@ -170,9 +170,9 @@ class MqttPublisher(Worker):
 
     def stopped_documents(self, prefix, zones):
         """Unknown documents for a normal stop, so no zone keeps a retained Active or Clear."""
-        manifest = ('TagKey', 'ZoneName', 'ZoneId', 'OutputName', 'OutputType', 'Rule', 'Object1', 'Object2')
+        manifest = ('TagKey', 'ZoneName', 'ZoneId', 'OutputName', 'OutputType', 'Rule', 'Object1', 'Object2', 'Skill')
         return [(prefix + '/zones/' + z['TagKey'] + '/state',
-                 zone_tags.document({key: z[key] for key in manifest}, None, 0)
+                 zone_tags.document({key: z.get(key, '') for key in manifest}, None, 0) | zone_tags.VLM_OFF
                  | dict(Reason='MQTT publisher stopped; values are not current.', online=False, status='offline'))
                 for z in zones]
 
@@ -407,7 +407,7 @@ class OpcUaServer(Worker):
             node = await self.object(folder, 'Bridge/Zones/' + key, key)
             missing = ua.StatusCodes.BadNoCommunication if doc['Quality'] == 'Stale' else ua.StatusCodes.BadWaitingForInitialData
             for tag, kind, _, _ in zone_tags.TAGS:
-                value, variant = doc[tag], getattr(ua.VariantType, kind)
+                value, variant = doc.get(tag), getattr(ua.VariantType, kind)
                 if value is None:
                     # Bad status publishes a null value; the placeholder only keeps the node's data type.
                     placeholder = {'Boolean': False, 'Int32': 0, 'Double': 0., 'String': ''}[kind]

@@ -1,5 +1,40 @@
 # Development log
 
+## 2026-11-03 - Skills: Muse reference data and optional frame checks
+
+- `skills/<id>/skill.json` + `knowledge.md` (and `skills/_site/knowledge.md`) describe
+  scenarios: keywords, a rule template in the runtime's own fields, plant notes and an
+  optional VLM check (`confirm` / `scene` / `classify`, `on_active` / `periodic`,
+  2-6 allowed answers, 20-3600 s interval). `services/vision/skills.py` validates them
+  (invalid ones are listed, never fatal) and ranks them by keyword overlap (no vector
+  database). Five skills ship: person-in-area (ready, SAM only), person-confirmed,
+  camera-view-check, helmet-check and stack-light (experimental, with frame checks).
+- Configure: the best three skills and the site notes go to Muse as `reference_skills`
+  data; the system prompt says they never change the rules. Muse returns `skill`;
+  only offered ids are accepted. The proposal card shows the skill; applying it sets
+  the zone's skill with frame checks off.
+- Monitor: with *Allow Muse frame checks* ticked, the watchdog schedules at most one
+  check at a time: `on_active` when SAM turns the zone Active (then every interval
+  while Active, at least 20 s apart), `periodic` every interval. Muse answers one of
+  the allowed answers from the camera frame plus the rule and area as context. The
+  answer goes to new zone tags `Skill`, `VlmState`, `VlmReason`, `VlmCheckedAt`
+  (OPC UA, MQTT, REST, UDT) and the Observation panel; `Active` and `State` stay
+  SAM's. Stopping monitoring turns them `off`; errors give `error` with a reason.
+- Live (copy of the workspace, real Muse and Pi camera): "Alert SCADA when people at
+  the desk are not wearing hard hats" first came back unsupported with skill
+  helmet-check, because the fixed PPE limit won. The instructions now say a request is
+  supported through a skill whose frame check covers the part SAM cannot judge. After
+  that, Muse proposed person / overlaps / 1 s / person_in_helmet_area with skill
+  helmet-check (11.9 s), and "person at the desk, but confirm it is real, not a
+  poster" gave skill person-confirmed (9.4 s); both text only. With skill
+  camera-view-check and frame checks allowed, monitoring sent one frame: VlmState went
+  off → pending → `usable` ("the marked area ... is clearly visible and unobstructed")
+  about 10 s after enable, while State stayed SAM's Clear.
+- Checks: 7 skill tests (shipped skills valid, lookup ranking, invalid skills, bounded
+  reference data, offered-skill validation, reference sent to Muse, frame-check
+  answers), 1 app test (opt-in, unknown skill rejected, one check per activation,
+  Active unchanged, tags off on stop).
+
 ## 2026-11-03 - Reliability
 
 - SAM supervisor: restarts a worker it started after an exit, three missed health

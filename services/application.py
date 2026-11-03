@@ -23,6 +23,8 @@ from services.vlock.store import Store as ObservationStore, BridgeError
 from services.vlock.output import ObservationOutput
 from services.vlock.transports import Integrations, configuration as transport_configuration, local_addresses, network_adapters, credentials_ready
 from services.vlock import zone_tags
+from services.vlock.store_time import utc, steady_now
+from services.vision import skills as skill_library
 from collections import deque
 
 
@@ -37,7 +39,7 @@ ZONE_DEFAULTS = dict(name='New zone', cameraName='Camera', cameraAddress='', cam
     target='person', program='', output='zone_condition', outputType='condition', persistence=.5,
     validity=10, minConfidence=0, unknownPolicy='Keep Unknown + publish reason', recheck='None',
     allowRemote=False, zone=[], areaSelected=False, extraConditions=[], ruleJoin='ALL (AND)',
-    firstRelation='overlaps area', tagKey='')
+    firstRelation='overlaps area', tagKey='', skill='', vlmEnabled=False)
 
 INTEGRATION_DEFAULTS = dict(opcEnabled=False,opcMode='server',opcAccess='This PC only',opcHost='127.0.0.1',opcPort=4845,
     opcEndpoint='opc.tcp://127.0.0.1:62541',security='None — local test only',profile='',
@@ -100,7 +102,7 @@ def zone_config(data, zone_id):
     for key, default in ZONE_DEFAULTS.items():
         value = data.get(key,default)
         if isinstance(default,str):
-            result[key] = label(value,key,2000 if key=='program' else 300,empty=key in ('program','cameraAddress','tagKey','cameraUsername'))
+            result[key] = label(value,key,2000 if key=='program' else 300,empty=key in ('program','cameraAddress','tagKey','cameraUsername','skill'))
         elif isinstance(default,bool):
             if type(value) is not bool:
                 raise ApplicationError(f'{key} must be true or false.')
@@ -129,6 +131,8 @@ def zone_config(data, zone_id):
     result['cameraPassword']=password
     if not re.fullmatch(r'[A-Za-z][A-Za-z0-9_-]{0,63}',result['output']):
         raise ApplicationError('Output name: use 1–64 letters, digits, underscores or hyphens, starting with a letter.')
+    if result['skill'] and not skill_library.SKILL_ID.fullmatch(result['skill']):
+        raise ApplicationError('Invalid skill id.')
     if result['tagKey'] and not zone_tags.KEY.fullmatch(result['tagKey']):
         raise ApplicationError('Invalid SCADA tag key.')
     points = data.get('zone',[])
@@ -155,7 +159,7 @@ def zone_config(data, zone_id):
 
 class Workspace:
     def __init__(self, directory, fetch=fetch_jpeg, infer=track_video, diagnostics=None, assistant=None,
-                 worker=None, regions=segment_regions, rtsp_opener=open_stream):
+                 worker=None, regions=segment_regions, rtsp_opener=open_stream, skills_folder=skill_library.FOLDER):
         self.directory = Path(directory)
         self.assistant = assistant or RuleAssistant()
         self.worker = worker
@@ -164,6 +168,8 @@ class Workspace:
         self.lock = threading.RLock()
         self.fetch = fetch
         self.rtsp_opener = rtsp_opener
+        self.skills_folder = skills_folder
+        self.checks = {}
         self.infer = infer
         self.diagnostics = diagnostics
         self.cameras = {}
@@ -195,6 +201,72 @@ class Workspace:
                         self.notices.append(f'Monitoring of zone {zone_id} stopped unexpectedly and was marked Unknown.')
                 except Exception:
                     pass
+            try:
+                self.schedule_checks()
+            except Exception:
+                pass
+
+    def skills(self):
+        return skill_library.load(self.skills_folder)
+
+    def schedule_checks(self,now=None):
+        """Start at most one Muse frame check for a zone whose skill asks for one and whose operator allowed it.
+
+        on_active: when SAM turns the zone Active, then again every interval while it stays Active.
+        periodic: every interval while monitoring runs. Results go to the Vlm* tags only.
+        """
+        now=steady_now() if now is None else now
+        if any(c.get('busy') for c in self.checks.values()):
+            return None
+        library,_=self.skills()
+        with self.lock:
+            zones=[dict(z) for z in self.config['zones']]
+        for zone in zones:
+            check=self.checks.setdefault(zone['id'],dict(last=None,state=None,busy=False))
+            monitor,camera=self.monitors.get(zone['id']),self.cameras.get(zone['id'])
+            skill=library.get(zone['skill'])
+            vlm=skill and skill['vlm']
+            if not (zone['vlmEnabled'] and vlm and monitor and monitor.running and camera):
+                if check['state'] is not None:
+                    self.observations.set_check(zone['id'])
+                check.update(state=None,last=None)
+                continue
+            state,previous=monitor.rule.state,check['state']
+            check['state']=state
+            waited=check['last'] is None or now-check['last']>=vlm['interval_seconds']
+            if vlm['trigger']=='on_active':
+                due=state=='Warning' and (previous!='Warning' and (check['last'] is None or now-check['last']>=20) or waited)
+            else:
+                due=waited
+            if due:
+                check.update(busy=True,last=now)
+                self.observations.set_check(zone['id'],dict(VlmState='pending',VlmReason='Muse is checking the latest frame.',
+                    VlmCheckedAt=''))
+                thread=threading.Thread(target=self.run_check,args=(zone,skill,camera,state),name='muse-frame-check',daemon=True)
+                thread.start()
+                return thread
+        return None
+
+    def run_check(self,zone,skill,camera,state):
+        vlm=skill['vlm']
+        try:
+            jpeg,_=camera.snapshot()
+            context=(f'Zone "{zone["name"]}". Rule: {zone_tags.rule_text(zone)}. SAM state now: '
+                     f'{"Active" if state=="Warning" else "Clear" if state=="Normal" else "Unknown"}. '
+                     f'Monitoring area polygon (image fractions): {zone["zone"]}. Skill: {skill["name"]}.')
+            result=self.assistant.check_image(vlm['question'],vlm['answers'],jpeg,context)
+            values=dict(VlmState=result['answer'],VlmReason=result['reason'])
+        except AssistantError as error:
+            values=dict(VlmState='error',VlmReason=str(error))
+        except OSError:
+            values=dict(VlmState='error',VlmReason='No fresh camera frame for the Muse check.')
+        except Exception:
+            values=dict(VlmState='error',VlmReason='Muse frame check failed.')
+        finally:
+            self.checks[zone['id']]['busy']=False
+        values['VlmCheckedAt']=utc(steady_now())
+        if self.checks[zone['id']]['state'] is not None:
+            self.observations.set_check(zone['id'],values)
 
     def validate(self, data):
         if not isinstance(data,dict) or not isinstance(data.get('zones'),list) or len(data['zones'])>32:
@@ -288,10 +360,12 @@ class Workspace:
         return zone
 
     def status(self):
+        library,problems=self.skills()
         with self.lock:
             result = copy.deepcopy(self.config)
             for zone in result['zones']:
                 zone['cameraPasswordSet']=bool(zone.pop('cameraPassword',''))
+                zone['skillInfo']=skill_library.public(library.get(zone['skill']))
                 camera = self.cameras.get(zone['id'])
                 runtime = camera.status() if camera else dict(connected=False,frame_size=None,error=None)
                 monitor=self.monitors.get(zone['id'])
@@ -316,6 +390,7 @@ class Workspace:
                     tracking_scope='four-frame session',actual_frames=monitor.output_id if monitor else 0)
                 record['phase']='Initializing' if enabled and frame is None and 'unavailable' not in record['reason'].lower() else 'Waiting for fresh evidence' if enabled and not valid else 'Monitoring' if enabled else 'Disabled'
                 record['publication']=dict(monitor.bridge.status) if monitor else dict(state='idle',message='Configure the zone first.')
+                record['check']=dict(self.observations.checks.get(zone['id']) or {}) or None
                 if zone['outputType']=='count' and fresh:
                     counts=frame.get('counts') or {}
                     record.update(state='Valid',value=counts if len(counts)>1 else frame['count'],valid=True,quality='Good',
@@ -337,6 +412,7 @@ class Workspace:
                 capabilities=dict(camera=True,monitoring=True,observation_api=True,transports=True,machine_commands=False,
                     supported_camera='Pi / HTTP, RTSP',restart='Monitoring always starts disabled.',
                     opcua=dict(adapters=network_adapters(),login_ready=credentials_ready()),
+                    skills=dict(available=[skill_library.public(s) for s in library.values()],problems=problems),
                     assistant=self.assistant.status()))
 
     def save(self, data):
@@ -481,6 +557,8 @@ class Workspace:
                 raise ApplicationError('Remote monitoring enable is not wired yet. Disable that option.')
             if zone['recheck']!='None' or zone['unknownPolicy']!='Keep Unknown + publish reason':
                 raise ApplicationError('Second-check models are not wired yet. Keep Unknown explicitly.')
+            if zone['skill'] and zone['skill'] not in self.skills()[0]:
+                raise ApplicationError(f'Skill "{zone["skill"]}" is not in the skills folder. Choose another skill or none.')
             if zone['minConfidence']!=0:
                 raise ApplicationError('Calibrated score filtering is not wired. Set the minimum score to zero; scores remain diagnostic.')
             relations={'overlaps area':'mask_overlaps_zone','entirely inside area':'mask_inside_zone','absent from area':'object_absent'}
@@ -541,17 +619,23 @@ class Workspace:
             raise ApplicationError('includeFrame must be true or false.')
         with self.lock:
             zone=self.find(zone_id)
-            draft={key:zone[key] for key in ('name','target','firstRelation','extraConditions','ruleJoin','persistence','outputType','output','areaSelected')}
+            draft={key:zone[key] for key in ('name','target','firstRelation','extraConditions','ruleJoin','persistence','outputType','output','areaSelected','skill')}
             connected=bool(self.cameras.get(zone_id) and self.cameras[zone_id].status()['connected'])
         if include_frame and not connected:
             raise ApplicationError('Connect the camera so Muse can see it, or turn off the camera view.',409)
         # The newest original JPEG stays local for SAM; it goes to Meta only when opted in.
         jpeg=self.snapshot(zone_id)[0] if connected else None
+        library,_=self.skills()
+        # Matching skills reach Muse as reference data; Muse names the one it followed.
+        matches=skill_library.search(data.get('text') if isinstance(data.get('text'),str) else '',library)
+        reference=skill_library.reference(matches,skill_library.site_notes(self.skills_folder))
         try:
-            result=self.assistant.propose(data.get('text'),draft,jpeg if include_frame else None)
+            result=self.assistant.propose(data.get('text'),draft,jpeg if include_frame else None,reference=reference)
         except AssistantError as error:
             raise ApplicationError(str(error),error.status) from None
         proposal=result['proposal']
+        proposal['skillInfo']=skill_library.public(library.get(proposal.get('skill','')))
+        result['skills_offered']=[dict(id=s['id'],name=s['name']) for s in matches]
         if proposal['supported']:
             proposal['area']=self.propose_area(proposal['area'],jpeg)
         return result

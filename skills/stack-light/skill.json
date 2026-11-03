@@ -1,0 +1,40 @@
+{
+  "id": "stack-light",
+  "name": "Stack light colour",
+  "status": "experimental",
+  "summary": "SAM confirms the stack light (signal tower) is visible in the area; Muse reads which colour is lit.",
+  "keywords": [
+    "stack",
+    "light",
+    "signal",
+    "tower",
+    "andon",
+    "lamp",
+    "beacon",
+    "red",
+    "amber",
+    "green",
+    "machine",
+    "status"
+  ],
+  "rule": {
+    "target": "stack light",
+    "firstRelation": "overlaps area",
+    "persistence": 0,
+    "outputType": "condition",
+    "output": "stack_light_visible"
+  },
+  "vlm": {
+    "mode": "classify",
+    "trigger": "periodic",
+    "interval_seconds": 60,
+    "question": "Which colour is lit on the machine stack light (signal tower) in the marked area?",
+    "answers": [
+      "red",
+      "amber",
+      "green",
+      "off",
+      "unsure"
+    ]
+  }
+}

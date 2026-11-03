@@ -84,6 +84,7 @@ class Store:
         self.history_limit = history_limit
         self.lock = threading.RLock()
         self.zone_manifest = []
+        self.checks = {}
         self.session_id = str(uuid4())
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         self.db = sqlite3.connect(path, check_same_thread=False)
@@ -227,12 +228,20 @@ class Store:
         with self.lock:
             self.zone_manifest = [dict(zone) for zone in zones]
 
+    def set_check(self, asset_id, values=None):
+        """Latest Muse frame-check tags for a zone (VlmState, VlmReason, VlmCheckedAt); None turns them off."""
+        with self.lock:
+            if values is None:
+                self.checks.pop(asset_id, None)
+            else:
+                self.checks[asset_id] = dict(values)
+
     def zones(self):
         snapshot = self.snapshot()
         with self.lock:
-            manifest = list(self.zone_manifest)
+            manifest, checks = list(self.zone_manifest), dict(self.checks)
         return {key: value for key, value in snapshot.items() if key != 'assets'} | dict(
-            zones=zone_tags.documents(snapshot, manifest, self.clock()))
+            zones=zone_tags.documents(snapshot, manifest, self.clock(), checks))
 
     def retain(self, keep, source_id='vision'):
         """Delete signals of one source that no zone publishes any more: {asset_id: (signal_id, kind)}.

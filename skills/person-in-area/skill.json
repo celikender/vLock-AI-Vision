@@ -1,0 +1,25 @@
+{
+  "id": "person-in-area",
+  "name": "Person in area",
+  "status": "ready",
+  "summary": "A person overlaps the monitoring area for a short time. SAM only; the most tested scenario.",
+  "keywords": [
+    "person",
+    "people",
+    "worker",
+    "operator",
+    "human",
+    "someone",
+    "enters",
+    "inside",
+    "presence",
+    "occupied"
+  ],
+  "rule": {
+    "target": "person",
+    "firstRelation": "overlaps area",
+    "persistence": 1,
+    "outputType": "condition",
+    "output": "person_in_area"
+  }
+}

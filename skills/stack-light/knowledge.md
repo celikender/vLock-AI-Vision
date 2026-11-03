@@ -1,0 +1,3 @@
+- SAM outlines the light but does not read colours; Muse reports the lit colour in VlmState.
+- Draw a small area around the light. Bright sunlight or reflections can hide which segment is on.
+- Prefer a direct machine signal (PLC tag) when one exists; this is for machines without one.

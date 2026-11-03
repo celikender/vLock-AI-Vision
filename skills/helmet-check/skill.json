@@ -1,0 +1,35 @@
+{
+  "id": "helmet-check",
+  "name": "Helmet check",
+  "status": "experimental",
+  "summary": "SAM detects a person in the area; Muse checks whether every person there wears a safety helmet.",
+  "keywords": [
+    "helmet",
+    "helmets",
+    "hard",
+    "hat",
+    "ppe",
+    "safety",
+    "head",
+    "protection",
+    "hardhat"
+  ],
+  "rule": {
+    "target": "person",
+    "firstRelation": "overlaps area",
+    "persistence": 1,
+    "outputType": "condition",
+    "output": "person_in_helmet_area"
+  },
+  "vlm": {
+    "mode": "classify",
+    "trigger": "on_active",
+    "interval_seconds": 60,
+    "question": "Does every person inside the marked area wear a safety helmet (hard hat)?",
+    "answers": [
+      "yes",
+      "no",
+      "unsure"
+    ]
+  }
+}

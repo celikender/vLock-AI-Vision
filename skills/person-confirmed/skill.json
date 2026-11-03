@@ -1,0 +1,38 @@
+{
+  "id": "person-confirmed",
+  "name": "Person in area, confirmed by Muse",
+  "status": "experimental",
+  "summary": "SAM detects a person in the area; Muse then checks the frame to flag false alarms (posters, reflections, mannequins).",
+  "keywords": [
+    "confirm",
+    "verify",
+    "false",
+    "alarm",
+    "alarms",
+    "real",
+    "poster",
+    "reflection",
+    "mannequin",
+    "double",
+    "check",
+    "person"
+  ],
+  "rule": {
+    "target": "person",
+    "firstRelation": "overlaps area",
+    "persistence": 1,
+    "outputType": "condition",
+    "output": "person_in_area"
+  },
+  "vlm": {
+    "mode": "confirm",
+    "trigger": "on_active",
+    "interval_seconds": 60,
+    "question": "Is there a real person (not a poster, picture, screen, reflection or mannequin) inside the marked monitoring area?",
+    "answers": [
+      "yes",
+      "no",
+      "unsure"
+    ]
+  }
+}
