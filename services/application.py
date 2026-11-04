@@ -460,6 +460,10 @@ class Workspace:
             except OSError:
                 self.config = before
                 raise
+            # A removed zone's monitor settings and events have no further use.
+            for zone_id in set(old)-{z['id'] for z in candidate['zones']}:
+                self.monitors.pop(zone_id,None)
+                shutil.rmtree(self.directory/'zones'/zone_id,ignore_errors=True)
             self.sync_outputs()
             if candidate['integration']!=before['integration'] or self.integration_error:
                 self.integrations.apply(transports)

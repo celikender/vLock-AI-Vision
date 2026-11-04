@@ -111,6 +111,20 @@ class ApplicationTests(unittest.TestCase):
         self.assertEqual(view['id'],zone)
         self.assertEqual(view['tag_path'],['Company A','A-101','person_detect_A-101'])
 
+    def test_removing_a_zone_removes_only_its_saved_files(self):
+        self.create()
+        self.workspace.add('Second zone')
+        keep,gone=[z['id'] for z in self.workspace.status()['workspace']['zones']]
+        zones=Path(self.directory.name)/'zones'
+        for zone in (keep,gone):
+            (zones/zone).mkdir(parents=True,exist_ok=True)
+            (zones/zone/'monitor.json').write_text('{}',encoding='utf-8')
+        config=self.workspace.status()['workspace']
+        config['zones']=[z for z in config['zones'] if z['id']==keep]
+        self.workspace.save(config)
+        self.assertTrue((zones/keep/'monitor.json').exists())
+        self.assertFalse((zones/gone).exists())
+
     def admin_server(self):
         """A server with one admin; returns it and that admin's session cookie."""
         from services.auth import Auth
