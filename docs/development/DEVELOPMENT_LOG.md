@@ -1039,3 +1039,14 @@ Future entries should record actual changes, verification evidence, limitations,
 - The UI names the active engine and whether Meta is answering, instead of local worker status. Live browser check, no paid calls.
 - Added a daily spending limit for the Meta engines, $10 by default and kept across restarts, plus backoff after failures.
   The spend figure is an estimate; the Meta account shows the real bill.
+
+## 2026-11-04: Full chain owner-tested
+
+- The owner reports the full chain working in real Ignition with the real P1S: the OPC UA connection, the tag import, the camera side,
+  and both the local and Meta cloud engines.
+- Person alone with a person AND dog rule stayed Clear. With a real dog it went Active and the printer stopped. Disabling the camera
+  gave Unknown, which the SCADA side treated as a stop.
+- Observed by hand, with no timings measured. Open notes from this testing: Muse set up the rule correctly but left the output type
+  on `event`, and the owner chose `condition` by hand; Muse needs more detailed testing. Switching from local to Meta needed an app
+  restart, which is the current design and could be improved.
+

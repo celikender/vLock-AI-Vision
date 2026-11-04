@@ -4,14 +4,30 @@ Measured on Windows with an RTX 3070 Ti Laptop GPU, a Pi 5 USB camera at 640x480
 These are small samples that show the system works and how fast. They are **not** an accuracy benchmark or a long-duration
 test. For behavior under failure, see the [edge cases](EDGE_CASES.md).
 
+## Full chain, owner-tested
+
+Run by the project owner on November 4, 2026: Pi camera, this app, OPC UA, real Ignition with the imported fixed tags, the demo's
+customer-side stop logic, and a real Bambu P1S printer. These were observed by hand, so no times were measured.
+
+| Test | Rule in use | Result |
+|---|---|---|
+| Person alone in the area | Person AND dog | `Clear`, and the printer kept running |
+| Person holding a real dog in the area | Person AND dog | `Active`, and the printer stopped |
+| Camera disabled | | `Unknown`, treated as a stop, and the printer stopped |
+| Local GPU and Meta cloud engines | | Both worked. Switching from local to Meta needed an app restart, which is the current design |
+| Muse setup | | Rule set up correctly, but the output type stayed `event`. With `condition` chosen by hand, the output worked as planned |
+
+The owner also reports that the SCADA side and the camera side work overall. The app itself only published status; the stop came
+from the SCADA side, whose demo logic sends the printer a Pause.
+
 ## Not verified yet
 
-- **Ignition:** the UDT and tag import, the fixed tags in a gateway, Ignition reading the `nsu=` paths, the example latch, and the
-  heartbeat watchdog in a real gateway.
-- **The full chain:** this app to Ignition to a machine. An earlier experiment paused a real printer through Ignition, using an
-  older tag path.
+- **Reference scripts:** `ignition/stop_latch_example.py` and `ignition/heartbeat_watchdog.py` in a real gateway. The demo uses its own
+  logic in `demo_site/printer_ignition/`.
 - **Real failures:** unplugging a Pi during monitoring, and a real internet cut.
-- **Detection:** a safety vest phrase, accuracy on plant footage, and matches through the full app on the Meta video engine.
+- **Muse:** its proposals need more detailed testing across more prompts.
+- **Detection:** a safety vest phrase and accuracy on plant footage. Which Meta engine, image or video, ran in the owner's test was not
+  recorded, so a match through the full app on the video engine isn't confirmed.
 - **Setups:** Docker with the Meta engines, RTSP cameras, MQTT with a real broker, a second PC on OPC UA, Linux hosts, a separate clean PC.
 - **Duration:** long runs.
 
@@ -120,7 +136,7 @@ Run from the repository root:
 | Web | 33 | `python web/test_application.py` |
 | Ignition package | 19 | `python -m unittest ignition/test_ignition_package.py ignition/test_heartbeat_watchdog.py` |
 | Pi camera | 3 | `python -m unittest discover -s demo_site/pi_camera -p "test_*.py"` |
-| Printer project | 7 | `python demo_site/printer_ignition/test_project.py` |
+| Printer demo | 78 | `test_project.py`, `test_site_logic.py`, `test_bundle.py`, `test_connector.py` in `demo_site/printer_ignition/` |
 | UI scripts | 3 | `node web/test_zone_workspace.cjs`, `web/test_camera_preview.cjs`, `web/test_analyzed_preview.cjs` |
 
 The Ignition scripts run outside Ignition, with a stand-in for its `system` module.

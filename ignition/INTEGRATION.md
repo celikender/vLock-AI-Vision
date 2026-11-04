@@ -83,10 +83,10 @@ A frozen app can leave its last `State` in place, so also watch for a counter th
 
 ## Test status
 
-- **Checked on Windows without Ignition:** with `meta_api`, a separate OPC UA client read `State`, `Reason`
+- **Owner-tested in real Ignition:** importing the tag export over OPC UA on this PC and using the fixed tags, with the demo's own
+  stop logic stopping a real printer on `Active` and on `Unknown`, on both the local GPU and the Meta cloud engine.
+- **Checked on Windows with a separate client:** with `meta_api`, a separate OPC UA client read `State`, `Reason`
   and a moving `HeartbeatCounter`, and an unreachable API address gave `Unknown`. All 26 nodes named in the
-  export exist. That client used the namespace index; Ignition reading the `nsu=` paths is untested. The
-  separate camera reason has automated tests only.
-- **Not tested:** importing this export into real Ignition, the example latch and the heartbeat watchdog in a
-  real gateway, the full chain to a machine, a real Pi unplug, a real internet cut, a second PC, long runs.
-  The example scripts have only been run outside Ignition with a stand-in for its `system` module.
+  export exist. The separate camera reason has automated tests.
+- **Not tested:** this folder's example latch and heartbeat watchdog in a real gateway, a real Pi unplug, a real internet
+  cut, a second PC, long runs. Those two scripts have only been run outside Ignition with a stand-in for its `system` module.

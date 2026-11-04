@@ -22,8 +22,8 @@ The camera keeps its larger frame, per-view On/Off and one-second refresh.
 ```
 
 Updated tags are in `output/bambu-p1s-tags.json`; the poller adds only missing tags.
-The original ZIP is preserved. New Gateway import/rendering, camera and physical
-behavior remain untested in this session. See [ENDPOINTS.md](ENDPOINTS.md) for
+The original ZIP is preserved. The owner tested the Gateway import and a real printer stop on
+November 4, 2026; the optional printer camera panel isn't confirmed separately. See [ENDPOINTS.md](ENDPOINTS.md) for
 vLock, connector and Bambu interfaces. Sections below are historical milestones.
 
 ## Live detection-to-Pause checkpoint - October 31, 2026

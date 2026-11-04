@@ -57,12 +57,16 @@ never change `Active` or `State`.
 
 These are small samples from one camera and one room. Details are in the [test results](../testing/TEST_RESULTS.md).
 
+## Proven end to end
+
+In a real Ignition gateway with a real 3D printer: a person alone stayed `Clear`; a person with a real dog went `Active` and the
+printer stopped; and disabling the camera gave `Unknown`, which also stopped it. It worked on both the local GPU and Meta's cloud.
+
 ## Limits today
 
 - One camera and one monitoring job at a time, and at most two objects per zone. Multi-camera is future work.
 - Checks take a second or more and a state change needs two matching observations, so this is supervisory
   monitoring, not a fast safety stop. It does **not** replace physical lockout/tagout or safety-rated controls.
-- The fixed tags have not yet been imported into real Ignition.
 - Accuracy has only been sampled, not benchmarked.
 
 See the [edge cases](../testing/EDGE_CASES.md).

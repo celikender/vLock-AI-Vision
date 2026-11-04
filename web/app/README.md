@@ -263,5 +263,4 @@ Workspace settings is first in navigation and the workspace name links to it.
 SCADA tag paths no longer depend on the workspace, zone or output names: each zone
 publishes under its fixed tag key (see [fixed zone tags](../../ignition/ZONE_TAGS.md)).
 Names such as person_detect_A-101 are accepted as output names. OPC UA publication
-of the fixed tags is tested locally with an OPC UA client; the UDT import and
-delivery into the owner's Ignition are not yet verified.
+of the fixed tags, the UDT import and delivery into the owner's Ignition are owner-tested.

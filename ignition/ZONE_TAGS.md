@@ -89,8 +89,8 @@ restarts, with `State=Unknown` and `Reason=Zone removed from the workspace.`
    tag key, or import a fresh file.
 
 If the OPC UA connection has another name, change the `OpcServer` parameter of the
-instances. The export follows Ignition's tag JSON format, but importing it into a
-gateway has not yet been tested.
+instances. The import was owner-tested in a real gateway on November 4, 2026, using Advanced
+Tag Import. Stage both the `vLock` tags and the `vLockZone` UDT.
 
 The older raw contract (`Bridge/Assets/<zone id>/Signals/vision/<output>/...`) is
 still published for existing bindings, but its paths follow the output name. New

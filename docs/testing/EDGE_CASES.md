@@ -10,6 +10,7 @@ with a stand-in for the failure. **Not tested** means designed for, but never tr
 | Case | What happens | Checked |
 |---|---|---|
 | Camera gives no fresh frame | `Unknown`, reason `Camera unavailable...`; recovers when frames return | Automated |
+| Camera disabled during monitoring | `Unknown`, and the demo's SCADA logic stopped a real printer | Owner-tested |
 | A real Pi is unplugged during monitoring | Should behave as above, and recover after the Pi boots | **Not tested** |
 | Repeated or out-of-order frames | `Unknown` | Automated |
 | Result arrives on an old frame | `Unknown` | Automated |
@@ -66,6 +67,7 @@ The hosts-file case is not a useful outage test. The reconnect that would change
 | Answer returns after monitoring stopped or the rule changed | Dropped | Automated |
 | A person asks for something SAM can't confirm alone, such as a helmet | Active still means the SAM rule. The Muse answer is advisory only | Known limit |
 | Field names in free-form Muse JSON vary between runs | The app uses a fixed schema for its Muse calls | Live, plus automated |
+| Muse leaves the output type on `event` | The rule was right, but `condition` had to be chosen by hand. Check the type before using a proposal | Owner-seen, more testing needed |
 | Muse timing | About 4-7 s per call, which is why it stays out of the per-frame path | Live |
 
 ## SCADA output
@@ -73,12 +75,14 @@ The hosts-file case is not a useful outage test. The reconnect that would change
 | Case | What happens | Checked |
 |---|---|---|
 | Any failure | `State` = `Unknown`; `Active` and counts carry Bad quality | Automated, with State and Reason read live over OPC UA |
-| App closed or OPC connection lost | Tags go Bad in the client | **Not tested** in Ignition |
+| Person alone with a person AND dog rule | `Clear`, and the printer kept running | Owner-tested in Ignition |
+| Person and a real dog with that rule | `Active`, and a real printer stopped | Owner-tested in Ignition |
+| App closed or OPC connection lost | Tags go Bad in the client. The connection showed faulted while OPC UA was off and recovered when it was turned on | Owner-seen in Ignition; the stop on this case is automated only |
 | App frozen | Last values stay in place, so SCADA must also watch the heartbeat | Watchdog logic only: automated, not in a real gateway |
 | Watchdog reset while quality is Bad | Refused, even just after the last heartbeat | Automated, outside Ignition |
 | Script that only checks `Active == True` | Misses camera and cloud loss. It must read `State` | Read from the installed demo script |
 | Restart | Old results become `Unknown`. Monitoring doesn't resume by itself | Automated |
-| Two-object zone | Both objects are evaluated on the same frame | Automated, and live in an independent review |
+| Two-object zone | Both objects are evaluated on the same frame | Automated, live in an independent review, and owner-tested with a person and a dog |
 
 ## Application
 
