@@ -13,10 +13,16 @@
   volume: images built (SAM 13 GB, app 668 MB); CUDA available in the container; worker
   ready with `weights_verified: true` after a 54.9 s warm-up; the app container answered
   on its own address, and the Docker start message is correct.
-- Not verified: reaching the app from Windows (timed out; Docker Desktop's host
-  networking was off), the app's recovery after `docker compose restart sam` (the watch
-  script printed nothing), the first-start download with `HF_TOKEN`, monitoring with a
-  camera in Docker, and Linux hosts.
+- With Docker Desktop's host networking on (owner enabled it), from Windows: the app
+  answered at localhost:5056 (2-57 s after recreating the container). With the Pi camera
+  at 11-13 fps, a person in view gave zone Active, `Count1` 1 and Good on REST and on an
+  OPC UA client at `opc.tcp://127.0.0.1:4899/vlock/` (port chosen to stay away from
+  Ignition on 4845). Check time: median 3.13 s over 6 checks, max 6.28 s (native about
+  2.9 s). `docker compose restart sam`: starting +2 s, loading +6 s, ready +59 s, zone
+  Unknown until Active again at +67 s, without manual steps. Test data was removed.
+- Not verified: the first-start download with `HF_TOKEN`, an RTSP camera, MQTT in Docker,
+  OPC UA Network mode in Docker (Docker Desktop's adapters belong to its virtual machine,
+  so another PC may not reach them) and Linux hosts.
 
 ## 2026-11-03 - Security: login, roles, audit, client trust, weights checksum
 

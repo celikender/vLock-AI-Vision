@@ -46,12 +46,24 @@ docker compose down               # stop; volumes keep data and weights
 
 ## Test status
 
-Verified on Windows with an RTX 3070 Ti Laptop GPU: both images build, the SAM container
-uses the GPU and verifies the weights, and the app container answers on its own address.
+Verified on Windows (Docker Desktop, host networking on) with an RTX 3070 Ti Laptop GPU,
+a Pi camera and weights copied into the volume:
 
-Not verified yet: reaching the app from Windows with host networking on, recovery after a
-SAM container restart, the first-start weights download with `HF_TOKEN`, monitoring with a
-camera in Docker, and Linux hosts.
+- The app is reachable at `http://localhost:5056`. After recreating the app container
+  this took 2-57 s, so give it up to a minute.
+- Live monitoring detected a person: zone Active, `Count1` 1, on REST and on OPC UA read
+  from Windows at `opc.tcp://127.0.0.1:<port>/vlock/`, so a SCADA on the same PC connects
+  normally.
+- A SAM check took a median of 3.13 s (6 checks, one 6.28 s outlier), against about 2.9 s
+  natively. The camera ran at 11-13 fps, against about 16 fps natively.
+- `docker compose restart sam`: the app showed starting, then loading, and SAM was ready
+  at 59 s; the zone stayed Unknown until it returned to Active at 67 s, with no manual step.
+
+Not verified yet: the first-start weights download with `HF_TOKEN`, an RTSP camera, MQTT
+in Docker, and Linux hosts. OPC UA **Network** mode is also untested in Docker: on Docker
+Desktop the network adapters the app sees belong to Docker's virtual machine, not to
+Windows, so a SCADA on another PC may not reach them. For that case, use a native start
+or a Linux host until this is tested.
 
 ## Not covered yet
 
