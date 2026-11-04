@@ -65,4 +65,4 @@ These are small samples from one camera and one room. Details are in the [test r
 - The fixed tags have not yet been imported into real Ignition.
 - Accuracy has only been sampled, not benchmarked.
 
-See the [edge cases](../testing/EDGE_CASES.md) and the [roadmap](ROADMAP.md).
+See the [edge cases](../testing/EDGE_CASES.md).
