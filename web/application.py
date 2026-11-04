@@ -21,6 +21,7 @@ from services.vision.diagnostics import Diagnostics
 from services.vision.worker_process import SamWorker
 from services.vlock import zone_tags
 from services.auth import Auth, AuthError, rank
+from services.setup_config import SetupConfig, SetupError
 
 STATIC = Path(__file__).with_name('app')
 DATA = ROOT/'data'/'application'
@@ -89,8 +90,10 @@ POST_ROLES = {'connect': 'operator', 'disconnect': 'operator', 'enable': 'operat
 PUBLIC_PAGES = {'/login': 'login.html', '/login.js': 'login.js', '/style.css': 'style.css', '/polish.css': 'polish.css'}
 
 
-def make_server(workspace, port=5056, auth=None):
+def make_server(workspace, port=5056, auth=None, setup=None):
     auth = auth or Auth(workspace.directory)
+    setup = setup or SetupConfig(ROOT/'.env', active_backend='none' if workspace.worker is None else
+                                 getattr(workspace.worker,'backend_name','local'))
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self,*args):
@@ -157,10 +160,12 @@ def make_server(workspace, port=5056, auth=None):
                 if path.startswith('/api/v1/'):
                     self.scada_reader()
                 elif path.startswith('/api/app/'):
-                    current=self.require('admin' if path in ('/api/app/users','/api/app/audit','/api/app/opcua/clients') else 'viewer')
+                    current=self.require('admin' if path in ('/api/app/users','/api/app/audit','/api/app/opcua/clients','/api/app/config') else 'viewer')
                 elif path in ('/','/index.html'):
                     if self.session() is None:
                         return self.reply(302,b'',headers={'Location':'/login'})
+                if path=='/api/app/config':
+                    return self.reply(200,setup.view())
                 if path=='/api/app/users':
                     return self.reply(200,dict(users=auth.public_users()))
                 if path=='/api/app/audit':
@@ -211,7 +216,7 @@ def make_server(workspace, port=5056, auth=None):
                     return self.reply(200,jpeg,'image/jpeg',headers)
                 if len(parts)==5 and parts[:3]==['api','app','zones'] and parts[4]=='analyzed':
                     return self.reply(200,workspace.analyzed(parts[3]),'image/png')
-                allowed={'/':'index.html','/index.html':'index.html','/app.js':'app.js','/ui.js':'ui.js','/admin.js':'admin.js',
+                allowed={'/':'index.html','/index.html':'index.html','/app.js':'app.js','/ui.js':'ui.js','/admin.js':'admin.js','/setup.js':'setup.js',
                     '/scene.js':'scene.js','/runtime.js':'runtime.js','/camera-preview.js':'camera-preview.js','/configuration.js':'configuration.js','/configuration.css':'configuration.css','/style.css':'style.css',
                     '/polish.css':'polish.css','/runtime.css':'runtime.css','/README.md':'README.md'}
                 if path not in allowed:
@@ -274,7 +279,7 @@ def make_server(workspace, port=5056, auth=None):
                 result=self.route(route,parts,data,current)
                 auth.audit(current,route,parts[3] if len(parts)==5 else self.path,detail=self.summary(route,data))
                 return result
-            except (ApplicationError,AuthError) as error:
+            except (ApplicationError,AuthError,SetupError) as error:
                 self.reply(error.status,dict(error=str(error)))
             except (ValueError,TypeError,KeyError,RecursionError):
                 self.reply(400,dict(error='Invalid request. Check the configuration fields.'))
@@ -291,9 +296,16 @@ def make_server(workspace, port=5056, auth=None):
                 return 'zones: '+', '.join(str(z.get('name'))[:40] for z in data.get('zones',[])[:10] if isinstance(z,dict))
             if route in ('users','users/delete','opcua/clients'):
                 return ' '.join(f'{k}={data.get(k)}' for k in ('username','role','id','action') if k in data)
+            if route=='config':
+                return 'fields: '+', '.join(sorted(str(name)[:40] for name in [*data.get('values',{}),*data.get('clear',[])]))
             return ''
 
         def route(self,route,parts,data,current):
+            if route=='config':
+                setup.save(data)
+                return self.reply(200,setup.view())
+            if route=='config/test-meta':
+                return self.reply(200,setup.test_meta())
             if route=='workspace':
                 return self.reply(200,workspace.save(data))
             if route=='zones':

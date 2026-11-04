@@ -86,6 +86,7 @@ def parse_objects(text, width, height):
 
 class MetaSam:
     """Inference callable for Monitoring, plus the status methods the app expects of its SAM worker."""
+    backend_name = 'meta_api'
     window_frames = 1
     min_check_seconds = 1.0
     unavailable_reason = 'Meta SAM unavailable. Check the internet connection and the API key.'

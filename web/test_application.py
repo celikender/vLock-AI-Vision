@@ -111,6 +111,50 @@ class ApplicationTests(unittest.TestCase):
         self.assertEqual(view['id'],zone)
         self.assertEqual(view['tag_path'],['Company A','A-101','person_detect_A-101'])
 
+    def test_setup_page_is_admin_only_and_never_returns_or_logs_a_secret(self):
+        from services.auth import Auth
+        from services.setup_config import SetupConfig
+        auth=Auth(self.directory.name)
+        auth.create_user(None,'admin','admin-password-1','admin')
+        auth.create_user(None,'viewer1','viewer-password-1','viewer')
+        secret='fake-secret-value-987'
+        env=Path(self.directory.name)/'test.env'
+        server=make_server(self.workspace,0,auth=auth,setup=SetupConfig(env,active_backend='local',environ={}))
+        threading.Thread(target=server.serve_forever,daemon=True).start()
+        host=f'localhost:{server.server_port}'
+        def call(path,body=None,cookie=''):
+            connection=http.client.HTTPConnection('127.0.0.1',server.server_port,timeout=5)
+            headers={'Host':host,'Cookie':cookie}
+            if body is not None:headers.update({'Content-Type':'application/json','Origin':'http://'+host})
+            connection.request('POST' if body is not None else 'GET',path,None if body is None else json.dumps(body),headers)
+            response=connection.getresponse()
+            raw=response.read().decode()
+            connection.close()
+            return response.status,raw
+        admin='vlock_session='+auth.login('admin','admin-password-1')
+        viewer='vlock_session='+auth.login('viewer1','viewer-password-1')
+        try:
+            self.assertEqual(call('/api/app/config')[0],401)
+            self.assertEqual(call('/api/app/config',cookie=viewer)[0],403)
+            self.assertEqual(call('/api/app/config',{'values':{'META_API_KEY':secret}},viewer)[0],403)
+            self.assertFalse(env.exists())
+            code,raw=call('/api/app/config',{'values':{'META_API_KEY':secret,'VLOCK_SAM_BACKEND':'meta_api'}},admin)
+            self.assertEqual(code,200)
+            self.assertNotIn(secret,raw)
+            self.assertTrue(json.loads(raw)['restartNeeded'])
+            self.assertNotIn(secret,call('/api/app/config',cookie=admin)[1])
+            self.assertIn(secret,env.read_text(encoding='utf-8'))
+            audit=call('/api/app/audit',cookie=admin)[1]
+            self.assertIn('META_API_KEY',audit)
+            self.assertNotIn(secret,audit)
+            self.assertNotIn(secret,(Path(self.directory.name)/'audit.log').read_text(encoding='utf-8'))
+            code,raw=call('/api/app/config',{'values':{'VLOCK_SAM_BACKEND':secret}},admin)
+            self.assertEqual(code,400)
+            self.assertNotIn(secret,raw)
+            self.assertEqual(call('/setup.js',cookie=admin)[0],200)
+        finally:
+            server.shutdown();server.server_close()
+
     def test_removing_a_zone_removes_only_its_saved_files(self):
         self.create()
         self.workspace.add('Second zone')

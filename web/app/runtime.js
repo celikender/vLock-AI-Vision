@@ -78,7 +78,7 @@ async function refreshStatus(force=false){
   if(!applicationReady){applyWorkspace(data);return;}
   for(const z of workspace.zones){const remote=data.workspace.zones.find(r=>r.id===z.id);if(remote){z.tag_path=remote.tag_path;z.runtime=remote.runtime;z.connected=remote.connected;z.localEnabled=remote.localEnabled;z.events=remote.events;if(!dirtyFlag)z.configured=remote.configured;}}
   // Keep draft inputs and polygon handles stable while editing.
-  if(location.hash.startsWith('#zone/'))refreshZoneResults();else if(['#outputs','#integrations','#system'].includes(location.hash)){await refreshOutputSnapshot();refreshConnectionViews();}else if(!dirtyFlag)render();
+  if(location.hash.startsWith('#zone/'))refreshZoneResults();else if(['#outputs','#integrations','#system'].includes(location.hash)){await refreshOutputSnapshot();refreshConnectionViews();}else if(!dirtyFlag&&location.hash!=='#setup')render();
  }catch(error){for(const z of workspace.zones){z.connected=false;z.runtime={state:'Unknown',valid:false,value:null,reason:'Application unavailable. Last values are not current.'};}outputSnapshot=null;outputReadState='Local API unavailable · values are not current';if(applicationReady){if(location.hash.startsWith('#zone/'))refreshZoneResults();else if(['#outputs','#integrations','#system'].includes(location.hash))refreshConnectionViews();else render();}$('saved').textContent='Application offline';}
  finally{refreshingRuntime=false;}
 }
