@@ -138,7 +138,7 @@ def make_server(workspace, port=5056, auth=None, setup=None):
 
         def scada_reader(self):
             """SCADA REST: open on this PC unless VLOCK_API_TOKEN is set; the UI uses its login session."""
-            token=os.environ.get('VLOCK_API_TOKEN','')
+            token=(setup.values().get('VLOCK_API_TOKEN') or '').strip()
             if not token or self.session() is not None:
                 return
             supplied=self.headers.get('Authorization','')
@@ -358,7 +358,7 @@ def main():
     parser=argparse.ArgumentParser(description='vLock-AI Vision application')
     parser.add_argument('--port',type=int,default=5056)
     parser.add_argument('--data-dir',type=Path,default=DATA)
-    parser.add_argument('--no-sam',action='store_true',help='Do not start or manage the local SAM worker.')
+    parser.add_argument('--no-sam',action='store_true',help='Do not start or manage the local SAM worker. Meta engines are unaffected.')
     parser.add_argument('--open',action='store_true',help='Open the application in the default browser.')
     args=parser.parse_args()
     sam_backend=(settings().get('VLOCK_SAM_BACKEND') or 'local').strip()
@@ -375,7 +375,7 @@ def main():
     if args.data_dir==DATA:
         migrate_data()
     worker,backend=None,{}
-    if not args.no_sam and sam_backend!='local':
+    if sam_backend!='local':
         from services.vision.meta_sam import MetaSam,MetaSamVideo
         worker=(MetaSamVideo if sam_backend=='meta_api_video' else MetaSam)(args.data_dir/'sam_latency.csv')
         backend=dict(infer=worker,regions=worker.segment_regions)

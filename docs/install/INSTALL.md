@@ -48,7 +48,7 @@ Open **Setup** in the sidebar. You don't need to edit any files.
 | Meta API key | Your Meta developer account at [dev.meta.ai](https://dev.meta.ai) | Muse Spark, and the Meta SAM engines |
 | SAM engine | Choose from the list | Always. Changing it needs a restart of the app |
 | OPC UA username and password | Choose your own | Only when SCADA runs on another PC |
-| REST API token | Choose your own | Optional |
+| REST API token | Choose your own | Optional. Applies as soon as it is saved, so REST clients must then send it |
 
 Paste the key, click **Save setup**, then click **Test saved key**. This check is free, sends no image and tells you
 which models your key can use.

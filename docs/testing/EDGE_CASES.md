@@ -27,6 +27,7 @@ with a stand-in for the failure. **Not tested** means designed for, but never tr
 | Answer arrives after the limit | Discarded, `Unknown` | Automated |
 | Unreadable or incomplete answer | `Unknown`, never zero objects | Automated |
 | Key missing | Monitoring won't start, and the status says what to do | Automated |
+| Meta keeps failing | Monitoring keeps trying and stays `Unknown`. **Known limit: no spending limit or backoff yet,** and the app's cost figure is only an estimate that counts failed requests and resets on restart | Read from the code |
 | Internet cut during monitoring | Should reach `Unknown` through the limit on an open connection | **Not tested** live |
 | `api.meta.ai` blocked in the hosts file | **Known limit: stays working.** The app keeps its connection open and a name block doesn't end it. Only a new connection fails | Simulated |
 
@@ -51,6 +52,7 @@ The hosts-file case is not a useful outage test. The reconnect that would change
 | Port 5052 used by another program | Reported, and nothing is stopped | Automated |
 | Long-running log | Rotates at 5 MB while the worker runs. Writing to a file the worker holds open failed on Windows, so the app now writes it | Automated, plus a live start |
 | Inference stuck | Monitoring can stay "finishing" for up to the 300-second limit | Known limit |
+| More than 32 objects in a frame | `Unknown`, with a reason saying so. Up to 32 are evaluated, on every engine | Automated |
 
 ## Muse Spark
 
@@ -69,6 +71,7 @@ The hosts-file case is not a useful outage test. The reconnect that would change
 | Any failure | `State` = `Unknown`; `Active` and counts carry Bad quality | Automated, with State and Reason read live over OPC UA |
 | App closed or OPC connection lost | Tags go Bad in the client | **Not tested** in Ignition |
 | App frozen | Last values stay in place, so SCADA must also watch the heartbeat | Watchdog logic only: automated, not in a real gateway |
+| Watchdog reset while quality is Bad | Refused, even just after the last heartbeat | Automated, outside Ignition |
 | Script that only checks `Active == True` | Misses camera and cloud loss. It must read `State` | Read from the installed demo script |
 | Restart | Old results become `Unknown`. Monitoring doesn't resume by itself | Automated |
 | Two-object zone | Both objects are evaluated on the same frame | Automated, and live in an independent review |
@@ -83,6 +86,7 @@ The hosts-file case is not a useful outage test. The reconnect that would change
 | First start with data in the old folder | Copied once, even though the lock file already exists | Automated, plus the real data in a temporary folder |
 | Key pasted into the wrong setting | Refused without showing the value on the Setup page. A wrong value in `.env` stops the start with a clear message | Automated |
 | Secret on the Setup page | Never returned or written to the audit log | Automated |
+| REST token saved on the Setup page | Enforced at once; removing it opens REST again | Automated |
 | Typing on the Setup page during a refresh | Text stays. A live check found and fixed this | Live |
 | Zone removed | Its saved files are removed, and other zones are untouched | Automated |
 | History growth | Held at 1,000 events, about 1.7 MB | Measured, 6,000 writes |

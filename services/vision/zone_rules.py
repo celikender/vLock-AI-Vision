@@ -1,6 +1,7 @@
 """Deterministic mask geometry and warning persistence; independent of model inference."""
 import time
 from PIL import Image, ImageDraw, ImageChops
+from .masks import MAX_OBJECTS, TooManyObjects
 from .video import decode_mask
 
 
@@ -18,8 +19,10 @@ def evaluate(result, config, condition=None):
     if [result.get('width'), result.get('height')] != size:
         raise ValueError('Camera resolution changed. Reconnect and redraw the zone.')
     objects = result.get('objects')
-    if not isinstance(objects, list) or result.get('count') != len(objects) or len(objects) > 8:
+    if not isinstance(objects, list) or result.get('count') != len(objects):
         raise ValueError('Incomplete SAM mask results.')
+    if len(objects) > MAX_OBJECTS:
+        raise TooManyObjects()
     zone = Image.new('L', tuple(size))
     ImageDraw.Draw(zone).polygon([tuple(p) for p in config['zone']['polygon']], fill=255)
     detections = []

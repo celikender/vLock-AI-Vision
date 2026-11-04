@@ -4,12 +4,18 @@ from io import BytesIO
 from PIL import Image, ImageOps, ImageFilter, ImageChops, UnidentifiedImageError
 
 MAX_AREA_VERTICES = 12
+MAX_OBJECTS = 32
 
 
 class SegmentationError(Exception):
     def __init__(self, message, status=502):
         super().__init__(message)
         self.status = status
+
+
+class TooManyObjects(SegmentationError):
+    def __init__(self):
+        super().__init__(f'More than {MAX_OBJECTS} objects found. Use a more specific object or a smaller area.')
 
 
 def outline(mask):
@@ -49,8 +55,8 @@ def prepare(jpeg, prompt):
 
 
 def render(image, masks):
-    if len(masks) > 32:
-        raise SegmentationError('Too many objects for this experiment. Use a more specific prompt.')
+    if len(masks) > MAX_OBJECTS:
+        raise TooManyObjects()
     output = image.convert('RGBA')
     colors = [(60,240,150),(255,170,40),(60,180,255),(230,90,230)]
     for index, mask in enumerate(masks):

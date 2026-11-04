@@ -78,6 +78,12 @@ class WatchdogTests(unittest.TestCase):
         self.assertTrue(self.evaluate(state, True, 2, 9000, True, True), 'Reset cannot clear a stale heartbeat.')
         self.assertFalse(self.evaluate(state, True, 3, 10000, True, True))
 
+    def test_reset_is_refused_while_quality_is_bad_even_within_the_grace_period(self):
+        state = {}
+        self.evaluate(state, True, 1, 0, False, False)
+        self.assertTrue(self.evaluate(state, False, None, 1000, True, True))
+        self.assertFalse(self.evaluate(state, True, 2, 2000, True, True))
+
     def test_script_writes_only_on_change_and_clears_the_reset_tag(self):
         self.system.written.clear()
         self.run_at(1)

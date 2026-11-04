@@ -86,9 +86,9 @@ Run from the repository root:
 
 | Suite | Tests | Command |
 |---|---|---|
-| Services | 152 | `python -m unittest discover -s services -p "test_*.py" -t .` |
-| Web | 32 | `python web/test_application.py` |
-| Ignition package | 18 | `python -m unittest ignition/test_ignition_package.py ignition/test_heartbeat_watchdog.py` |
+| Services | 155 | `python -m unittest discover -s services -p "test_*.py" -t .` |
+| Web | 33 | `python web/test_application.py` |
+| Ignition package | 19 | `python -m unittest ignition/test_ignition_package.py ignition/test_heartbeat_watchdog.py` |
 | Pi camera | 3 | `python -m unittest discover -s demo_site/pi_camera -p "test_*.py"` |
 | Printer project | 7 | `python demo_site/printer_ignition/test_project.py` |
 | UI scripts | 3 | `node web/test_zone_workspace.cjs`, `web/test_camera_preview.cjs`, `web/test_analyzed_preview.cjs` |

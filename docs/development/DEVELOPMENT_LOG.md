@@ -1026,3 +1026,13 @@ Future entries should record actual changes, verification evidence, limitations,
   first-run Setup with a fake key, engine switch after restart, and a clear error for a bad engine value.
 - Earlier browser checks found two Setup page bugs before publishing: a load-order error, and typed values disappearing on refresh.
 - The planned real-gateway test round did not run; see the test results for what remains unverified.
+
+## 2026-11-04: Review fixes
+
+- A REST token saved on the Setup page is now enforced; REST previously read only the process environment.
+- One object limit of 32 on every engine, with a reason that names the cause. The rule code previously rejected more than 8.
+- The reference heartbeat watchdog refuses a reset while quality is Bad.
+- `--no-sam` no longer turns off a Meta engine.
+- The UI names the active engine and whether Meta is answering, instead of local worker status. Live browser check, no paid calls.
+- Not done: a spending limit or backoff for repeated Meta failures. The app's cost figure is an estimate.
+

@@ -155,6 +155,31 @@ class ApplicationTests(unittest.TestCase):
         finally:
             server.shutdown();server.server_close()
 
+    def test_rest_token_saved_on_the_setup_page_is_enforced_at_once(self):
+        from services.auth import Auth
+        from services.setup_config import SetupConfig
+        setup=SetupConfig(Path(self.directory.name)/'test.env',environ={})
+        server=make_server(self.workspace,0,auth=Auth(self.directory.name),setup=setup)
+        threading.Thread(target=server.serve_forever,daemon=True).start()
+        def read(token=None):
+            connection=http.client.HTTPConnection('127.0.0.1',server.server_port,timeout=5)
+            headers={'Host':f'localhost:{server.server_port}'}
+            if token:headers['Authorization']='Bearer '+token
+            connection.request('GET','/api/v1/zones',headers=headers)
+            status=connection.getresponse().status
+            connection.close()
+            return status
+        try:
+            self.assertEqual(read(),200,'Open until a token is saved')
+            setup.save(dict(values=dict(VLOCK_API_TOKEN='saved-rest-token-1')))
+            self.assertEqual(read(),401)
+            self.assertEqual(read('wrong-token'),401)
+            self.assertEqual(read('saved-rest-token-1'),200)
+            setup.save(dict(clear=['VLOCK_API_TOKEN']))
+            self.assertEqual(read(),200,'Removing it opens REST again')
+        finally:
+            server.shutdown();server.server_close()
+
     def test_removing_a_zone_removes_only_its_saved_files(self):
         self.create()
         self.workspace.add('Second zone')
@@ -178,6 +203,10 @@ class ApplicationTests(unittest.TestCase):
         return make_server(self.workspace,0,auth=auth),'vlock_session='+auth.login('admin','admin-password-1')
 
     def setUp(self):
+        # A REST token in the developer's own .env must not change these tests.
+        environment=patch.dict('os.environ',{'VLOCK_API_TOKEN':''})
+        environment.start()
+        self.addCleanup(environment.stop)
         self.directory=tempfile.TemporaryDirectory()
         self.frame=jpeg()
         self.sequence=0

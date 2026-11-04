@@ -393,7 +393,7 @@ class Workspace:
                     objects=len(zone['extraConditions'][:1])+1,
                     output_id=frame['output_id'] if fresh else None,count=frame.get('count') if fresh else None,
                     counts=frame.get('counts') if fresh else None,
-                    tracking_scope='four-frame session',actual_frames=monitor.output_id if monitor else 0)
+                    tracking_scope=f'{monitor.window_frames}-frame check' if monitor else 'none',actual_frames=monitor.output_id if monitor else 0)
                 record['phase']='Initializing' if enabled and frame is None and 'unavailable' not in record['reason'].lower() else 'Waiting for fresh evidence' if enabled and not valid else 'Monitoring' if enabled else 'Disabled'
                 record['publication']=dict(monitor.bridge.status) if monitor else dict(state='idle',message='Configure the zone first.')
                 record['check']=self.observations.current_check(zone['id'])

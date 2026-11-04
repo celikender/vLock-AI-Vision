@@ -21,7 +21,7 @@ from PIL import Image, UnidentifiedImageError
 from meta_sam_parser import CompletedOutcome, decode_mask_to_raster, image_segmentation_format, video_segmentation_format
 from openai import APIConnectionError, APIStatusError, APITimeoutError, OpenAI
 from .assistant import settings
-from .masks import SegmentationError, outline
+from .masks import MAX_OBJECTS, SegmentationError, TooManyObjects, outline
 from .video import MAX_JPEG_BYTES, decode_mask, encode_mask, validate_prompt
 
 DEFAULT_TIMEOUT_MS = 3000
@@ -29,7 +29,6 @@ MIN_VIDEO_TIMEOUT = 6.0
 VIDEO_FPS = 4
 PRICE_PER_IMAGE = 2.50/1000
 MAX_OUTPUT = 16*1024*1024
-MAX_OBJECTS = 32
 LOG_LIMIT = 5*1024*1024
 LOG_COLUMNS = ['timestamp_utc', 'backend', 'phrase', 'sam_ms', 'matches', 'top_score', 'status']
 STATUS_MESSAGES = {401: 'Meta rejected the API key. Check META_API_KEY in .env.',
@@ -92,7 +91,7 @@ def parse_objects(text, width, height):
     """An image answer: the object rows of its one frame."""
     records = mask_records(text, image_segmentation_format())
     if len(records) > MAX_OBJECTS:
-        raise SegmentationError('Too many objects. Narrow the phrase.')
+        raise TooManyObjects()
     return [object_row(record, width, height) for record in records]
 
 
@@ -100,7 +99,7 @@ def parse_video(text, width, height, frame_count):
     """A video answer: object rows per frame. A frame with no objects has no line and an empty list."""
     records = mask_records(text, video_segmentation_format())
     if len(records) > MAX_OBJECTS*frame_count:
-        raise SegmentationError('Too many objects. Narrow the phrase.')
+        raise TooManyObjects()
     frames = [[] for _ in range(frame_count)]
     for record in records:
         index = record.frame.frame_index
@@ -145,6 +144,7 @@ class MetaSam:
         self.lock = threading.Lock()
         self.client = self.client_key = None
         self.calls = deque()
+        self.last_status = None
 
     def connection(self, values):
         """One kept-alive client: a new TLS connection for every frame would add latency."""
@@ -217,6 +217,7 @@ class MetaSam:
         with self.lock:
             now = self.clock()
             self.calls.append(now)
+            self.last_status = status
             while self.calls and now-self.calls[0] > 3600:
                 self.calls.popleft()
             try:
@@ -263,7 +264,9 @@ class MetaSam:
         with self.lock:
             now = self.clock()
             calls = sum(1 for moment in self.calls if now-moment <= 3600)
+            last = self.last_status
         return dict(state='ready', owned=False, backend=self.backend_name, calls_last_hour=calls,
+                    last_request=None if last is None else 'ok' if last == 'ok' else 'failing',
                     message=f'SAM 3.1 through the Meta Model API. {calls} requests in the last hour, '
                             f'about ${calls*self.price_per_request:.2f}.')
 

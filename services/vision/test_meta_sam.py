@@ -11,10 +11,11 @@ import cv2
 from openai import APIConnectionError, APIStatusError, APITimeoutError
 from PIL import Image
 
-from services.vision.masks import SegmentationError
+from services.vision.masks import MAX_OBJECTS, SegmentationError, TooManyObjects
 from services.vision.meta_sam import MetaSam, MetaSamVideo, encode_window, meta_client, parse_objects, parse_video
 from services.vision.monitoring import Monitoring
-from services.vision.test_monitoring import config
+from services.vision.test_monitoring import config, result
+from services.vision.zone_rules import evaluate
 from services.vision.video import decode_mask
 
 # A real sam-3.1 answer (phrase "storage drawers") for a 640x480 camera frame.
@@ -133,6 +134,17 @@ class MetaSamTests(unittest.TestCase):
         self.addCleanup(real.close)
         self.assertEqual(real.max_retries, 0)
 
+    def test_status_says_whether_meta_is_answering(self):
+        client = FakeClient()
+        backend = self.backend(client)
+        self.assertIsNone(backend.status()['last_request'])
+        self.rows(backend)
+        self.assertEqual(backend.status()['last_request'], 'ok')
+        client.error = bare(APITimeoutError)
+        with self.assertRaises(SegmentationError):
+            self.rows(backend)
+        self.assertEqual(backend.status()['last_request'], 'failing')
+
     def test_status_needs_a_key_and_counts_requests(self):
         missing = self.backend(FakeClient(), values={})
         self.assertEqual(missing.status()['state'], 'failed')
@@ -148,6 +160,48 @@ class MetaSamTests(unittest.TestCase):
         regions = self.backend(FakeClient()).segment_regions(camera_jpeg(), 'storage drawers')
         self.assertEqual(len(regions), 1)
         self.assertTrue(3 <= len(regions[0]['polygon']) <= 12)
+
+
+class ObjectLimitTests(unittest.TestCase):
+    def crowd(self, count):
+        row = result()
+        return dict(row, objects=row['objects']*count, count=count)
+
+    def test_a_crowded_scene_is_evaluated_up_to_the_shared_limit(self):
+        self.assertTrue(evaluate(self.crowd(9), config())[0])
+        self.assertTrue(evaluate(self.crowd(MAX_OBJECTS), config())[0])
+        with self.assertRaises(TooManyObjects):
+            evaluate(self.crowd(MAX_OBJECTS+1), config())
+
+    def test_too_many_meta_matches_name_the_real_cause_on_the_monitor(self):
+        record = ANSWER.split('>', 1)[1].rstrip()[1:]
+        answer = lambda count: '<0f>'+','.join(f'{number}{record}' for number in range(count))
+        self.assertEqual(len(parse_objects(answer(MAX_OBJECTS), 640, 480)), MAX_OBJECTS)
+        counter = [0]
+
+        def fetch(camera):
+            counter[0] += 1
+            return camera_jpeg(), {'X-Frame-Sequence': str(counter[0]), 'X-Frame-Age-Ms': '0'}
+        with tempfile.TemporaryDirectory() as folder:
+            backend = MetaSam(Path(folder)/'latency.csv', config=lambda: VALUES,
+                              client_factory=lambda key, base_url, timeout: FakeClient(answer=answer(MAX_OBJECTS+1)))
+            monitor = Monitoring(fetch=fetch, infer=backend, path=Path(folder)/'configuration.json')
+            value = config()
+            value['camera']['frame_size'] = [640, 480]
+            value['zone'].update(polygon=[[0, 0], [639, 0], [639, 479], [0, 479]], frame_size=[640, 480])
+            monitor.connect({'camera': value['camera']})
+            monitor.save(value)
+            monitor.start()
+            try:
+                deadline = time.monotonic()+6
+                while time.monotonic() < deadline and 'objects found' not in monitor.status()['reason']:
+                    time.sleep(.02)
+                status = monitor.status()
+                self.assertEqual(status['state'], 'Unknown')
+                self.assertEqual(status['reason'], str(TooManyObjects()))
+            finally:
+                monitor.stop()
+                monitor.thread.join(3)
 
 
 class MetaSamVideoTests(unittest.TestCase):
@@ -265,6 +319,7 @@ class MetaSamMonitoringTests(unittest.TestCase):
         self.wait(lambda: self.monitor.status()['result'] is not None)
         status = self.monitor.status()
         self.assertEqual(status['result']['count'], 1)
+        self.assertEqual(status['capabilities']['id_scope'], '1-frame SAM check')
         self.assertIsNotNone(status['result']['annotated_image'])
         time.sleep(1.5)
         self.assertLessEqual(len(self.client.requests), 3, 'About one request per second.')

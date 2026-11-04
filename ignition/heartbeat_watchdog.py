@@ -8,7 +8,7 @@ The HeartbeatCounter tag comes from the vLock UDT import (see ZONE_TAGS.md).
 
 The script only sets WatchdogFault. It sends no machine command: the integrator decides what
 the fault does. A fault clears only when an operator sets WatchdogReset while the heartbeat
-is moving, so a returning heartbeat never resumes anything by itself.
+is moving with Good quality, so a returning heartbeat never resumes anything by itself.
 
 Not yet run in a real Ignition gateway; only the logic has automated tests.
 """
@@ -28,7 +28,7 @@ def evaluate(state, good, counter, now_ms, fault, reset):
     state.setdefault("changed_at", now_ms)
     if now_ms - state["changed_at"] > STALE_MS:
         return True
-    return False if reset else fault
+    return False if reset and good else fault
 
 
 def run_watchdog():

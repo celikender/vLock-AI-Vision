@@ -10,7 +10,7 @@ from io import BytesIO
 from pathlib import Path
 from uuid import uuid4
 from PIL import Image
-from .masks import render
+from .masks import TooManyObjects, render
 from .transport import track_video
 from .video import WINDOW_FRAMES, decode_mask
 from .configuration import Store, validate, public, text, DEFAULT
@@ -59,6 +59,10 @@ class Monitoring:
 
     def bridge_unknown(self):
         self.bridge.send(self.config, 'Unknown', self.rule.reason)
+
+    @property
+    def window_frames(self):
+        return getattr(self.infer,'window_frames',WINDOW_FRAMES)
 
     def busy(self):
         return bool(self.thread and self.thread.is_alive())
@@ -273,7 +277,7 @@ class Monitoring:
             try:
                 frames = []
                 began = time.monotonic()
-                window = getattr(self.infer,'window_frames',WINDOW_FRAMES)
+                window = self.window_frames
                 while len(frames)<window and not self.cancel.is_set():
                     if revision != self.revision:
                         break
@@ -322,10 +326,11 @@ class Monitoring:
                     pause = getattr(self.infer,'min_check_seconds',0)-(time.monotonic()-began)
                     if pause>0 and self.cancel.wait(pause):
                         return
-            except Exception:
+            except Exception as error:
                 with self.lock:
                     if not self.cancel.is_set() and revision == self.revision:
-                        if self.rule.unavailable('Camera unavailable. Check the camera connection.' if camera_stage else
+                        if self.rule.unavailable(str(error) if isinstance(error,TooManyObjects) else
+                                'Camera unavailable. Check the camera connection.' if camera_stage else
                                 getattr(self.infer,'unavailable_reason','Local SAM unavailable. Check the GPU worker.')):
                             self.event('unavailable')
                         self.result = self.result_at = None
@@ -355,7 +360,7 @@ class Monitoring:
                 bridge_output=dict(self.bridge.status, enabled=self.config.get('bridge', {}).get('enabled', False)),
                 capabilities={'camera':'Pi HTTP snapshots',
                     'sam_selection':False, 'scada_output':True, 'machine_commands':False,
-                    'id_scope':'four-frame SAM session'})
+                    'id_scope':f'{self.window_frames}-frame SAM check'})
 
     def results(self, after):
         with self.lock:
