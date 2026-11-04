@@ -1,6 +1,7 @@
 """Users, sessions, lockout and audit for the web application."""
 import json
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 
@@ -16,6 +17,27 @@ class AuthTests(unittest.TestCase):
 
     def tearDown(self):
         self.directory.cleanup()
+
+    def test_simultaneous_first_setup_creates_one_admin(self):
+        with tempfile.TemporaryDirectory() as folder:
+            auth = Auth(folder)
+            results, start = [], threading.Barrier(4)
+
+            def setup(number):
+                start.wait()
+                try:
+                    auth.create_first_admin(f'admin-{number}', 'admin-password-1')
+                    results.append('created')
+                except AuthError as error:
+                    results.append(error.status)
+            threads = [threading.Thread(target=setup, args=(number,)) for number in range(4)]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+            self.assertEqual(sorted(results, key=str), [409, 409, 409, 'created'])
+            self.assertEqual(len(auth.users()), 1)
+            self.assertEqual(next(iter(auth.users().values()))['role'], 'admin')
 
     def test_passwords_are_hashed_and_checked(self):
         stored = (Path(self.directory.name) / 'users.json').read_text(encoding='utf-8')

@@ -249,6 +249,8 @@ class Workspace:
 
     def run_check(self,zone,skill,camera,state):
         vlm=skill['vlm']
+        monitor=self.monitors.get(zone['id'])
+        run=monitor and (monitor.run_id,monitor.revision)
         try:
             jpeg,_=camera.snapshot()
             context=(f'Zone "{zone["name"]}". Rule: {zone_tags.rule_text(zone)}. SAM state now: '
@@ -265,8 +267,12 @@ class Workspace:
         finally:
             self.checks[zone['id']]['busy']=False
         values['VlmCheckedAt']=utc(steady_now())
-        if self.checks[zone['id']]['state'] is not None:
-            self.observations.set_check(zone['id'],values)
+        # An answer for a stopped run or a changed rule belongs to nothing current.
+        now=self.monitors.get(zone['id'])
+        if not (now and now.running and (now.run_id,now.revision)==run):
+            self.observations.set_check(zone['id'])
+        elif self.checks[zone['id']]['state'] is not None:
+            self.observations.set_check(zone['id'],values,valid_seconds=max(2*vlm['interval_seconds'],60))
 
     def validate(self, data):
         if not isinstance(data,dict) or not isinstance(data.get('zones'),list) or len(data['zones'])>32:
@@ -390,7 +396,7 @@ class Workspace:
                     tracking_scope='four-frame session',actual_frames=monitor.output_id if monitor else 0)
                 record['phase']='Initializing' if enabled and frame is None and 'unavailable' not in record['reason'].lower() else 'Waiting for fresh evidence' if enabled and not valid else 'Monitoring' if enabled else 'Disabled'
                 record['publication']=dict(monitor.bridge.status) if monitor else dict(state='idle',message='Configure the zone first.')
-                record['check']=dict(self.observations.checks.get(zone['id']) or {}) or None
+                record['check']=self.observations.current_check(zone['id'])
                 if zone['outputType']=='count' and fresh:
                     counts=frame.get('counts') or {}
                     record.update(state='Valid',value=counts if len(counts)>1 else frame['count'],valid=True,quality='Good',

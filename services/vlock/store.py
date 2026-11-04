@@ -85,6 +85,7 @@ class Store:
         self.lock = threading.RLock()
         self.zone_manifest = []
         self.checks = {}
+        self.check_expiry = {}
         self.session_id = str(uuid4())
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         self.db = sqlite3.connect(path, check_same_thread=False)
@@ -228,18 +229,32 @@ class Store:
         with self.lock:
             self.zone_manifest = [dict(zone) for zone in zones]
 
-    def set_check(self, asset_id, values=None):
-        """Latest Muse frame-check tags for a zone (VlmState, VlmReason, VlmCheckedAt); None turns them off."""
+    def set_check(self, asset_id, values=None, valid_seconds=None):
+        """Latest Muse frame-check tags for a zone (VlmState, VlmReason, VlmCheckedAt); None turns them off.
+
+        After valid_seconds the answer reads as stale: an old "yes" is not current evidence.
+        """
         with self.lock:
+            self.check_expiry.pop(asset_id, None)
             if values is None:
                 self.checks.pop(asset_id, None)
             else:
                 self.checks[asset_id] = dict(values)
+                if valid_seconds is not None:
+                    self.check_expiry[asset_id] = self.clock() + valid_seconds
+
+    def current_check(self, asset_id):
+        with self.lock:
+            values = self.checks.get(asset_id)
+            expires = self.check_expiry.get(asset_id)
+            if values is None or expires is None or self.clock() < expires:
+                return dict(values) if values else None
+            return dict(values, VlmState='stale', VlmReason='The last Muse answer is too old to use as current evidence.')
 
     def zones(self):
         snapshot = self.snapshot()
         with self.lock:
-            manifest, checks = list(self.zone_manifest), dict(self.checks)
+            manifest, checks = list(self.zone_manifest), {key: self.current_check(key) for key in self.checks}
         return {key: value for key, value in snapshot.items() if key != 'assets'} | dict(
             zones=zone_tags.documents(snapshot, manifest, self.clock(), checks))
 

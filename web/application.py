@@ -260,9 +260,7 @@ def make_server(workspace, port=5056, auth=None):
                     return self.reply(200,dict(ok=True),headers={'Set-Cookie':'vlock_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0'})
                 if self.path=='/api/app/setup':
                     # Only while no user exists: the first account is an admin, created on this PC.
-                    if not auth.setup_needed():
-                        raise ApplicationError('Setup is already done. Log in instead.',409)
-                    auth.create_user(dict(user='setup',role=''),data.get('username'),data.get('password'),'admin')
+                    auth.create_first_admin(data.get('username'),data.get('password'))
                     token=auth.login(data.get('username'),data.get('password'),self.client_address[0])
                     return self.reply(200,dict(ok=True),headers={'Set-Cookie':
                         f'vlock_session={token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=86400'})

@@ -316,7 +316,7 @@
                 "binding": "nsu=urn:vlock:bridge:v1;s=Bridge/Zones/{ZoneKey}/VlmState"
               },
               "name": "VlmState",
-              "documentation": "Answer of the optional Muse frame check (for example yes, no, unsure), or off, pending or error. Advisory: never changes Active or State."
+              "documentation": "Answer of the optional Muse frame check (for example yes, no, unsure), or off, pending, error or stale. Advisory: never changes Active or State."
             },
             {
               "tagType": "AtomicTag",

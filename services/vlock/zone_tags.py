@@ -29,7 +29,7 @@ TAGS = [
     ('Object2', 'String', 'String', 'Second object; empty for one-object zones.'),
     ('Skill', 'String', 'String', 'Skill (scenario package) this zone follows, or empty.'),
     ('VlmState', 'String', 'String', 'Answer of the optional Muse frame check (for example yes, no, unsure), '
-     'or off, pending or error. Advisory: never changes Active or State.'),
+     'or off, pending, error or stale. Advisory: never changes Active or State.'),
     ('VlmReason', 'String', 'String', 'Muse frame-check reason, or why no check ran.'),
     ('VlmCheckedAt', 'String', 'String', 'UTC time of the last Muse frame check.'),
 ]

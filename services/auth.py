@@ -94,6 +94,13 @@ class Auth:
         self.audit(actor, 'user.create', username, detail=f'role {role}')
         return self.public_users()
 
+    def create_first_admin(self, username, password):
+        """The check and the write are one step, so two setup requests cannot both create an admin."""
+        with self.lock:
+            if not self.setup_needed():
+                raise AuthError('Setup is already done. Log in instead.', 409)
+            return self.create_user(dict(user='setup', role=''), username, password, 'admin')
+
     def delete_user(self, actor, username):
         with self.lock:
             users = self.users()

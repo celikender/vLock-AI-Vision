@@ -1,10 +1,14 @@
 """SAM worker supervisor checks with injected probes and processes; nothing is launched."""
+import subprocess
+import sys
 import tempfile
 import threading
 import time
 import unittest
+from io import BytesIO
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from services.vision.worker_process import SamWorker, ROOT
 
@@ -153,6 +157,31 @@ class SamWorkerTests(unittest.TestCase):
         self.assertTrue((Path(self.directory.name)/'sam.log.1').exists())
         self.assertLess(log.stat().st_size if log.exists() else 0, worker_process.LOG_LIMIT)
         worker.stop(wait=True)
+
+    def test_log_stays_bounded_while_a_running_process_writes_to_it(self):
+        from services.vision import worker_process
+        folder = Path(self.directory.name)
+        chunks = iter([b'x'*400]*10+[b'last line\n', b''])
+        with patch.object(worker_process, 'LOG_LIMIT', 1000):
+            self.worker([])._copy_log(SimpleNamespace(read=lambda size: next(chunks)))
+        self.assertEqual(sorted(path.name for path in folder.iterdir()), ['sam.log', 'sam.log.1', 'sam.log.2'])
+        self.assertEqual((folder/'sam.log').read_bytes(), b'x'*400+b'last line\n')
+        self.assertEqual((folder/'sam.log.1').stat().st_size, 1200)
+
+    def test_output_of_a_real_process_reaches_the_log(self):
+        writer = "import sys\nsys.stdout.buffer.write(b'from the worker\\n');sys.stdout.buffer.flush()\n"
+        process = subprocess.Popen([sys.executable, '-c', writer], stdout=subprocess.PIPE, bufsize=0)
+        self.worker([])._copy_log(process.stdout)
+        process.wait(10)
+        process.stdout.close()
+        self.assertEqual((Path(self.directory.name)/'sam.log').read_bytes().replace(b'\r\n', b'\n'), b'from the worker\n')
+
+    def test_worker_output_goes_through_the_app_and_keeps_draining_on_log_errors(self):
+        worker = self.worker([])
+        worker.log_path = Path(self.directory.name)  # A folder: every write fails.
+        stream = BytesIO(b'a'*70000)
+        worker._copy_log(stream)
+        self.assertEqual(stream.read(), b'', 'All output was read, so the worker can never block on a full pipe.')
 
     def test_restart_after_failure_launches_again(self):
         self.exit_code = 1

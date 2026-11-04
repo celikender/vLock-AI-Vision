@@ -103,12 +103,10 @@ class SamWorker:
         command = self._command()
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
         self._rotate_log()
-        log = self.log_path.open('ab')
-        try:
-            self.process = self.popen(command, cwd=ROOT, stdin=subprocess.DEVNULL, stdout=log,
-                                      stderr=subprocess.STDOUT, creationflags=NO_WINDOW)
-        finally:
-            log.close()
+        self.process = self.popen(command, cwd=ROOT, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                                  stderr=subprocess.STDOUT, bufsize=0, creationflags=NO_WINDOW)
+        if getattr(self.process, 'stdout', None) is not None:
+            threading.Thread(target=self._copy_log, args=(self.process.stdout,), name='sam-worker-log', daemon=True).start()
         self.owned = True
 
     def _rotate_log(self):
@@ -123,6 +121,31 @@ class SamWorker:
                     newer.replace(older)
         except OSError:
             pass  # A locked log never blocks the worker start.
+
+    def _copy_log(self, stream):
+        """Write the worker's output to the log and rotate it while the worker runs.
+
+        The app holds the file, not the worker: a file a running process holds cannot be
+        trimmed on Windows. Output keeps being drained even if the log cannot be written.
+        """
+        log = None
+        while chunk := stream.read(65536):
+            try:
+                if log is None:
+                    self.log_path.parent.mkdir(parents=True, exist_ok=True)
+                    log = self.log_path.open('ab')
+                log.write(chunk)
+                log.flush()
+                if log.tell() >= LOG_LIMIT:
+                    log.close()
+                    log = None
+                    self._rotate_log()
+            except OSError:
+                if log is not None:
+                    log.close()
+                log = None
+        if log is not None:
+            log.close()
 
     def _supervise(self):
         """Watch the worker; restart one this app started after a crash or hang, a few times at most."""

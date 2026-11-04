@@ -29,7 +29,7 @@ key and no tags yet.
 | Rule | String | The rule in plain words. |
 | Object1 / Object2 | String | Objects SAM looks for; Object2 is empty for one-object zones. |
 | Skill | String | Skill (scenario package) the zone follows, or empty. See [skills](../../skills/README.md). |
-| VlmState | String | Answer of the optional Muse frame check (for example `yes`, `no`, `unsure`, `usable`, `red`), or `off`, `pending`, `error`. Advisory: never changes Active or State. |
+| VlmState | String | Answer of the optional Muse frame check (for example `yes`, `no`, `unsure`, `usable`, `red`), or `off`, `pending`, `error`, `stale`. `stale` means the last answer is older than twice the check interval (at least 60 s). Advisory: never changes Active or State. |
 | VlmReason, VlmCheckedAt | String | The check's one-sentence reason and UTC time. |
 
 Unknown is never published as Clear: without a fresh result `Active`, the counts and
