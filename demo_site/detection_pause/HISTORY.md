@@ -2,7 +2,7 @@
 
 Reference integration for the standalone vLock application. The application is not hosted inside Perspective.
 
-Start new SCADA work from the [fixed zone tags](ZONE_TAGS.md): every zone publishes
+Start new SCADA work from the [fixed zone tags](../../ignition/ZONE_TAGS.md): every zone publishes
 the same tag names under a fixed tag key, with an Ignition UDT download.
 
 The bridge also offers an experimental [Ignition OPC UA client mode](OPC_UA_CLIENT.md)
@@ -14,7 +14,7 @@ The owner confirmed live SAM person detection through vLock Bridge and OPC UA in
 
 ## Single-printer experiment
 
-The [plain P1S Perspective project](p1s_printer/README.md) provides a native
+The [plain P1S Perspective project](../printer_ignition/README.md) provides a native
 SCADA display, a Gateway HTTP-to-tag bridge, and separate printer/supervisory
 controls. It uses the existing local MQTT connector. The original standalone
 application remains separate. The owner verified live telemetry, the imported screen and Stop/cancel of a real

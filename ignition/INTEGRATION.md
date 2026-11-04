@@ -20,7 +20,7 @@ This product does not replace physical lockout/tagout or safety-rated controls.
 1. In the app: Integrations → enable OPC UA → Save workspace. Save a zone's rule to give it a tag key.
 2. In the Gateway, add an OPC UA connection named `vLock Bridge`. On the same PC, use
    `opc.tcp://127.0.0.1:4845/vlock/` with Security None and Anonymous. For another PC, see
-   [fixed zone tags](../integrations/ignition/ZONE_TAGS.md).
+   [fixed zone tags](ZONE_TAGS.md).
 3. In the Designer: Tag Browser → Import Tags → the exported file.
 
 Tags appear as `[default]vLock/<tag key>/<tag>`. The OPC UA node is
@@ -28,7 +28,7 @@ Tags appear as `[default]vLock/<tag key>/<tag>`. The OPC UA node is
 
 ## Tag contract
 
-The full tag list is in [fixed zone tags](../integrations/ignition/ZONE_TAGS.md). These decide a stop:
+The full tag list is in [fixed zone tags](ZONE_TAGS.md). These decide a stop:
 
 ### `State`
 
@@ -67,7 +67,7 @@ only checks `Active == True` will therefore miss camera and cloud loss. Read `St
 | `vLock/Bridge/Status`, `vLock/Bridge/Heartbeat` | Bridge status text and the last heartbeat time. |
 
 A frozen app can leave its last `State` in place, so also watch for a counter that stops moving.
-[heartbeat_watchdog.py](../integrations/ignition/heartbeat_watchdog.py) is a reference for this.
+[heartbeat_watchdog.py](heartbeat_watchdog.py) is a reference for this.
 
 ## Timing and cost limits
 

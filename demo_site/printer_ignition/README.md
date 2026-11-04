@@ -5,7 +5,7 @@
 The owner confirmed camera -> SAM 3.1 -> vLock Bridge -> OPC UA -> Ignition
 Gateway event -> printer Pause. The final Active/latch paths, Gateway script,
 minimal tag import and troubleshooting are in the
-[SCADA integration guide](../../integrations/ignition/SAM_BRIDGE.md). The estimated
+[SCADA integration guide](../detection_pause/SAM_BRIDGE.md). The estimated
 three-second response is an owner observation, not an instrumented measurement.
 Reset/re-arm UI and latency improvements remain planned. The original screen ZIP
 is unchanged; the additional tags/event are configured separately.
@@ -58,15 +58,15 @@ Use Python 3.12. From the repository root:
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r integrations/ignition/p1s_printer/connector/requirements.txt
-Copy-Item integrations/ignition/p1s_printer/connector/.env.example integrations/ignition/p1s_printer/connector/.env
+.\.venv\Scripts\python.exe -m pip install -r demo_site/printer_ignition/connector/requirements.txt
+Copy-Item demo_site/printer_ignition/connector/.env.example demo_site/printer_ignition/connector/.env
 ```
 
 Edit that local `.env` with the actual IP, printer serial and LAN access code. Then:
 
 ```powershell
-.\.venv\Scripts\python.exe integrations/ignition/p1s_printer/connector/p1s_service.py --check-config
-.\.venv\Scripts\python.exe integrations/ignition/p1s_printer/connector/p1s_service.py
+.\.venv\Scripts\python.exe demo_site/printer_ignition/connector/p1s_service.py --check-config
+.\.venv\Scripts\python.exe demo_site/printer_ignition/connector/p1s_service.py
 ```
 
 Keep the terminal running. If the existing BambuP1SConnector Windows service is
@@ -105,7 +105,7 @@ No camera panel, print-job launch, farm simulation, or additional printer data.
    supports it), open PowerShell **as administrator** from the repository root and run:
 
    ```powershell
-   .\.venv\Scripts\python.exe integrations/ignition/p1s_printer/enable_resume.py
+   .\.venv\Scripts\python.exe demo_site/printer_ignition/enable_resume.py
    Restart-Service -Name BambuP1SConnector
    ```
 
@@ -174,8 +174,8 @@ These temperatures are last reported readings, not a measurement accuracy claim.
 From the project folder:
 
 ```powershell
-.\.venv\Scripts\python.exe integrations/ignition/p1s_printer/build_project.py
-.\.venv\Scripts\python.exe integrations/ignition/p1s_printer/test_project.py
+.\.venv\Scripts\python.exe demo_site/printer_ignition/build_project.py
+.\.venv\Scripts\python.exe demo_site/printer_ignition/test_project.py
 ```
 
 Seven offline checks cover: temperature and disconnect handling; missing/NaN

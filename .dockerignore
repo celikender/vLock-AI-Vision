@@ -5,8 +5,8 @@
 data
 playground
 docs
-integrations
-devices
+ignition
+demo_site
 **/__pycache__
 **/*.pyc
 **/*.pt

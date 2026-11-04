@@ -11,7 +11,8 @@ Use this project folder as the shared source of truth for implementation and rev
 - services/vision/: camera-frame analysis with Muse Spark and SAM 3.1 segmentation.
 - services/vlock/: deterministic rules and application state.
 - web/: camera UI, configuration review, and frame overlays.
-- integrations/: SCADA adapters.
+- ignition/: SCADA package: tag export, tag contract and examples.
+- demo_site/: the customer side of the demo; not part of the product.
 - docs/: decisions, setup instructions, results, and troubleshooting notes.
 
 ## Our working agreement

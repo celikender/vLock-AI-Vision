@@ -155,7 +155,7 @@ Integrations → enable **OPC UA** (Host server mode) and/or **MQTT** (client of
 on this PC), then click Save workspace. OPC UA **Access** is *This PC only* (127.0.0.1,
 no security) or *Network* (a private address of this PC, Basic256Sha256 Sign & Encrypt
 and a username/password from `.env`, no anonymous or unencrypted access) for SCADA on
-another PC; see [fixed zone tags](../../integrations/ignition/ZONE_TAGS.md). The app starts or stops the adapters promoted
+another PC; see [fixed zone tags](../../ignition/ZONE_TAGS.md). The app starts or stops the adapters promoted
 from the vLock Bridge experiment (services/vlock/transports.py) on the app's own
 observation store. Saved enabled adapters restart with the app. The OPC UA server is
 read-only at `opc.tcp://127.0.0.1:<port>/vlock/` with namespace `urn:vlock:bridge:v1`.
@@ -164,7 +164,7 @@ State, Quality, Reason, counts, diagnostic scores, timing and the rule text); th
 key is set when the rule is first saved and never changes, so renaming the zone or
 output keeps SCADA bindings. MQTT publishes `<prefix>/zones/<tag key>/state` and REST
 serves `/api/v1/zones`. SCADA tags shows the values and offers an Ignition UDT
-download; see [fixed zone tags](../../integrations/ignition/ZONE_TAGS.md). The older
+download; see [fixed zone tags](../../ignition/ZONE_TAGS.md). The older
 `Bridge/Assets/<zone id>/Signals/vision/<output>/...` nodes remain for existing
 bindings, with heartbeat nodes under `Bridge/`. Stop the separate
 bridge (port 5055) first if it uses the same OPC UA port. Client mode needs explicit
@@ -261,7 +261,7 @@ promised after a fixed warm-up time. Existing SAM and freshness rules are retain
 
 Workspace settings is first in navigation and the workspace name links to it.
 SCADA tag paths no longer depend on the workspace, zone or output names: each zone
-publishes under its fixed tag key (see [fixed zone tags](../../integrations/ignition/ZONE_TAGS.md)).
+publishes under its fixed tag key (see [fixed zone tags](../../ignition/ZONE_TAGS.md)).
 Names such as person_detect_A-101 are accepted as output names. OPC UA publication
 of the fixed tags is tested locally with an OPC UA client; the UDT import and
 delivery into the owner's Ignition are not yet verified.

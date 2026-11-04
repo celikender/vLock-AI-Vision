@@ -28,7 +28,7 @@ key and no tags yet.
 | OutputName, OutputType | String | Output name and type from the rule (`condition`, `event`, `count`). |
 | Rule | String | The rule in plain words. |
 | Object1 / Object2 | String | Objects SAM looks for; Object2 is empty for one-object zones. |
-| Skill | String | Skill (scenario package) the zone follows, or empty. See [skills](../../skills/README.md). |
+| Skill | String | Skill (scenario package) the zone follows, or empty. See [skills](../skills/README.md). |
 | VlmState | String | Answer of the optional Muse frame check (for example `yes`, `no`, `unsure`, `usable`, `red`), or `off`, `pending`, `error`, `stale`. `stale` means the last answer is older than twice the check interval (at least 60 s). Advisory: never changes Active or State. |
 | VlmReason, VlmCheckedAt | String | The check's one-sentence reason and UTC time. |
 

@@ -2,9 +2,9 @@
 
 A standalone industrial vision and supervisory vLock application for SCADA developers and manufacturers, designed for integration with existing SCADA systems or independent operation.
 
-**Development status:** The working application (port 5056) monitors camera zones with local SAM 3.1 (one or two objects per zone), lets Muse Spark configure a zone from plain language (rule plus a SAM-outlined area), and publishes observations through REST, OPC UA and MQTT. Every zone publishes the same [fixed SCADA tags](integrations/ignition/ZONE_TAGS.md) with an Ignition UDT download; OPC UA serves this PC only, or the plant network with encryption and a login.
+**Development status:** The working application (port 5056) monitors camera zones with local SAM 3.1 (one or two objects per zone), lets Muse Spark configure a zone from plain language (rule plus a SAM-outlined area), and publishes observations through REST, OPC UA and MQTT. Every zone publishes the same [fixed SCADA tags](ignition/ZONE_TAGS.md) with an Ignition UDT download; OPC UA serves this PC only, or the plant network with encryption and a login.
 
-- Owner-tested: Pi 5 camera streaming and the earlier detection-to-printer Pause through Ignition (bridge experiment). The [Bambu P1S project](integrations/ignition/p1s_printer/README.md) connects a real printer to Ignition Perspective through a local connector.
+- Owner-tested: Pi 5 camera streaming and the earlier detection-to-printer Pause through Ignition (bridge experiment). The [Bambu P1S project](demo_site/printer_ignition/README.md) connects a real printer to Ignition Perspective through a local connector.
 - Tested by automated and live local checks, not yet in the owner's Ignition: the fixed zone tags and OPC UA network access. Not yet tested anywhere: the UDT import into Ignition, access from a second PC, and a positive two-object detection on the live camera.
 - Planned: the standalone vLock worker-lock lifecycle (separate from AI inhibits) and multi-zone monitoring on one GPU.
 
@@ -49,9 +49,8 @@ See [the plan](docs/PLAN.md), [integration guide](docs/INTEGRATION.md), and [dev
 - `web/`: application server (port 5056) and browser UI.
 - `services/vision/`: camera, SAM 3.1 worker and supervisor, Muse assistant, monitoring and zone rules.
 - `services/vlock/`: observation store, heartbeat, REST output and OPC UA/MQTT adapters.
-- `devices/pi_camera/`: Raspberry Pi 5 USB camera service and installer.
 - `ignition/`: Ignition package: tag export, tag contract ([INTEGRATION.md](ignition/INTEGRATION.md)) and an example stop latch.
-- `integrations/ignition/`: Ignition reference integration and the Bambu P1S Perspective project.
+- `demo_site/`: not part of the product. The Pi camera, printer and Ignition project that stand in for a plant in the demo.
 - `docs/`: plan, setup, SAM runtime, integration contract, reports and development log.
 - `playground/`: retired experiments; the application does not use it.
 
@@ -119,8 +118,8 @@ In a zone: connect the Pi camera, describe what to watch, click **Configure with
 review the proposal and click **Use this configuration**, then **Enable monitoring**.
 For SCADA, enable the OPC UA server (or MQTT) under Integrations and click Save workspace;
 SCADA tags lists the fixed zone tags and downloads the Ignition UDT.
-See the [application guide](web/app/README.md), [fixed zone tags](integrations/ignition/ZONE_TAGS.md),
-[Pi installation](devices/pi_camera/README.md) and [SAM runtime setup](docs/SAM_RUNTIME.md).
+See the [application guide](web/app/README.md), [fixed zone tags](ignition/ZONE_TAGS.md),
+[Pi installation](demo_site/pi_camera/README.md) and [SAM runtime setup](docs/SAM_RUNTIME.md).
 
 This repository is the active source of truth: https://github.com/celikender/vLock-AI-Vision.
 Open `vLock-AI-Vision.code-workspace` or the project folder in VS Code.

@@ -14,7 +14,7 @@ On the first start after the data folder moved, saved zones and history are copi
 once from the former `playground/data/application`.
 
 See the [application guide](app/README.md) for camera, Muse, SAM monitoring and
-OPC UA/MQTT behavior, and [Pi camera service](../devices/pi_camera/README.md) for
+OPC UA/MQTT behavior, and [Pi camera service](../demo_site/pi_camera/README.md) for
 the camera side.
 
 The server binds to localhost only, accepts private-LAN camera addresses only and

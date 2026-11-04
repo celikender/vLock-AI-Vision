@@ -9,7 +9,7 @@
 
 ## Current implemented scope
 
-- Pi 5 USB MJPEG capture, boot service, and latest-frame endpoint: devices/pi_camera/.
+- Pi 5 USB MJPEG capture, boot service, and latest-frame endpoint: demo_site/pi_camera/.
 - Main PC UI: web/, with Pi IP input, connection recovery, preview, and photo capture.
 - Owner confirmed the Pi feed and main UI connection work on 2026-10-28.
 - Reboot recovery, sustained latency, multiple cameras, and model integration into the main UI still require verification.
