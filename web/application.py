@@ -70,12 +70,16 @@ class Server(ThreadingHTTPServer):
         super().server_bind()
 
 
-def migrate_data():
-    """One-time copy of zones and history saved before the data folder moved."""
-    if DATA.exists() or not LEGACY_DATA.is_dir():
+def migrate_data(source=LEGACY_DATA, target=DATA):
+    """One-time copy of zones and history saved before the data folder moved.
+
+    Runs after the instance lock, so the target may already hold app.lock; any other
+    entry means the target is in use and must not be overwritten.
+    """
+    if not source.is_dir() or (target.is_dir() and any(item.name!='app.lock' for item in target.iterdir())):
         return
-    shutil.copytree(LEGACY_DATA,DATA,ignore=shutil.ignore_patterns('*.tmp','sam_worker.log'))
-    print(f'Copied saved workspace from {LEGACY_DATA} to {DATA}.',flush=True)
+    shutil.copytree(source,target,dirs_exist_ok=True,ignore=shutil.ignore_patterns('*.tmp','sam_worker.log','app.lock'))
+    print(f'Copied saved workspace from {source} to {target}.',flush=True)
 
 
 # Minimum role per write route; reads need a login (viewer). Anything not listed is admin-only.

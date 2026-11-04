@@ -164,6 +164,27 @@ class ApplicationTests(unittest.TestCase):
         self.assertFalse(view['localEnabled'])
         self.assertIsNone(view['runtime']['value'])
 
+    def test_saved_data_is_copied_once_after_the_instance_lock_exists(self):
+        from application import SingleInstance, migrate_data
+        source=Path(self.directory.name)/'old'
+        target=Path(self.directory.name)/'new'
+        (source/'zones').mkdir(parents=True)
+        (source/'workspace.json').write_text('saved')
+        (source/'zones'/'zone.json').write_text('zone')
+        (source/'app.lock').write_text('')
+        (source/'sam_worker.log').write_text('log')
+        lock=SingleInstance(target)
+        try:
+            migrate_data(source,target)
+            self.assertEqual((target/'workspace.json').read_text(),'saved')
+            self.assertEqual((target/'zones'/'zone.json').read_text(),'zone')
+            self.assertFalse((target/'sam_worker.log').exists())
+            (target/'workspace.json').write_text('newer')
+            migrate_data(source,target)
+            self.assertEqual((target/'workspace.json').read_text(),'newer')
+        finally:
+            lock.release()
+
     def test_second_copy_is_refused_for_the_same_data_folder_and_port(self):
         from application import SingleInstance
         first=SingleInstance(self.directory.name)
