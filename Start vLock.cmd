@@ -2,7 +2,7 @@
 title vLock-AI Vision
 cd /d "%~dp0"
 if not exist ".venv\Scripts\python.exe" (
-  echo Python environment missing. See docs\SETUP.md.
+  echo Python environment missing. See docs\install\INSTALL.md.
   pause
   exit /b 1
 )

@@ -5,8 +5,13 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from services.vision import sam_worker
 from services.vision.masks import SegmentationError
+
+try:
+    from services.vision import sam_worker
+except ImportError as error:
+    # The worker has its own runtime (docs/install/SAM_RUNTIME.md); the app's requirements omit Flask.
+    raise unittest.SkipTest(f'SAM worker runtime is not installed: {error}') from None
 
 
 class WeightsTests(unittest.TestCase):

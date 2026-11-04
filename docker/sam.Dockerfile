@@ -1,4 +1,4 @@
-# SAM 3.1 worker: its own GPU container. Same pinned runtime as docs/SAM_RUNTIME.md.
+# SAM 3.1 worker: its own GPU container. Same pinned runtime as docs/install/SAM_RUNTIME.md.
 # The weights are NOT in the image: they are downloaded on first start with the user's own
 # approved Hugging Face token (HF_TOKEN) into the hf-models volume, then checksum-verified.
 FROM ubuntu:24.04

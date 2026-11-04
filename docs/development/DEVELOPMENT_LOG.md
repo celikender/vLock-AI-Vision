@@ -1007,3 +1007,22 @@ Future entries should record actual changes, verification evidence, limitations,
   status only; latch and reset belong to the integrator. The owner decided on no Ignition changes
   tonight, so the planned real-gateway test round did not run.
 - Left the Meta connection open between requests: a hosts-file block does not end it.
+
+## 2026-11-03/04: Setup page, Meta video, reliability fixes and reorganizing
+
+- Added a Setup page: API keys and the SAM engine are saved in .env on the server, and secrets never return to the
+  browser. A free button checks the key against Meta's model list. In Docker the page is read-only.
+- Added the `meta_api_video` engine: a four-frame clip per check and object. Live: 13 requests, 1187-2407 ms, none failed,
+  none matched in that run. A direct test found `person` in all four frames at 0.88.
+- Muse answers now go stale, and answers returning after monitoring stopped are dropped. First-admin setup is atomic.
+- Worker log rotation while running: the first attempt, trimming a file the worker holds open, failed against a real
+  process on Windows, leaving a same-size file padded with empty bytes. The app now writes the log itself.
+- Database check: history was already bounded (1,000 events, about 1.7 MB after 6,000 writes). A removed zone's folder
+  was left behind, and is now deleted.
+- Moved the Pi camera and printer projects to `demo_site/` and the product's SCADA material to `ignition/`. Grouped `docs/`
+  into project, install, testing and development. A Pi installed from the old path needs its installer run again after a pull.
+- Added measured phrase scores and engine times to the notes Muse reads on every request.
+- Clean-install check on the development PC: files exported from Git into an empty folder, new virtual environment,
+  first-run Setup with a fake key, engine switch after restart, and a clear error for a bad engine value.
+- Earlier browser checks found two Setup page bugs before publishing: a load-order error, and typed values disappearing on refresh.
+- The planned real-gateway test round did not run; see the test results for what remains unverified.

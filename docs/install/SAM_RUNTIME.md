@@ -53,7 +53,7 @@ The worker listens on loopback port 5052, loads SAM 3.1 once (bf16, eight object
 no Flash Attention 3) and warms it with one blank frame. Its log is
 `data/application/sam_worker.log`. Override the distribution with `VLOCK_WSL_DISTRO`
 or the interpreter with `SAM_PYTHON`. See the
-[performance report](reports/monitoring_performance.md) for measured timings.
+[performance report](../testing/reports/monitoring_performance.md) for measured timings.
 
 Verified on 2026-11-03: RTX 3070 Ti Laptop GPU, 8 GB; the app launched the worker
 from a project path containing spaces and reported ready after warm-up.

@@ -35,7 +35,7 @@ hold the asset at Unknown. Removed OPC UA nodes stay until restart with Bad qual
 `zone_tags.py` builds the fixed per-zone SCADA tags (`Bridge/Zones/<tag key>/...`,
 MQTT `zones/<tag key>/state`, REST `/api/v1/zones`) from the zone manifest set by the
 application and the current observations, plus the Ignition UDT export. See
-[fixed zone tags](../../integrations/ignition/ZONE_TAGS.md).
+[fixed zone tags](../../ignition/ZONE_TAGS.md).
 
 ## OPC UA and MQTT adapters
 

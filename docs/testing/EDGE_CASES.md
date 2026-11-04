@@ -1,0 +1,88 @@
+# Edge cases
+
+What the app does when things go wrong, and how far each case has been checked.
+
+**Live** ran with real hardware or a real service. **Automated** has a test in the repository. **Simulated** was checked
+with a stand-in for the failure. **Not tested** means designed for, but never tried.
+
+## Camera
+
+| Case | What happens | Checked |
+|---|---|---|
+| Camera gives no fresh frame | `Unknown`, reason `Camera unavailable...`; recovers when frames return | Automated |
+| A real Pi is unplugged during monitoring | Should behave as above, and recover after the Pi boots | **Not tested** |
+| Repeated or out-of-order frames | `Unknown` | Automated |
+| Result arrives on an old frame | `Unknown` | Automated |
+| Camera resolution changes | `Unknown`; the area must be redrawn | Automated |
+| Monitors in view are overexposed | Objects on them wash out. A flag held in front of a bright screen could not be seen by eye | Live, one frame |
+| RTSP camera | Implemented | **Not tested** with a real camera |
+
+## SAM on the Meta Model API
+
+| Case | What happens | Checked |
+|---|---|---|
+| No object in the frame | A real zero, which can be `Clear`. An empty answer is not an error | Live |
+| Timeout, connection error, HTTP error | `Unknown`, no retry, and the status is logged | Automated |
+| API address unreachable | `Unknown`, reason `Meta SAM unavailable...` | Live, on OPC UA |
+| Answer arrives after the limit | Discarded, `Unknown` | Automated |
+| Unreadable or incomplete answer | `Unknown`, never zero objects | Automated |
+| Key missing | Monitoring won't start, and the status says what to do | Automated |
+| Internet cut during monitoring | Should reach `Unknown` through the limit on an open connection | **Not tested** live |
+| `api.meta.ai` blocked in the hosts file | **Known limit: stays working.** The app keeps its connection open and a name block doesn't end it. Only a new connection fails | Simulated |
+
+The hosts-file case is not a useful outage test. The reconnect that would change this was deliberately left out for now.
+
+## SAM phrases
+
+| Case | Result | Checked |
+|---|---|---|
+| `person holding flag`, flag in the hand | Matched the person, score 0.69 | Live, one frame |
+| `person holding flag`, flag standing in a holder | No match, which is correct | Live, one frame |
+| `person wearing safety vest` | Unknown | **Not tested** |
+| Two separate objects, such as `person` and `flag` | Means both are in the area, **not** that one holds or wears the other | By design |
+| Rule with a confidence cutoff | None exists. A 0.7 cutoff would have missed the match above at 0.69 | By design |
+
+## Local GPU worker
+
+| Case | What happens | Checked |
+|---|---|---|
+| Worker crashes | Restarts automatically, up to 3 times in 15 minutes | Live |
+| Worker stops answering | Restarted, and the zone is `Unknown` meanwhile | Automated |
+| Port 5052 used by another program | Reported, and nothing is stopped | Automated |
+| Long-running log | Rotates at 5 MB while the worker runs. Writing to a file the worker holds open failed on Windows, so the app now writes it | Automated, plus a live start |
+| Inference stuck | Monitoring can stay "finishing" for up to the 300-second limit | Known limit |
+
+## Muse Spark
+
+| Case | What happens | Checked |
+|---|---|---|
+| Frame-check answer gets old | Reads `stale` after twice the check interval (at least 60 s), keeping its time | Automated |
+| Answer returns after monitoring stopped or the rule changed | Dropped | Automated |
+| A person asks for something SAM can't confirm alone, such as a helmet | Active still means the SAM rule. The Muse answer is advisory only | Known limit |
+| Field names in free-form Muse JSON vary between runs | The app uses a fixed schema for its Muse calls | Live, plus automated |
+| Muse timing | About 4-7 s per call, which is why it stays out of the per-frame path | Live |
+
+## SCADA output
+
+| Case | What happens | Checked |
+|---|---|---|
+| Any failure | `State` = `Unknown`; `Active` and counts carry Bad quality | Automated, with State and Reason read live over OPC UA |
+| App closed or OPC connection lost | Tags go Bad in the client | **Not tested** in Ignition |
+| App frozen | Last values stay in place, so SCADA must also watch the heartbeat | Watchdog logic only: automated, not in a real gateway |
+| Script that only checks `Active == True` | Misses camera and cloud loss. It must read `State` | Read from the installed demo script |
+| Restart | Old results become `Unknown`. Monitoring doesn't resume by itself | Automated |
+| Two-object zone | Both objects are evaluated on the same frame | Automated, and live in an independent review |
+
+## Application
+
+| Case | What happens | Checked |
+|---|---|---|
+| Two simultaneous first-setup requests | Exactly one admin is created | Automated |
+| Second copy on the same data folder | Refused | Automated |
+| Damaged saved file | Moved aside, replaced, and reported | Automated |
+| First start with data in the old folder | Copied once, even though the lock file already exists | Automated, plus the real data in a temporary folder |
+| Key pasted into the wrong setting | Refused without showing the value on the Setup page. A wrong value in `.env` stops the start with a clear message | Automated |
+| Secret on the Setup page | Never returned or written to the audit log | Automated |
+| Typing on the Setup page during a refresh | Text stays. A live check found and fixed this | Live |
+| Zone removed | Its saved files are removed, and other zones are untouched | Automated |
+| History growth | Held at 1,000 events, about 1.7 MB | Measured, 6,000 writes |

@@ -18,7 +18,7 @@ Add a zone, choose the camera type and enter its private LAN address, connect, t
 configure the zone with Muse or by hand. **Pi / HTTP** reads the Pi camera service's
 original JPEGs. **RTSP** reads an IP camera (`rtsp://192.168.1.64:554/stream2`) with
 its username and password in their own fields; the password is write-only and frames
-are scaled to fit 1280×960 (see [camera sources](../../docs/CAMERA_SOURCES.md)). Workspace configuration is stored by the backend under
+are scaled to fit 1280×960 (see [camera sources](../../docs/development/CAMERA_SOURCES.md)). Workspace configuration is stored by the backend under
 ignored data/application (copied once from the former playground location). Enable monitoring is available once SAM is ready
 and a rule is saved. Only one local-SAM zone runs at once.
 
@@ -252,7 +252,7 @@ fresh, independently from browser viewers and SAM windows. Consumers share the
 buffer without queues or extra upstream requests. Disconnect stops PC polling;
 it does not stop the Pi service. Preview pacing targets 20 FPS; the measured local
 stream in this check was about 14 FPS. Backend status owns connection truth.
-See docs/CAMERA_PERFORMANCE.md for measurements and limits.
+See docs/testing/CAMERA_PERFORMANCE.md for measurements and limits.
 
 Observation shows initialization while waiting for its first result, actual
 window time, and available host CPU/GPU/VRAM diagnostics. Diagnostics run off the

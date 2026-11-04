@@ -2,13 +2,21 @@
 
 A standalone industrial vision and supervisory vLock application for SCADA developers and manufacturers, designed for integration with existing SCADA systems or independent operation.
 
-**Development status:** The working application (port 5056) monitors camera zones with local SAM 3.1 (one or two objects per zone), lets Muse Spark configure a zone from plain language (rule plus a SAM-outlined area), and publishes observations through REST, OPC UA and MQTT. Every zone publishes the same [fixed SCADA tags](ignition/ZONE_TAGS.md) with an Ignition UDT download; OPC UA serves this PC only, or the plant network with encryption and a login.
+**Status:** the working application (port 5056) monitors a camera zone with SAM 3.1, lets Muse Spark configure it from plain language, and publishes status over OPC UA, MQTT and REST. Every zone publishes the same [fixed SCADA tags](ignition/ZONE_TAGS.md).
 
-- Owner-tested: Pi 5 camera streaming and the earlier detection-to-printer Pause through Ignition (bridge experiment). The [Bambu P1S project](demo_site/printer_ignition/README.md) connects a real printer to Ignition Perspective through a local connector.
-- Tested by automated and live local checks, not yet in the owner's Ignition: the fixed zone tags and OPC UA network access. Not yet tested anywhere: the UDT import into Ignition, access from a second PC, and a positive two-object detection on the live camera.
-- Planned: the standalone vLock worker-lock lifecycle (separate from AI inhibits) and multi-zone monitoring on one GPU.
+- **Scope today:** one camera and one monitoring job at a time, at most two objects per zone. Multi-camera is future work.
+- **SAM 3.1 engines:** local GPU, Meta Model API image, or Meta Model API video, chosen on the app's Setup page.
+- **Status only:** the app sends no machine commands. Treat Unknown or Bad quality as stop; latch and reset belong to the [SCADA integrator](ignition/INTEGRATION.md).
 
-See the [development log](docs/DEVELOPMENT_LOG.md) for verified milestones and limitations.
+Start here: [overview](docs/project/OVERVIEW.md) · [install guide](docs/install/INSTALL.md) · [connect Ignition](ignition/INTEGRATION.md) · [all documentation](docs/README.md)
+
+## Tested
+
+Measured results are in [test results](docs/testing/TEST_RESULTS.md), and failure behavior is in [edge cases](docs/testing/EDGE_CASES.md).
+
+- **Live:** Pi camera, all three SAM engines, Muse Spark, status read over OPC UA by a separate client, a two-object rule, an unreachable API address giving Unknown, and local worker crash recovery.
+- **Earlier experiment only:** detection to a real printer Pause through Ignition, on an older tag path.
+- **Not verified:** the tag import and latch in real Ignition, the watchdog in a real gateway, the full chain to a machine, a real Pi unplug and internet cut, a safety vest phrase, the Meta engines in Docker, RTSP cameras, a second PC, and long runs.
 
 ## Vision
 
@@ -41,7 +49,7 @@ Two service boundaries (vision and vLock) will be developed independently and co
 5. Record a three-minute working demonstration.
 6. Publish installation instructions and submit the project.
 
-See [the plan](docs/PLAN.md), [integration guide](docs/INTEGRATION.md), and [development log](docs/DEVELOPMENT_LOG.md).
+See [the plan](docs/project/PLAN.md), [integration guide](docs/development/INTEGRATION_PLAN.md), and [development log](docs/development/DEVELOPMENT_LOG.md).
 
 ## Structure
 
@@ -51,7 +59,7 @@ See [the plan](docs/PLAN.md), [integration guide](docs/INTEGRATION.md), and [dev
 - `services/vlock/`: observation store, heartbeat, REST output and OPC UA/MQTT adapters.
 - `ignition/`: Ignition package: tag export, tag contract ([INTEGRATION.md](ignition/INTEGRATION.md)) and an example stop latch.
 - `demo_site/`: not part of the product. The Pi camera, printer and Ignition project that stand in for a plant in the demo.
-- `docs/`: plan, setup, SAM runtime, integration contract, reports and development log.
+- `docs/`: [overview and roadmap, install, test results and edge cases, development records](docs/README.md).
 - `playground/`: retired experiments; the application does not use it.
 
 ## Existing work and new contributions
@@ -62,7 +70,7 @@ Worker-applied locks and AI-generated supervisory inhibits are separate conditio
 
 ## Reproducibility and progress
 
-See [Python setup](docs/SETUP.md) and [SAM runtime](docs/SAM_RUNTIME.md) for dependency versions and run commands. Never commit API keys, private footage, machine credentials, or generated model files.
+See [Python setup](docs/install/SETUP.md) and [SAM runtime](docs/install/SAM_RUNTIME.md) for dependency versions and run commands. Never commit API keys, private footage, machine credentials, or generated model files.
 
 Use meaningful commits for completed steps and update the development log with evidence and limitations. Do not present planned features as working features.
 
@@ -79,14 +87,14 @@ Official resources:
 
 ## Run the application
 
-Double-click **`Start vLock.cmd`** in the project folder. One window opens and the
+First time? Follow the [install guide](docs/install/INSTALL.md). Then double-click **`Start vLock.cmd`** in the project folder. One window opens and the
 browser goes to http://localhost:5056. The app starts the SAM 3.1 worker in Ubuntu/WSL
 by itself and preloads the model (about 1–2 minutes on first start; the zone header
 shows SAM status). Close that window to stop the app and its SAM worker.
 
 With Docker (NVIDIA GPU, an approved Hugging Face token in `.env`): `docker compose up -d --build`,
 then open http://localhost:5056. The app and the SAM 3.1 worker run in separate containers;
-the weights are downloaded once with your own token. See [Docker](docs/DOCKER.md).
+the weights are downloaded once with your own token. See [Docker](docs/install/DOCKER.md).
 
 Same thing from a terminal in the project folder:
 
@@ -96,18 +104,20 @@ Same thing from a terminal in the project folder:
 
 ### Run with the Meta Model API (no GPU)
 
-1. Put your Meta developer key in `.env` as `META_API_KEY`.
-2. Add `VLOCK_SAM_BACKEND=meta_api` to `.env`. The default, `local`, uses the GPU worker.
-3. Start the application as above. No SAM worker starts.
+1. Start the application as above.
+2. On the **Setup** page, save your Meta API key, click **Test saved key**, and choose a Meta engine.
+3. Restart the application. No SAM worker starts.
 
-Monitoring then sends one camera frame per object about once a second, with a 3-second
-limit per request (`VLOCK_SAM_TIMEOUT_MS`). A timeout, Meta error or lost internet makes the
-zone Unknown, never Clear. Rules, zone tags and OPC UA do not change.
+| Engine (`VLOCK_SAM_BACKEND`) | Each check, per object | Request limit |
+|---|---|---|
+| `meta_api` | One frame, about once a second | 3 seconds (`VLOCK_SAM_TIMEOUT_MS`) |
+| `meta_api_video` | A four-frame clip, tracking objects | At least 6 seconds |
+
+A timeout, Meta error or lost connection makes the zone Unknown, never Clear. Rules, zone tags and OPC UA do not change.
 
 - **Privacy:** camera frames leave this PC and go to Meta.
-- **Cost:** each frame and object is one request, at Meta's listed $2.50 per 1,000 images:
-  up to about $9 an hour for one object and $18 for two. Requests, latency and scores are logged in
-  `data/application/sam_latency.csv`.
+- **Cost:** at Meta's listed prices, up to about $9 an hour per object for `meta_api` and about $14 for `meta_api_video` while
+  monitoring runs. Requests, latency and scores are logged in `data/application/sam_latency.csv`.
 - **Phrases:** Meta advises one simple noun phrase per request, so prefer `person` and `flag` as
   two objects. Two objects only means both are in the area, not that one is holding or wearing
   the other.
@@ -119,7 +129,7 @@ review the proposal and click **Use this configuration**, then **Enable monitori
 For SCADA, enable the OPC UA server (or MQTT) under Integrations and click Save workspace;
 SCADA tags lists the fixed zone tags and downloads the Ignition UDT.
 See the [application guide](web/app/README.md), [fixed zone tags](ignition/ZONE_TAGS.md),
-[Pi installation](demo_site/pi_camera/README.md) and [SAM runtime setup](docs/SAM_RUNTIME.md).
+[Pi installation](demo_site/pi_camera/README.md) and [SAM runtime setup](docs/install/SAM_RUNTIME.md).
 
 This repository is the active source of truth: https://github.com/celikender/vLock-AI-Vision.
 Open `vLock-AI-Vision.code-workspace` or the project folder in VS Code.
