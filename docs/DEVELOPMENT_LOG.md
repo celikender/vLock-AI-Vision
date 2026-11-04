@@ -1,5 +1,23 @@
 # Development log
 
+## 2026-11-03 - Docker: separate app and SAM containers
+
+- `compose.yaml` runs two images on the host network: `docker/app.Dockerfile`
+  (python:3.12-slim, no GPU, non-root) and `docker/sam.Dockerfile` (Ubuntu 24.04,
+  PyTorch CUDA 12.8 and the pinned SAM 3.1 runtime, non-root). The weights are never in
+  an image: `docker/sam-entrypoint.sh` downloads them once with the user's own `HF_TOKEN`
+  into a volume, and the worker verifies the pinned checksum before loading.
+- `VLOCK_SAM_EXTERNAL=1` makes the app's supervisor wait for and watch the SAM container
+  instead of starting WSL. `.dockerignore` keeps `.env`, data, weights and `.git` out.
+- Tested on the RTX 3070 Ti Laptop GPU with the owner's cached weights copied into the
+  volume: images built (SAM 13 GB, app 668 MB); CUDA available in the container; worker
+  ready with `weights_verified: true` after a 54.9 s warm-up; the app container answered
+  on its own address, and the Docker start message is correct.
+- Not verified: reaching the app from Windows (timed out; Docker Desktop's host
+  networking was off), the app's recovery after `docker compose restart sam` (the watch
+  script printed nothing), the first-start download with `HF_TOKEN`, monitoring with a
+  camera in Docker, and Linux hosts.
+
 ## 2026-11-03 - Security: login, roles, audit, client trust, weights checksum
 
 - Web login (`services/auth.py`): first start creates the admin account; users have

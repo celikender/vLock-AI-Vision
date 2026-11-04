@@ -1,0 +1,15 @@
+# Never send secrets, local data, models or environments into an image.
+.env
+.git
+.venv
+data
+playground
+docs
+integrations
+devices
+**/__pycache__
+**/*.pyc
+**/*.pt
+**/*.safetensors
+desktop.ini
+*.log

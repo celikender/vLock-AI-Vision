@@ -46,8 +46,10 @@ def probe(timeout=4):
 
 class SamWorker:
     def __init__(self, log_path, distro=None, probe=probe, popen=subprocess.Popen, run=subprocess.run, poll_seconds=2,
-                 restart_delay=5):
+                 restart_delay=5, launch=None):
         self.log_path = Path(log_path)
+        # VLOCK_SAM_EXTERNAL=1 (Docker): the worker runs in its own container; watch it, never start WSL.
+        self.launch = os.getenv('VLOCK_SAM_EXTERNAL') != '1' if launch is None else launch
         self.restart_delay = restart_delay
         self.distro = distro or os.getenv('VLOCK_WSL_DISTRO', 'Ubuntu')
         self.probe, self.popen, self.run, self.poll_seconds = probe, popen, run, poll_seconds
@@ -148,7 +150,7 @@ class SamWorker:
             if health is False:
                 self._set('blocked', 'Port 5052 is used by another program. Close it, then retry. Nothing was stopped.')
                 return None
-            if health is None:
+            if health is None and self.launch:
                 self._launch()
         except (OSError, subprocess.SubprocessError) as error:
             self._set('failed', f'Could not start the SAM worker: {error}')
@@ -174,6 +176,9 @@ class SamWorker:
                               gpu_name=health.get('gpu_name'), warmup_seconds=(health.get('warmup') or {}).get('seconds'))
                 else:
                     self._set('loading', 'Loading SAM 3.1 onto the GPU (about 1–2 minutes on first start)…')
+            elif not self.launch:
+                self._set('starting', 'Waiting for the SAM worker container (it loads the model after a restart).')
+                was_ready = False
             elif not self.owned:
                 self._set('stopped', 'The external SAM worker stopped. Retry to start one from the app.')
                 return None

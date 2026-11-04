@@ -1,0 +1,42 @@
+# vLock-AI Vision in two containers: the app (no GPU) and the SAM 3.1 worker (GPU).
+#   docker compose up -d --build      then open http://localhost:5056
+# Both use the host network, so the app keeps its loopback-only web address, the worker
+# stays on 127.0.0.1:5052, and OPC UA / MQTT / REST behave exactly as in a native start.
+# On Docker Desktop, enable Settings > Resources > Network > "Enable host networking".
+services:
+  sam:
+    build:
+      context: .
+      dockerfile: docker/sam.Dockerfile
+    network_mode: host
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - hf-models:/models
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+
+  app:
+    build:
+      context: .
+      dockerfile: docker/app.Dockerfile
+    network_mode: host
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - vlock-data:/data
+    depends_on:
+      - sam
+    restart: unless-stopped
+
+volumes:
+  hf-models:
+  vlock-data:

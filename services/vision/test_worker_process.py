@@ -130,6 +130,19 @@ class SamWorkerTests(unittest.TestCase):
         self.assertIn('warm-up', self.until(failed, 'failed')['message'])
         self.assertEqual(self.launched, [], 'Workers this app did not start are never relaunched')
 
+    def test_external_worker_is_awaited_and_never_launched(self):
+        answers = iter([None, None, READY, READY, None, None, READY])
+        worker = self.worker([None])
+        worker.launch = False
+        worker.probe = lambda: next(answers, READY)
+        worker.start()
+        self.assertIn('container', self.until(worker, 'starting')['message'])
+        self.until(worker, 'ready')
+        self.until(worker, 'starting')
+        self.until(worker, 'ready')
+        self.assertEqual(self.launched, [], 'Docker mode never starts WSL')
+        worker.stop(wait=True)
+
     def test_log_is_rotated_before_launch(self):
         from services.vision import worker_process
         log = Path(self.directory.name)/'sam.log'

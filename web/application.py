@@ -369,7 +369,8 @@ def main():
     if worker:
         close_handler=on_console_close(worker.stop)
         worker.start()
-        print(f'SAM 3.1 worker: starting in Ubuntu/WSL; log at {worker.log_path}',flush=True)
+        print('SAM 3.1 worker: waiting for the SAM container (Docker).' if not worker.launch else
+              f'SAM 3.1 worker: starting in Ubuntu/WSL; log at {worker.log_path}',flush=True)
     if args.open:
         webbrowser.open(url)
     print('Close this window or press Ctrl+C to stop the application and its SAM worker.',flush=True)

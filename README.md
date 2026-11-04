@@ -84,6 +84,10 @@ browser goes to http://localhost:5056. The app starts the SAM 3.1 worker in Ubun
 by itself and preloads the model (about 1–2 minutes on first start; the zone header
 shows SAM status). Close that window to stop the app and its SAM worker.
 
+With Docker (NVIDIA GPU, an approved Hugging Face token in `.env`): `docker compose up -d --build`,
+then open http://localhost:5056. The app and the SAM 3.1 worker run in separate containers;
+the weights are downloaded once with your own token. See [Docker](docs/DOCKER.md).
+
 Same thing from a terminal in the project folder:
 
 ```powershell
