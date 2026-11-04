@@ -45,6 +45,36 @@ Each phrase ran 5 or 10 times on one frame, with identical scores on every run o
 | Desk, no person | `person`, `dog` | None (correct) | | 513 ms, 874 ms |
 | Desk, no person | `storage drawers` | Yes | 0.69 | 780 ms |
 
+## Crowded scenes
+
+Through real monitoring code with Meta's answers faked, so this measures the PC and not the network.
+
+| Engine | Objects | Time to confirm |
+|---|---|---|
+| Meta image | 8 | 5.0 s |
+| Meta image | 16 | Never, within 28 s |
+| Meta video | 2 per frame | 2.8 s |
+| Meta video | 4 per frame | 4.5 s |
+| Meta video | 6 per frame | 6.2 s and 9.0 s in two runs, close to the 10-second freshness limit |
+| Meta video | 8 per frame | Never, within 28 s |
+
+So the limits are 8 objects on the image and local engines and 6 per frame on video. Above them the zone is `Unknown`, with a reason saying so.
+
+Each mask costs about 0.2 s of CPU to parse and convert. That time is included in the Meta times above.
+
+## Spending limit and backoff
+
+Real Meta calls and real monitoring code, with a saved camera frame instead of the Pi.
+
+| Test | Result |
+|---|---|
+| Fake key, 12 s | 1 refused request, with the reason `Meta rejected the API key...`. No spend counted |
+| Real key, 1-cent limit, 12 s | Exactly 4 requests, then `Unknown` with the limit reason |
+| Restart at the same limit, 5 s | No requests. The spend was kept |
+| Limit raised to 2 cents, 12 s | 4 more requests, then stopped again |
+
+The spend figure is an estimate. It has not been compared with Meta's actual bill.
+
 ## Muse Spark
 
 | Test | Result |
@@ -86,7 +116,7 @@ Run from the repository root:
 
 | Suite | Tests | Command |
 |---|---|---|
-| Services | 155 | `python -m unittest discover -s services -p "test_*.py" -t .` |
+| Services | 165 | `python -m unittest discover -s services -p "test_*.py" -t .` |
 | Web | 33 | `python web/test_application.py` |
 | Ignition package | 19 | `python -m unittest ignition/test_ignition_package.py ignition/test_heartbeat_watchdog.py` |
 | Pi camera | 3 | `python -m unittest discover -s demo_site/pi_camera -p "test_*.py"` |

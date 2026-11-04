@@ -1,6 +1,7 @@
 """Meta SAM backend: same rows as the local worker; every failure ends in Unknown, never Clear."""
 import csv
 import tempfile
+from itertools import chain, repeat
 import time
 import unittest
 from io import BytesIO
@@ -11,8 +12,8 @@ import cv2
 from openai import APIConnectionError, APIStatusError, APITimeoutError
 from PIL import Image
 
-from services.vision.masks import MAX_OBJECTS, SegmentationError, TooManyObjects
-from services.vision.meta_sam import MetaSam, MetaSamVideo, encode_window, meta_client, parse_objects, parse_video
+from services.vision.masks import ExplainedError, MAX_OBJECTS, SegmentationError, TooManyObjects
+from services.vision.meta_sam import VIDEO_MAX_OBJECTS, MetaSam, MetaSamVideo, daily_limit, encode_window, meta_client, parse_objects, parse_video
 from services.vision.monitoring import Monitoring
 from services.vision.test_monitoring import config, result
 from services.vision.zone_rules import evaluate
@@ -116,7 +117,7 @@ class MetaSamTests(unittest.TestCase):
             parse_objects(ANSWER, 300, 200)  # Mask bounds outside the camera frame.
 
     def test_answer_after_the_timeout_counts_as_failed(self):
-        moments = iter([0, 3.5, 3.5, 3.5])
+        moments = chain([0, 0], repeat(3.5))
         with self.assertRaises(SegmentationError):
             self.rows(self.backend(FakeClient(), clock=lambda: next(moments)))
         with self.log.open(encoding='utf-8') as handle:
@@ -162,13 +163,124 @@ class MetaSamTests(unittest.TestCase):
         self.assertTrue(3 <= len(regions[0]['polygon']) <= 12)
 
 
+class SpendingAndBackoffTests(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.client = FakeClient(answer='')
+        self.values = dict(VALUES)
+        self.now = [1000.0]
+        self.day = ['2026-11-04']
+
+    def backend(self, kind=MetaSam):
+        return kind(Path(self.directory.name)/'latency.csv', config=lambda: self.values,
+                    client_factory=lambda key, base_url, timeout: self.client,
+                    clock=lambda: self.now[0], today=lambda: self.day[0])
+
+    def call(self, backend):
+        return list(backend([dict(jpeg=camera_jpeg(), sequence='1')], 'person', 1))
+
+    def test_limit_stops_paid_requests_and_survives_a_restart(self):
+        self.values['VLOCK_SAM_DAILY_LIMIT_USD'] = '0.01'
+        backend = self.backend()
+        for _ in range(4):
+            self.call(backend)
+        self.assertEqual(len(self.client.requests), 4)
+        with self.assertRaises(ExplainedError) as caught:
+            self.call(backend)
+        self.assertIn('daily spending limit of $0.01', str(caught.exception))
+        self.assertEqual(len(self.client.requests), 4, 'No request is sent at the limit.')
+        self.assertTrue(backend.status()['limit_reached'])
+        restarted = self.backend()
+        self.assertAlmostEqual(restarted.status()['spend_today'], 0.01)
+        with self.assertRaises(ExplainedError):
+            self.call(restarted)
+        self.assertEqual(len(self.client.requests), 4)
+
+    def test_raising_the_limit_or_a_new_day_allows_requests_again(self):
+        self.values['VLOCK_SAM_DAILY_LIMIT_USD'] = '0.0025'
+        backend = self.backend()
+        self.call(backend)
+        with self.assertRaises(ExplainedError):
+            self.call(backend)
+        self.values['VLOCK_SAM_DAILY_LIMIT_USD'] = '0.005'
+        self.call(backend)
+        with self.assertRaises(ExplainedError):
+            self.call(backend)
+        self.day[0] = '2026-11-05'
+        self.call(backend)
+        self.assertAlmostEqual(backend.status()['spend_today'], 0.0025)
+
+    def test_video_counts_its_billed_minimum(self):
+        self.values['VLOCK_SAM_DAILY_LIMIT_USD'] = '0.01'
+        backend = self.backend(MetaSamVideo)
+        frames = [dict(jpeg=camera_jpeg(), sequence=str(number)) for number in range(4)]
+        list(backend(frames, 'person', 1))
+        with self.assertRaises(ExplainedError):
+            list(backend(frames, 'person', 1))
+        self.assertEqual(len(self.client.requests), 1)
+
+    def test_bad_limit_values_never_mean_no_limit(self):
+        for value in ('lots', '0', '-5', 'inf', 'nan', ''):
+            self.assertEqual(daily_limit(dict(VLOCK_SAM_DAILY_LIMIT_USD=value)), 10.0, value)
+        self.assertEqual(daily_limit({}), 10.0)
+        self.assertEqual(daily_limit(dict(VLOCK_SAM_DAILY_LIMIT_USD='2.5')), 2.5)
+
+    def test_damaged_usage_file_does_not_stop_the_app(self):
+        (Path(self.directory.name)/'sam_usage.json').write_text('broken', encoding='utf-8')
+        self.assertEqual(self.backend().status()['spend_today'], 0)
+
+    def test_refused_requests_wait_a_minute_and_are_not_counted_as_spend(self):
+        backend = self.backend()
+        self.client.error = bare(APIStatusError, status_code=401)
+        for _ in range(3):
+            with self.assertRaises(ExplainedError) as caught:
+                self.call(backend)
+            self.assertIn('rejected the API key', str(caught.exception))
+        self.assertEqual(len(self.client.requests), 1, 'Only one request in the waiting period.')
+        self.assertEqual(backend.status()['spend_today'], 0)
+        self.now[0] += 61
+        with self.assertRaises(ExplainedError):
+            self.call(backend)
+        self.assertEqual(len(self.client.requests), 2)
+
+    def test_a_new_key_is_tried_at_once(self):
+        backend = self.backend()
+        self.client.error = bare(APIStatusError, status_code=402)
+        with self.assertRaises(ExplainedError):
+            self.call(backend)
+        self.client.error = None
+        self.values['META_API_KEY'] = 'another-test-key'
+        self.call(backend)
+        self.assertEqual(backend.status()['last_request'], 'ok')
+
+    def test_network_errors_wait_longer_each_time_and_a_success_resets(self):
+        backend = self.backend()
+        self.client.error = bare(APIConnectionError)
+        with self.assertRaises(SegmentationError):
+            self.call(backend)
+        for wait in (2, 4, 8, 16, 30, 30):
+            sent = len(self.client.requests)
+            with self.assertRaises(SegmentationError):
+                self.call(backend)
+            self.assertEqual(len(self.client.requests), sent+1)
+            with self.assertRaises(ExplainedError) as caught:
+                self.call(backend)
+            self.assertEqual(str(caught.exception), MetaSam.unavailable_reason)
+            self.assertEqual(len(self.client.requests), sent+1, 'Nothing is sent while waiting.')
+            self.now[0] += wait
+        self.client.error = None
+        self.call(backend)
+        self.assertEqual((backend.failures, backend.blocked_until), (0, 0))
+        self.assertEqual(backend.status()['spend_today'], 0.0025, 'Only the success counted.')
+
+
 class ObjectLimitTests(unittest.TestCase):
     def crowd(self, count):
         row = result()
         return dict(row, objects=row['objects']*count, count=count)
 
-    def test_a_crowded_scene_is_evaluated_up_to_the_shared_limit(self):
-        self.assertTrue(evaluate(self.crowd(9), config())[0])
+    def test_a_crowded_scene_is_evaluated_up_to_the_limit(self):
         self.assertTrue(evaluate(self.crowd(MAX_OBJECTS), config())[0])
         with self.assertRaises(TooManyObjects):
             evaluate(self.crowd(MAX_OBJECTS+1), config())
@@ -202,6 +314,18 @@ class ObjectLimitTests(unittest.TestCase):
             finally:
                 monitor.stop()
                 monitor.thread.join(3)
+
+
+class VideoObjectLimitTests(unittest.TestCase):
+    def test_video_limit_is_counted_before_slow_parsing(self):
+        record = ANSWER.split('>', 1)[1].rstrip()[1:]
+        frames = lambda count: '\n'.join(f'<{index}f>'+','.join(f'{number}{record}' for number in range(count)) for index in range(4))
+        began = time.monotonic()
+        with self.assertRaises(TooManyObjects) as caught:
+            parse_video(frames(VIDEO_MAX_OBJECTS+1), 640, 480, 4)
+        self.assertLess(time.monotonic()-began, 1)
+        self.assertIn(f'More than {VIDEO_MAX_OBJECTS} objects', str(caught.exception))
+        self.assertEqual([len(objects) for objects in parse_video(frames(1), 640, 480, 4)], [1, 1, 1, 1])
 
 
 class MetaSamVideoTests(unittest.TestCase):

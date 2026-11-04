@@ -47,6 +47,8 @@ and any failure. `Reason` says why, for people and logs. Do not build logic on i
 | `Camera unavailable. Check the camera connection.` | The camera gave no fresh frame. |
 | `Meta SAM unavailable. Check the internet connection and the API key.` | A Meta Model API request timed out, failed or could not be read. |
 | `Local SAM unavailable. Check the GPU worker.` | The local GPU worker failed. |
+| `Meta SAM daily spending limit of ... reached...` | The daily limit set on the app's Setup page stopped paid requests. |
+| Other text | For example a refused key, or too many objects of one kind in a frame. |
 
 ### Two kinds of quality
 

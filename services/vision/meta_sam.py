@@ -7,6 +7,7 @@ as Unknown, never Clear; there are no retries.
 """
 import base64
 import csv
+import json
 import math
 import tempfile
 import threading
@@ -21,20 +22,40 @@ from PIL import Image, UnidentifiedImageError
 from meta_sam_parser import CompletedOutcome, decode_mask_to_raster, image_segmentation_format, video_segmentation_format
 from openai import APIConnectionError, APIStatusError, APITimeoutError, OpenAI
 from .assistant import settings
-from .masks import MAX_OBJECTS, SegmentationError, TooManyObjects, outline
+from .masks import ExplainedError, MAX_OBJECTS, SegmentationError, TooManyObjects, outline
 from .video import MAX_JPEG_BYTES, decode_mask, encode_mask, validate_prompt
 
 DEFAULT_TIMEOUT_MS = 3000
+DEFAULT_DAILY_LIMIT = 10.0
+ACCESS_WAIT = 60
+MAX_WAIT = 30
+# Statuses that may have been billed. Refused or unreachable requests are not counted.
+BILLABLE = ('ok', 'late', 'timeout', 'error', 'too_many')
 MIN_VIDEO_TIMEOUT = 6.0
 VIDEO_FPS = 4
+# Measured: 6 objects on each of 4 frames confirm in 6.2 s, and 8 outlast the freshness limit.
+VIDEO_MAX_OBJECTS = 6
 PRICE_PER_IMAGE = 2.50/1000
 MAX_OUTPUT = 16*1024*1024
 LOG_LIMIT = 5*1024*1024
 LOG_COLUMNS = ['timestamp_utc', 'backend', 'phrase', 'sam_ms', 'matches', 'top_score', 'status']
-STATUS_MESSAGES = {401: 'Meta rejected the API key. Check META_API_KEY in .env.',
+STATUS_MESSAGES = {401: 'Meta rejected the API key. Check it on the Setup page.',
                    402: 'Meta billing is not configured for this key.',
                    403: 'This Meta key cannot use SAM 3.1.', 404: 'This Meta key cannot use SAM 3.1.',
                    429: 'Meta rate limit or quota reached.'}
+
+
+def daily_limit(values):
+    """The daily spending limit in USD; anything unusable falls back to the default, never to no limit."""
+    try:
+        limit = float(values.get('VLOCK_SAM_DAILY_LIMIT_USD') or DEFAULT_DAILY_LIMIT)
+    except ValueError:
+        return DEFAULT_DAILY_LIMIT
+    return limit if math.isfinite(limit) and limit > 0 else DEFAULT_DAILY_LIMIT
+
+
+def utc_day():
+    return datetime.now(timezone.utc).strftime('%Y-%m-%d')
 
 
 def meta_client(key, base_url, timeout):
@@ -89,17 +110,18 @@ def object_row(record, width, height):
 
 def parse_objects(text, width, height):
     """An image answer: the object rows of its one frame."""
-    records = mask_records(text, image_segmentation_format())
-    if len(records) > MAX_OBJECTS:
+    # Counted before parsing, which takes about 0.1 s per mask.
+    if text.count('<|mask') > MAX_OBJECTS:
         raise TooManyObjects()
+    records = mask_records(text, image_segmentation_format())
     return [object_row(record, width, height) for record in records]
 
 
 def parse_video(text, width, height, frame_count):
     """A video answer: object rows per frame. A frame with no objects has no line and an empty list."""
+    if text.count('<|mask') > VIDEO_MAX_OBJECTS*frame_count:
+        raise TooManyObjects(VIDEO_MAX_OBJECTS)
     records = mask_records(text, video_segmentation_format())
-    if len(records) > MAX_OBJECTS*frame_count:
-        raise TooManyObjects()
     frames = [[] for _ in range(frame_count)]
     for record in records:
         index = record.frame.frame_index
@@ -138,25 +160,75 @@ class MetaSam:
     unavailable_reason = 'Meta SAM unavailable. Check the internet connection and the API key.'
     start_message = 'SAM 3.1: Meta Model API. Camera frames are sent to Meta and each request is billed.'
 
-    def __init__(self, log_path, config=settings, client_factory=meta_client, clock=time.monotonic):
+    def __init__(self, log_path, config=settings, client_factory=meta_client, clock=time.monotonic, today=utc_day):
         self.log_path = Path(log_path)
-        self.config, self.client_factory, self.clock = config, client_factory, clock
+        self.usage_path = self.log_path.with_name('sam_usage.json')
+        self.config, self.client_factory, self.clock, self.today = config, client_factory, clock, today
         self.lock = threading.Lock()
         self.client = self.client_key = None
         self.calls = deque()
         self.last_status = None
+        self.failures, self.blocked_until, self.blocked_reason = 0, 0, ''
+        self.usage = self.load_usage()
+
+    def load_usage(self):
+        """Kept in a file so that a restart cannot reset the daily limit."""
+        try:
+            usage = json.loads(self.usage_path.read_text(encoding='utf-8'))
+            return dict(day=str(usage['day']), spend=float(usage['spend']))
+        except (OSError, ValueError, KeyError, TypeError):
+            return dict(day=self.today(), spend=0.0)
+
+    def spend_today(self):
+        if self.usage['day'] != self.today():
+            self.usage = dict(day=self.today(), spend=0.0)
+        return self.usage['spend']
+
+    def add_spend(self):
+        self.usage = dict(day=self.today(), spend=self.spend_today()+self.price_per_request)
+        temporary = self.usage_path.with_name(self.usage_path.name+'.tmp')
+        try:
+            self.usage_path.parent.mkdir(parents=True, exist_ok=True)
+            temporary.write_text(json.dumps(self.usage), encoding='utf-8')
+            temporary.replace(self.usage_path)
+        except OSError:
+            pass  # The limit still holds in memory for this run.
+
+    def check_allowed(self, values):
+        """Stop before paying: over the daily limit, or waiting after repeated failures."""
+        with self.lock:
+            limit = daily_limit(values)
+            if self.spend_today()+self.price_per_request > limit:
+                raise ExplainedError(f'Meta SAM daily spending limit of ${limit:.2f} reached. '
+                                     'Raise it on the Setup page, or wait until midnight UTC.', 429)
+            if self.clock() < self.blocked_until:
+                raise ExplainedError(self.blocked_reason, 503)
+
+    def note_outcome(self, status, reason):
+        """Back off after failures: a refused key waits longest, and other errors wait longer each time."""
+        if status in ('ok', 'too_many'):
+            self.failures, self.blocked_until = 0, 0
+        elif status.startswith('http_') and int(status[5:]) in STATUS_MESSAGES:
+            self.blocked_until, self.blocked_reason = self.clock()+ACCESS_WAIT, reason
+        else:
+            self.failures += 1
+            if self.failures >= 2:
+                self.blocked_until = self.clock()+min(MAX_WAIT, 2**(self.failures-1))
+                self.blocked_reason = self.unavailable_reason
 
     def connection(self, values):
         """One kept-alive client: a new TLS connection for every frame would add latency."""
         key = (values.get('META_API_KEY') or values.get('MODEL_API_KEY') or '').strip()
         if not key:
-            raise SegmentationError('Add META_API_KEY to the project .env to use Meta SAM.', 503)
+            raise ExplainedError('Add your Meta API key on the Setup page to use Meta SAM.', 503)
         timeout = self.timeout_seconds(values)
         with self.lock:
             if self.client is None or self.client_key != (key, timeout):
                 if self.client is not None:
                     self.client.close()
                 self.client = self.client_factory(key, values.get('META_BASE_URL') or 'https://api.meta.ai/v1', timeout)
+                # A new key or limit gets a fresh start instead of waiting out the old failure.
+                self.failures, self.blocked_until = 0, 0
                 self.client_key = (key, timeout)
             return self.client, timeout
 
@@ -178,8 +250,9 @@ class MetaSam:
         """One paid request with no retry. Any failure raises; the caller's monitor reports Unknown."""
         values = self.config()
         client, timeout = self.connection(values)
+        self.check_allowed(values)
         began = self.clock()
-        status, objects = 'error', []
+        status, objects, reason = 'error', [], ''
         try:
             response = client.responses.create(
                 model=values.get('META_SAM_MODEL') or 'sam-3.1',
@@ -203,21 +276,29 @@ class MetaSam:
             raise SegmentationError('Cannot reach Meta. Check the internet connection.', 503) from None
         except APIStatusError as error:
             status = f'http_{error.status_code}'
-            raise SegmentationError(STATUS_MESSAGES.get(error.status_code, 'Meta rejected the SAM request.'),
-                                    error.status_code) from None
+            reason = STATUS_MESSAGES.get(error.status_code)
+            if reason:
+                raise ExplainedError(reason, error.status_code) from None
+            raise SegmentationError('Meta rejected the SAM request.', error.status_code) from None
+        except TooManyObjects:
+            status = 'too_many'
+            raise
         except SegmentationError:
             raise
         except Exception:
             raise SegmentationError('Meta SAM request failed.') from None
         finally:
-            self.record(prompt, (self.clock()-began)*1000, objects, status)
+            self.record(prompt, (self.clock()-began)*1000, objects, status, reason)
 
-    def record(self, phrase, milliseconds, objects, status):
+    def record(self, phrase, milliseconds, objects, status, reason=''):
         scores = [obj['score'] for obj in objects if obj['score'] is not None]
         with self.lock:
             now = self.clock()
             self.calls.append(now)
             self.last_status = status
+            self.note_outcome(status, reason)
+            if status in BILLABLE:
+                self.add_spend()
             while self.calls and now-self.calls[0] > 3600:
                 self.calls.popleft()
             try:
@@ -265,10 +346,12 @@ class MetaSam:
             now = self.clock()
             calls = sum(1 for moment in self.calls if now-moment <= 3600)
             last = self.last_status
+            spend, limit = self.spend_today(), daily_limit(values)
         return dict(state='ready', owned=False, backend=self.backend_name, calls_last_hour=calls,
                     last_request=None if last is None else 'ok' if last == 'ok' else 'failing',
-                    message=f'SAM 3.1 through the Meta Model API. {calls} requests in the last hour, '
-                            f'about ${calls*self.price_per_request:.2f}.')
+                    spend_today=round(spend, 4), spend_limit=limit, limit_reached=spend+self.price_per_request > limit,
+                    message=f'SAM 3.1 through the Meta Model API. Estimated ${spend:.2f} today of a ${limit:.2f} limit. '
+                            f'{calls} requests in the last hour. Your Meta account shows the real bill.')
 
     def start(self):
         pass

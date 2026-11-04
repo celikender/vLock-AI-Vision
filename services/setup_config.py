@@ -17,10 +17,12 @@ TOKEN = re.compile(r'[A-Za-z0-9_.:|+/=-]+')
 OPC_USERNAME = re.compile(r'[A-Za-z0-9_.@-]{1,64}')
 PASSWORD = re.compile(r'[^\s\'"\\$`]+')
 SECRETS = ('META_API_KEY', 'VLOCK_OPCUA_SERVER_PASSWORD', 'VLOCK_API_TOKEN')
-PLAIN = {'VLOCK_SAM_BACKEND': 'local', 'VLOCK_SAM_TIMEOUT_MS': '3000', 'VLOCK_OPCUA_SERVER_USERNAME': ''}
+PLAIN = {'VLOCK_SAM_BACKEND': 'local', 'VLOCK_SAM_TIMEOUT_MS': '3000', 'VLOCK_SAM_DAILY_LIMIT_USD': '10',
+         'VLOCK_OPCUA_SERVER_USERNAME': ''}
 LABELS = {'META_API_KEY': 'Meta API key', 'VLOCK_OPCUA_SERVER_PASSWORD': 'OPC UA password',
           'VLOCK_API_TOKEN': 'REST API token', 'VLOCK_SAM_BACKEND': 'SAM engine',
-          'VLOCK_SAM_TIMEOUT_MS': 'Request limit', 'VLOCK_OPCUA_SERVER_USERNAME': 'OPC UA username'}
+          'VLOCK_SAM_TIMEOUT_MS': 'Request limit', 'VLOCK_SAM_DAILY_LIMIT_USD': 'Daily spending limit',
+          'VLOCK_OPCUA_SERVER_USERNAME': 'OPC UA username'}
 
 
 class SetupError(ValueError):
@@ -42,6 +44,8 @@ def checked(name, value):
         raise SetupError('Choose a SAM engine from the list.')
     if name == 'VLOCK_SAM_TIMEOUT_MS' and not (value.isdigit() and 500 <= int(value) <= 30000):
         raise SetupError('Request limit: 500 to 30000 milliseconds.')
+    if name == 'VLOCK_SAM_DAILY_LIMIT_USD' and not (re.fullmatch(r'\d{1,5}(\.\d{1,2})?', value) and 0.01 <= float(value) <= 10000):
+        raise SetupError('Daily spending limit: 0.01 to 10000 US dollars.')
     if name == 'VLOCK_OPCUA_SERVER_USERNAME' and value and not OPC_USERNAME.fullmatch(value):
         raise SetupError('OPC UA username: up to 64 letters, digits, dots, hyphens, underscores or @.')
     if name == 'VLOCK_OPCUA_SERVER_PASSWORD' and not (MINIMUM_PASSWORD <= len(value) <= 200 and PASSWORD.fullmatch(value)):

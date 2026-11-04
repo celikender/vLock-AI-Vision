@@ -4,7 +4,10 @@ from io import BytesIO
 from PIL import Image, ImageOps, ImageFilter, ImageChops, UnidentifiedImageError
 
 MAX_AREA_VERTICES = 12
-MAX_OBJECTS = 32
+# Per object and frame. Measured: 8 confirm within seconds on the Meta image engine, and 16 never did, because
+# parsing and drawing that many masks outlasts the 10-second freshness limit.
+MAX_OBJECTS = 8
+MAX_DRAWN_MASKS = 32
 
 
 class SegmentationError(Exception):
@@ -13,9 +16,13 @@ class SegmentationError(Exception):
         self.status = status
 
 
-class TooManyObjects(SegmentationError):
-    def __init__(self):
-        super().__init__(f'More than {MAX_OBJECTS} objects found. Use a more specific object or a smaller area.')
+class ExplainedError(SegmentationError):
+    """A failure whose message is the right reason to show a person and publish to SCADA."""
+
+
+class TooManyObjects(ExplainedError):
+    def __init__(self, limit=MAX_OBJECTS):
+        super().__init__(f'More than {limit} objects found. Use a more specific object.')
 
 
 def outline(mask):
@@ -55,7 +62,7 @@ def prepare(jpeg, prompt):
 
 
 def render(image, masks):
-    if len(masks) > MAX_OBJECTS:
+    if len(masks) > MAX_DRAWN_MASKS:
         raise TooManyObjects()
     output = image.convert('RGBA')
     colors = [(60,240,150),(255,170,40),(60,180,255),(230,90,230)]

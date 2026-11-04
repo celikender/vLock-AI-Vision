@@ -10,7 +10,7 @@ from io import BytesIO
 from pathlib import Path
 from uuid import uuid4
 from PIL import Image
-from .masks import TooManyObjects, render
+from .masks import ExplainedError, render
 from .transport import track_video
 from .video import WINDOW_FRAMES, decode_mask
 from .configuration import Store, validate, public, text, DEFAULT
@@ -329,7 +329,7 @@ class Monitoring:
             except Exception as error:
                 with self.lock:
                     if not self.cancel.is_set() and revision == self.revision:
-                        if self.rule.unavailable(str(error) if isinstance(error,TooManyObjects) else
+                        if self.rule.unavailable(str(error) if isinstance(error,ExplainedError) else
                                 'Camera unavailable. Check the camera connection.' if camera_stage else
                                 getattr(self.infer,'unavailable_reason','Local SAM unavailable. Check the GPU worker.')):
                             self.event('unavailable')

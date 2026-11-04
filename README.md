@@ -117,7 +117,8 @@ A timeout, Meta error or lost connection makes the zone Unknown, never Clear. Ru
 
 - **Privacy:** camera frames leave this PC and go to Meta.
 - **Cost:** at Meta's listed prices, up to about $9 an hour per object for `meta_api` and about $14 for `meta_api_video` while
-  monitoring runs. Requests, latency and scores are logged in `data/application/sam_latency.csv`.
+  monitoring runs. A daily spending limit, $10 by default, stops paid requests; it is an estimate, so check your Meta account for the
+  real bill. Requests, latency and scores are logged in `data/application/sam_latency.csv`.
 - **Phrases:** Meta advises one simple noun phrase per request, so prefer `person` and `flag` as
   two objects. Two objects only means both are in the area, not that one is holding or wearing
   the other.

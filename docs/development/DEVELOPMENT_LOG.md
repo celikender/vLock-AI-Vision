@@ -1030,9 +1030,12 @@ Future entries should record actual changes, verification evidence, limitations,
 ## 2026-11-04: Review fixes
 
 - A REST token saved on the Setup page is now enforced; REST previously read only the process environment.
-- One object limit of 32 on every engine, with a reason that names the cause. The rule code previously rejected more than 8.
+- One object limit of 8 on every engine, with a reason that names the cause. A first attempt at 32 was wrong: measured with
+  real monitoring code, 8 objects confirmed in 5.0 s on the image engine and 16 never did, because parsing and drawing that
+  many masks outlasts the 10-second freshness limit. The count now happens before the slow parsing. Meta video has its own limit of 6 per frame:
+  6 confirmed in 6.2 s and 8 never did.
 - The reference heartbeat watchdog refuses a reset while quality is Bad.
 - `--no-sam` no longer turns off a Meta engine.
 - The UI names the active engine and whether Meta is answering, instead of local worker status. Live browser check, no paid calls.
-- Not done: a spending limit or backoff for repeated Meta failures. The app's cost figure is an estimate.
-
+- Added a daily spending limit for the Meta engines, $10 by default and kept across restarts, plus backoff after failures.
+  The spend figure is an estimate; the Meta account shows the real bill.

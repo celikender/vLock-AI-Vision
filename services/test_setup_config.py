@@ -70,6 +70,7 @@ class SetupConfigTests(unittest.TestCase):
         bad = [dict(VLOCK_SAM_BACKEND=KEY), dict(VLOCK_SAM_TIMEOUT_MS='soon'), dict(VLOCK_SAM_TIMEOUT_MS='100'),
                dict(META_API_KEY='has a space in-it'), dict(META_API_KEY='short'), dict(META_API_KEY='line\nINJECTED=1'),
                dict(VLOCK_OPCUA_SERVER_PASSWORD='too-short'), dict(VLOCK_OPCUA_SERVER_PASSWORD='has "quotes" inside it'),
+               dict(VLOCK_SAM_DAILY_LIMIT_USD='lots'), dict(VLOCK_SAM_DAILY_LIMIT_USD='0'), dict(VLOCK_SAM_DAILY_LIMIT_USD='100000'),
                dict(VLOCK_OPCUA_SERVER_USERNAME='no spaces allowed'), dict(OTHER_SETTING='value'), dict(META_API_KEY=5)]
         for values in bad:
             with self.subTest(values=values), self.assertRaises(SetupError) as caught:
@@ -78,6 +79,11 @@ class SetupConfigTests(unittest.TestCase):
         with self.assertRaises(SetupError):
             self.setup.save(dict(clear=['VLOCK_SAM_BACKEND']))
         self.assertFalse(self.path.exists())
+
+    def test_daily_limit_is_saved_and_shown(self):
+        self.assertEqual(self.setup.view()['fields']['VLOCK_SAM_DAILY_LIMIT_USD']['value'], '10')
+        self.setup.save(dict(values=dict(VLOCK_SAM_DAILY_LIMIT_USD='2.50')))
+        self.assertEqual(self.setup.view()['fields']['VLOCK_SAM_DAILY_LIMIT_USD']['value'], '2.50')
 
     def test_one_bad_field_writes_nothing(self):
         with self.assertRaises(SetupError):

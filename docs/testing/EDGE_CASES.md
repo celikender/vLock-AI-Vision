@@ -27,7 +27,10 @@ with a stand-in for the failure. **Not tested** means designed for, but never tr
 | Answer arrives after the limit | Discarded, `Unknown` | Automated |
 | Unreadable or incomplete answer | `Unknown`, never zero objects | Automated |
 | Key missing | Monitoring won't start, and the status says what to do | Automated |
-| Meta keeps failing | Monitoring keeps trying and stays `Unknown`. **Known limit: no spending limit or backoff yet,** and the app's cost figure is only an estimate that counts failed requests and resets on restart | Read from the code |
+| Daily spending limit reached | Paid requests stop, and the zone is `Unknown` with a reason saying so. A restart doesn't reset it. Raising the limit or a new UTC day resumes | Automated, plus live |
+| Key refused, billing or rate limit error | `Unknown` with the specific reason. One request a minute until fixed; saving a new key tries at once | Automated, plus live with a fake key |
+| Meta unreachable or failing repeatedly | `Unknown`, waiting 2 to 30 s between tries, so recovery can take up to 30 s | Automated |
+| Spend figure | An estimate that counts requests that may have been billed. Your Meta account shows the real bill | By design |
 | Internet cut during monitoring | Should reach `Unknown` through the limit on an open connection | **Not tested** live |
 | `api.meta.ai` blocked in the hosts file | **Known limit: stays working.** The app keeps its connection open and a name block doesn't end it. Only a new connection fails | Simulated |
 
@@ -52,7 +55,8 @@ The hosts-file case is not a useful outage test. The reconnect that would change
 | Port 5052 used by another program | Reported, and nothing is stopped | Automated |
 | Long-running log | Rotates at 5 MB while the worker runs. Writing to a file the worker holds open failed on Windows, so the app now writes it | Automated, plus a live start |
 | Inference stuck | Monitoring can stay "finishing" for up to the 300-second limit | Known limit |
-| More than 32 objects in a frame | `Unknown`, with a reason saying so. Up to 32 are evaluated, on every engine | Automated |
+| More than 8 objects of one kind in a frame (6 on Meta video) | `Unknown`, with a reason saying so | Automated, and measured with faked answers |
+| Several crowded objects at once | Each mask costs about 0.2 s on the PC. Two objects with many matches each can outlast the 10-second freshness limit, giving a stale `Unknown` | Measured for one object |
 
 ## Muse Spark
 

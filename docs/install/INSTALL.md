@@ -47,6 +47,7 @@ Open **Setup** in the sidebar. You don't need to edit any files.
 |---|---|---|
 | Meta API key | Your Meta developer account at [dev.meta.ai](https://dev.meta.ai) | Muse Spark, and the Meta SAM engines |
 | SAM engine | Choose from the list | Always. Changing it needs a restart of the app |
+| Daily spending limit | Choose your own. The default is $10 a day | Meta engines. It is an estimate, and your Meta account shows the real bill |
 | OPC UA username and password | Choose your own | Only when SCADA runs on another PC |
 | REST API token | Choose your own | Optional. Applies as soon as it is saved, so REST clients must then send it |
 
@@ -109,6 +110,7 @@ Everything is in `data/application/`, which Git ignores. It does not keep growin
 | `observations.sqlite3` (history) | Newest 1,000 events. Measured at about 1.7 MB after 6,000 writes |
 | `audit.log` | 5 MB, plus one older file |
 | `sam_latency.csv` (Meta engines) | 5 MB, plus one older file |
+| `sam_usage.json` (Meta engines) | Today's estimated spend only |
 | `sam_worker.log` (local engine) | 5 MB, plus two older files |
 | `zones/<id>/` (settings per zone) | Removed when you delete the zone |
 
@@ -133,6 +135,7 @@ git pull
 | "SAM 3.1 is not ready" | Local engine: wait for the first load, or see [SAM runtime](SAM_RUNTIME.md). Meta engines: add the key on the Setup page |
 | "Port 5056 is used by another program" | Close the other copy, or start with `--port 5057` |
 | Setup page says "Restart needed" | Close the app's window and start it again |
+| Zone says the daily spending limit was reached | Raise it on the Setup page, or wait until midnight UTC |
 | Test saved key says rejected | Paste the key again and check your Meta account |
 
 ## Install test status
