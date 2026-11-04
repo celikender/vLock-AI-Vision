@@ -88,7 +88,7 @@ class MetaSam:
     """Inference callable for Monitoring, plus the status methods the app expects of its SAM worker."""
     window_frames = 1
     min_check_seconds = 1.0
-    unavailable_reason = 'Camera or Meta SAM unavailable. Check the Pi connection and the internet.'
+    unavailable_reason = 'Meta SAM unavailable. Check the internet connection and the API key.'
     start_message = 'SAM 3.1: Meta Model API. Camera frames are sent to Meta and each request is billed.'
 
     def __init__(self, log_path, config=settings, client_factory=meta_client, clock=time.monotonic):

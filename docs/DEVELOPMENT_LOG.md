@@ -999,3 +999,11 @@ Future entries should record actual changes, verification evidence, limitations,
 - Added a reference Ignition heartbeat watchdog; its logic has automated tests only.
 - Not tested: this backend with OPC UA or MQTT on, Docker, RTSP, long runs, the browser view, and
   the watchdog in a real gateway.
+
+## 2026-11-03: Ignition package and separate Unknown reasons
+
+- Camera, Meta SAM and local SAM failures now publish their own `Reason`; all still give Unknown.
+- Added `ignition/`: the tag export, the tag contract and an example stop latch. The app publishes
+  status only; latch and reset belong to the integrator. The owner decided on no Ignition changes
+  tonight, so the planned real-gateway test round did not run.
+- Left the Meta connection open between requests: a hosts-file block does not end it.

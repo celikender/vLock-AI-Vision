@@ -50,6 +50,7 @@ See [the plan](docs/PLAN.md), [integration guide](docs/INTEGRATION.md), and [dev
 - `services/vision/`: camera, SAM 3.1 worker and supervisor, Muse assistant, monitoring and zone rules.
 - `services/vlock/`: observation store, heartbeat, REST output and OPC UA/MQTT adapters.
 - `devices/pi_camera/`: Raspberry Pi 5 USB camera service and installer.
+- `ignition/`: Ignition package: tag export, tag contract ([INTEGRATION.md](ignition/INTEGRATION.md)) and an example stop latch.
 - `integrations/ignition/`: Ignition reference integration and the Bambu P1S Perspective project.
 - `docs/`: plan, setup, SAM runtime, integration contract, reports and development log.
 - `playground/`: retired experiments; the application does not use it.
@@ -111,7 +112,8 @@ zone Unknown, never Clear. Rules, zone tags and OPC UA do not change.
 - **Phrases:** Meta advises one simple noun phrase per request, so prefer `person` and `flag` as
   two objects. Two objects only means both are in the area, not that one is holding or wearing
   the other.
-- **Not tested with this backend:** Docker, RTSP cameras, long runs and real plant footage.
+- **Not tested with this backend:** real Ignition, Docker, RTSP cameras, long runs and real plant
+  footage. Also untested: a safety vest phrase and the heartbeat watchdog in a real gateway.
 
 In a zone: connect the Pi camera, describe what to watch, click **Configure with Muse**,
 review the proposal and click **Use this configuration**, then **Enable monitoring**.

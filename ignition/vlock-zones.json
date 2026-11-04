@@ -1,0 +1,411 @@
+{
+  "tags": [
+    {
+      "name": "_types_",
+      "tagType": "Folder",
+      "tags": [
+        {
+          "name": "vLockZone",
+          "tagType": "UdtType",
+          "parameters": {
+            "ZoneKey": {
+              "dataType": "String",
+              "value": ""
+            },
+            "OpcServer": {
+              "dataType": "String",
+              "value": "vLock Bridge"
+            }
+          },
+          "tags": [
+            {
+              "tagType": "AtomicTag",
+              "valueSource": "opc",
+              "dataType": "Boolean",
+              "opcServer": {
+                "bindType": "parameter",
+                "binding": "{OpcServer}"
+              },
+              "opcItemPath": {
+                "bindType": "parameter",
+                "binding": "nsu=urn:vlock:bridge:v1;s=Bridge/Zones/{ZoneKey}/Active"
+              },
+              "name": "Active",
+              "documentation": "True when the zone rule is met. Bad quality when Unknown or for count zones."
+            },
+            {
+              "tagType": "AtomicTag",
+              "valueSource": "opc",
+              "dataType": "String",
+              "opcServer": {
+                "bindType": "parameter",
+                "binding": "{OpcServer}"
+              },
+              "opcItemPath": {
+                "bindType": "parameter",
+                "binding": "nsu=urn:vlock:bridge:v1;s=Bridge/Zones/{ZoneKey}/State"
+              },
+              "name": "State",
+              "documentation": "Active, Clear, Valid (count zones) or Unknown."
+            },
+            {
+              "tagType": "AtomicTag",
+              "valueSource": "opc",
+              "dataType": "String",
+              "opcServer": {
+                "bindType": "parameter",
+                "binding": "{OpcServer}"
+              },
+              "opcItemPath": {
+                "bindType": "parameter",
+                "binding": "nsu=urn:vlock:bridge:v1;s=Bridge/Zones/{ZoneKey}/Quality"
+              },
+              "name": "Quality",
+              "documentation": "Good, Unknown or Stale."
+            },
+            {
+              "tagType": "AtomicTag",
+              "valueSource": "opc",
+              "dataType": "String",
+              "opcServer": {
+                "bindType": "parameter",
+                "binding": "{OpcServer}"
+              },
+              "opcItemPath": {
+                "bindType": "parameter",
+                "binding": "nsu=urn:vlock:bridge:v1;s=Bridge/Zones/{ZoneKey}/Reason"
+              },
+              "name": "Reason",
+              "documentation": "Why the zone has this state."
+            },
+            {
+              "tagType": "AtomicTag",
+              "valueSource": "opc",
+              "dataType": "Int4",
+              "opcServer": {
+                "bindType": "parameter",
+                "binding": "{OpcServer}"
+              },
+              "opcItemPath": {
+                "bindType": "parameter",
+                "binding": "nsu=urn:vlock:bridge:v1;s=Bridge/Zones/{ZoneKey}/Count1"
+              },
+              "name": "Count1",
+              "documentation": "Detections of Object1 in the whole frame. Bad quality when Unknown."
+            },
+            {
+              "tagType": "AtomicTag",
+              "valueSource": "opc",
+              "dataType": "Int4",
+              "opcServer": {
+                "bindType": "parameter",
+                "binding": "{OpcServer}"
+              },
+              "opcItemPath": {
+                "bindType": "parameter",
+                "binding": "nsu=urn:vlock:bridge:v1;s=Bridge/Zones/{ZoneKey}/Count2"
+              },
+              "name": "Count2",
+              "documentation": "Detections of Object2 in the whole frame. Bad quality when Unknown or unused."
+            },
+            {
+              "tagType": "AtomicTag",
+              "valueSource": "opc",
+              "dataType": "Float8",
+              "opcServer": {
+                "bindType": "parameter",
+                "binding": "{OpcServer}"
+              },
+              "opcItemPath": {
+                "bindType": "parameter",
+                "binding": "nsu=urn:vlock:bridge:v1;s=Bridge/Zones/{ZoneKey}/Score1"
+              },
+              "name": "Score1",
+              "documentation": "Highest SAM score for Object1, 0-1. Diagnostic only, not a calibrated probability."
+            },
+            {
+              "tagType": "AtomicTag",
+              "valueSource": "opc",
+              "dataType": "Float8",
+              "opcServer": {
+                "bindType": "parameter",
+                "binding": "{OpcServer}"
+              },
+              "opcItemPath": {
+                "bindType": "parameter",
+                "binding": "nsu=urn:vlock:bridge:v1;s=Bridge/Zones/{ZoneKey}/Score2"
+              },
+              "name": "Score2",
+              "documentation": "Highest SAM score for Object2, 0-1. Diagnostic only, not a calibrated probability."
+            },
+            {
+              "tagType": "AtomicTag",
+              "valueSource": "opc",
+              "dataType": "String",
+              "opcServer": {
+                "bindType": "parameter",
+                "binding": "{OpcServer}"
+              },
+              "opcItemPath": {
+                "bindType": "parameter",
+                "binding": "nsu=urn:vlock:bridge:v1;s=Bridge/Zones/{ZoneKey}/ObservedAt"
+              },
+              "name": "ObservedAt",
+              "documentation": "UTC time of the analysed camera frame."
+            },
+            {
+              "tagType": "AtomicTag",
+              "valueSource": "opc",
+              "dataType": "Float8",
+              "opcServer": {
+                "bindType": "parameter",
+                "binding": "{OpcServer}"
+              },
+              "opcItemPath": {
+                "bindType": "parameter",
+                "binding": "nsu=urn:vlock:bridge:v1;s=Bridge/Zones/{ZoneKey}/AgeSeconds"
+              },
+              "name": "AgeSeconds",
+              "documentation": "Seconds between ObservedAt and this update."
+            },
+            {
+              "tagType": "AtomicTag",
+              "valueSource": "opc",
+              "dataType": "Float8",
+              "opcServer": {
+                "bindType": "parameter",
+                "binding": "{OpcServer}"
+              },
+              "opcItemPath": {
+                "bindType": "parameter",
+                "binding": "nsu=urn:vlock:bridge:v1;s=Bridge/Zones/{ZoneKey}/CheckSeconds"
+              },
+              "name": "CheckSeconds",
+              "documentation": "SAM time of the last check."
+            },
+            {
+              "tagType": "AtomicTag",
+              "valueSource": "opc",
+              "dataType": "String",
+              "opcServer": {
+                "bindType": "parameter",
+                "binding": "{OpcServer}"
+              },
+              "opcItemPath": {
+                "bindType": "parameter",
+                "binding": "nsu=urn:vlock:bridge:v1;s=Bridge/Zones/{ZoneKey}/ZoneName"
+              },
+              "name": "ZoneName",
+              "documentation": "Zone name shown in the app."
+            },
+            {
+              "tagType": "AtomicTag",
+              "valueSource": "opc",
+              "dataType": "String",
+              "opcServer": {
+                "bindType": "parameter",
+                "binding": "{OpcServer}"
+              },
+              "opcItemPath": {
+                "bindType": "parameter",
+                "binding": "nsu=urn:vlock:bridge:v1;s=Bridge/Zones/{ZoneKey}/ZoneId"
+              },
+              "name": "ZoneId",
+              "documentation": "Internal zone id."
+            },
+            {
+              "tagType": "AtomicTag",
+              "valueSource": "opc",
+              "dataType": "String",
+              "opcServer": {
+                "bindType": "parameter",
+                "binding": "{OpcServer}"
+              },
+              "opcItemPath": {
+                "bindType": "parameter",
+                "binding": "nsu=urn:vlock:bridge:v1;s=Bridge/Zones/{ZoneKey}/OutputName"
+              },
+              "name": "OutputName",
+              "documentation": "Output name from the rule. Changing it never moves these tags."
+            },
+            {
+              "tagType": "AtomicTag",
+              "valueSource": "opc",
+              "dataType": "String",
+              "opcServer": {
+                "bindType": "parameter",
+                "binding": "{OpcServer}"
+              },
+              "opcItemPath": {
+                "bindType": "parameter",
+                "binding": "nsu=urn:vlock:bridge:v1;s=Bridge/Zones/{ZoneKey}/OutputType"
+              },
+              "name": "OutputType",
+              "documentation": "condition, event or count."
+            },
+            {
+              "tagType": "AtomicTag",
+              "valueSource": "opc",
+              "dataType": "String",
+              "opcServer": {
+                "bindType": "parameter",
+                "binding": "{OpcServer}"
+              },
+              "opcItemPath": {
+                "bindType": "parameter",
+                "binding": "nsu=urn:vlock:bridge:v1;s=Bridge/Zones/{ZoneKey}/Rule"
+              },
+              "name": "Rule",
+              "documentation": "The rule in plain words."
+            },
+            {
+              "tagType": "AtomicTag",
+              "valueSource": "opc",
+              "dataType": "String",
+              "opcServer": {
+                "bindType": "parameter",
+                "binding": "{OpcServer}"
+              },
+              "opcItemPath": {
+                "bindType": "parameter",
+                "binding": "nsu=urn:vlock:bridge:v1;s=Bridge/Zones/{ZoneKey}/Object1"
+              },
+              "name": "Object1",
+              "documentation": "First object SAM looks for."
+            },
+            {
+              "tagType": "AtomicTag",
+              "valueSource": "opc",
+              "dataType": "String",
+              "opcServer": {
+                "bindType": "parameter",
+                "binding": "{OpcServer}"
+              },
+              "opcItemPath": {
+                "bindType": "parameter",
+                "binding": "nsu=urn:vlock:bridge:v1;s=Bridge/Zones/{ZoneKey}/Object2"
+              },
+              "name": "Object2",
+              "documentation": "Second object; empty for one-object zones."
+            },
+            {
+              "tagType": "AtomicTag",
+              "valueSource": "opc",
+              "dataType": "String",
+              "opcServer": {
+                "bindType": "parameter",
+                "binding": "{OpcServer}"
+              },
+              "opcItemPath": {
+                "bindType": "parameter",
+                "binding": "nsu=urn:vlock:bridge:v1;s=Bridge/Zones/{ZoneKey}/Skill"
+              },
+              "name": "Skill",
+              "documentation": "Skill (scenario package) this zone follows, or empty."
+            },
+            {
+              "tagType": "AtomicTag",
+              "valueSource": "opc",
+              "dataType": "String",
+              "opcServer": {
+                "bindType": "parameter",
+                "binding": "{OpcServer}"
+              },
+              "opcItemPath": {
+                "bindType": "parameter",
+                "binding": "nsu=urn:vlock:bridge:v1;s=Bridge/Zones/{ZoneKey}/VlmState"
+              },
+              "name": "VlmState",
+              "documentation": "Answer of the optional Muse frame check (for example yes, no, unsure), or off, pending or error. Advisory: never changes Active or State."
+            },
+            {
+              "tagType": "AtomicTag",
+              "valueSource": "opc",
+              "dataType": "String",
+              "opcServer": {
+                "bindType": "parameter",
+                "binding": "{OpcServer}"
+              },
+              "opcItemPath": {
+                "bindType": "parameter",
+                "binding": "nsu=urn:vlock:bridge:v1;s=Bridge/Zones/{ZoneKey}/VlmReason"
+              },
+              "name": "VlmReason",
+              "documentation": "Muse frame-check reason, or why no check ran."
+            },
+            {
+              "tagType": "AtomicTag",
+              "valueSource": "opc",
+              "dataType": "String",
+              "opcServer": {
+                "bindType": "parameter",
+                "binding": "{OpcServer}"
+              },
+              "opcItemPath": {
+                "bindType": "parameter",
+                "binding": "nsu=urn:vlock:bridge:v1;s=Bridge/Zones/{ZoneKey}/VlmCheckedAt"
+              },
+              "name": "VlmCheckedAt",
+              "documentation": "UTC time of the last Muse frame check."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "vLock",
+      "tagType": "Folder",
+      "tags": [
+        {
+          "name": "Bridge",
+          "tagType": "Folder",
+          "tags": [
+            {
+              "tagType": "AtomicTag",
+              "valueSource": "opc",
+              "dataType": "Boolean",
+              "opcServer": "vLock Bridge",
+              "opcItemPath": "nsu=urn:vlock:bridge:v1;s=Bridge/Online",
+              "name": "Online"
+            },
+            {
+              "tagType": "AtomicTag",
+              "valueSource": "opc",
+              "dataType": "String",
+              "opcServer": "vLock Bridge",
+              "opcItemPath": "nsu=urn:vlock:bridge:v1;s=Bridge/Status",
+              "name": "Status"
+            },
+            {
+              "tagType": "AtomicTag",
+              "valueSource": "opc",
+              "dataType": "String",
+              "opcServer": "vLock Bridge",
+              "opcItemPath": "nsu=urn:vlock:bridge:v1;s=Bridge/Heartbeat",
+              "name": "Heartbeat"
+            },
+            {
+              "tagType": "AtomicTag",
+              "valueSource": "opc",
+              "dataType": "Int8",
+              "opcServer": "vLock Bridge",
+              "opcItemPath": "nsu=urn:vlock:bridge:v1;s=Bridge/HeartbeatCounter",
+              "name": "HeartbeatCounter"
+            }
+          ]
+        },
+        {
+          "name": "A-101",
+          "tagType": "UdtInstance",
+          "typeId": "vLockZone",
+          "parameters": {
+            "ZoneKey": {
+              "dataType": "String",
+              "value": "A-101"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

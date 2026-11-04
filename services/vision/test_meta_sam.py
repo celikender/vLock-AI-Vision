@@ -197,8 +197,30 @@ class MetaSamMonitoringTests(unittest.TestCase):
         self.client.error = bare(APITimeoutError)
         self.wait(lambda: self.monitor.status()['state'] == 'Unknown')
         status = self.monitor.status()
-        self.assertIn('Meta SAM', status['reason'])
+        self.assertEqual(status['reason'], MetaSam.unavailable_reason)
         self.assertIsNone(status['result'])
+
+    def test_camera_failure_has_its_own_reason_and_recovers(self):
+        working = self.monitor.fetch
+        self.monitor.start()
+        self.wait(lambda: self.monitor.status()['state'] != 'Unknown')
+
+        def lost(camera):
+            raise OSError('Camera disconnected.')
+        self.monitor.fetch = lost
+        self.wait(lambda: self.monitor.status()['state'] == 'Unknown')
+        self.assertEqual(self.monitor.status()['reason'], 'Camera unavailable. Check the camera connection.')
+        self.monitor.fetch = working
+        self.wait(lambda: self.monitor.status()['state'] != 'Unknown')
+
+    def test_local_backend_failure_names_local_sam(self):
+        def failing(frames, prompt, revision):
+            raise SegmentationError('Local video worker unavailable.', 503)
+            yield
+        self.monitor.infer = failing
+        self.monitor.start()
+        self.wait(lambda: self.monitor.status()['reason'] == 'Local SAM unavailable. Check the GPU worker.')
+        self.assertEqual(self.monitor.status()['state'], 'Unknown')
 
 
 if __name__ == '__main__':

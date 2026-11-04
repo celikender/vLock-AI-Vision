@@ -269,6 +269,7 @@ class Monitoring:
             with self.lock:
                 config, revision = copy.deepcopy(self.config), self.revision
             stream = None
+            camera_stage = True
             try:
                 frames = []
                 began = time.monotonic()
@@ -292,6 +293,7 @@ class Monitoring:
                     continue
                 # One SAM pass per object over the same frames, one after another on the
                 # loaded worker; publish only when every object has every frame.
+                camera_stage = False
                 began_check = time.monotonic()
                 collected = []
                 for prompt, _ in targets(config):
@@ -323,8 +325,8 @@ class Monitoring:
             except Exception:
                 with self.lock:
                     if not self.cancel.is_set() and revision == self.revision:
-                        if self.rule.unavailable(getattr(self.infer,'unavailable_reason',
-                                'Camera or SAM unavailable. Check the Pi connection and local GPU worker.')):
+                        if self.rule.unavailable('Camera unavailable. Check the camera connection.' if camera_stage else
+                                getattr(self.infer,'unavailable_reason','Local SAM unavailable. Check the GPU worker.')):
                             self.event('unavailable')
                         self.result = self.result_at = None
                         self.bridge_unknown()
