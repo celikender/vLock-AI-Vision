@@ -75,6 +75,25 @@ class ExampleLatchTests(unittest.TestCase):
         with patch('time.time', return_value=seconds):
             return runpy.run_path(SCRIPT)
 
+    def test_paths_match_the_tag_export(self):
+        script = self.run_at(0)
+        export = json.loads((HERE/'vlock-zones.json').read_text(encoding='utf-8'))
+        provider, _, path = script['STATE_PATH'].partition(']')
+        self.assertEqual(provider, '[default')
+        tags = export['tags']
+        names = path.split('/')
+        for name in names[:-1]:
+            tags = next((t for t in tags if t['name'] == name), {})
+            if tags.get('tagType') == 'UdtInstance':
+                udts = next(t for t in export['tags'] if t['name'] == '_types_')['tags']
+                tags = next(t for t in udts if t['name'] == tags['typeId'])
+            tags = tags.get('tags', [])
+        self.assertIn(names[-1], [t['name'] for t in tags], script['STATE_PATH']+' is not in the export.')
+        # The integrator creates the latch's own memory tags, so an import must not overwrite them.
+        for created in (script['STOP_PATH'], script['RESET_PATH']):
+            self.assertEqual(created.split('/')[0], '[default]vLockExample')
+            self.assertNotIn('vLockExample', [t['name'] for t in export['tags']])
+
     def test_active_latches_at_once_and_stays_after_clear(self):
         memory = {}
         self.assertTrue(self.evaluate(memory, True, 'Active', 0, False, False))
