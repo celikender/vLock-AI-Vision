@@ -21,7 +21,7 @@ from services.vision.diagnostics import Diagnostics
 from services.vision.worker_process import SamWorker
 from services.vlock import zone_tags
 from services.auth import Auth, AuthError, rank
-from services.setup_config import SetupConfig, SetupError
+from services.setup_config import BACKENDS as SAM_BACKENDS, SetupConfig, SetupError
 
 STATIC = Path(__file__).with_name('app')
 DATA = ROOT/'data'/'application'
@@ -362,8 +362,8 @@ def main():
     parser.add_argument('--open',action='store_true',help='Open the application in the default browser.')
     args=parser.parse_args()
     sam_backend=(settings().get('VLOCK_SAM_BACKEND') or 'local').strip()
-    if sam_backend not in ('local','meta_api'):
-        print('VLOCK_SAM_BACKEND must be local or meta_api. Fix .env, then start again.',flush=True)
+    if sam_backend not in SAM_BACKENDS:
+        print('VLOCK_SAM_BACKEND must be '+', '.join(SAM_BACKENDS)+'. Fix .env, then start again.',flush=True)
         sys.exit(1)
     try:
         instance=SingleInstance(args.data_dir)
@@ -375,9 +375,9 @@ def main():
     if args.data_dir==DATA:
         migrate_data()
     worker,backend=None,{}
-    if not args.no_sam and sam_backend=='meta_api':
-        from services.vision.meta_sam import MetaSam
-        worker=MetaSam(args.data_dir/'sam_latency.csv')
+    if not args.no_sam and sam_backend!='local':
+        from services.vision.meta_sam import MetaSam,MetaSamVideo
+        worker=(MetaSamVideo if sam_backend=='meta_api_video' else MetaSam)(args.data_dir/'sam_latency.csv')
         backend=dict(infer=worker,regions=worker.segment_regions)
     elif not args.no_sam:
         worker=SamWorker(args.data_dir/'sam_worker.log')
@@ -394,7 +394,7 @@ def main():
     if worker:
         close_handler=on_console_close(worker.stop)
         worker.start()
-        print(worker.start_message if sam_backend=='meta_api' else
+        print(worker.start_message if sam_backend!='local' else
               'SAM 3.1 worker: waiting for the SAM container (Docker).' if not worker.launch else
               f'SAM 3.1 worker: starting in Ubuntu/WSL; log at {worker.log_path}',flush=True)
     if args.open:

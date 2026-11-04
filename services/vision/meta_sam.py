@@ -1,27 +1,32 @@
 """SAM 3.1 through the Meta Model API, as an alternative to the local GPU worker.
 
-Selected with VLOCK_SAM_BACKEND=meta_api. It returns the same rows as transport.track_video,
-so rules, tags and adapters do not change. Each frame and phrase is one paid request and the
-frame leaves this PC. A timeout, error or unreadable answer raises, which the monitor reports
+Selected with VLOCK_SAM_BACKEND=meta_api (one image per check) or meta_api_video (a four-frame
+clip per check). Both return the same rows as transport.track_video, so rules, tags and adapters
+do not change. Every request is paid and its frames leave this PC. A timeout, error or unreadable answer raises, which the monitor reports
 as Unknown, never Clear; there are no retries.
 """
 import base64
 import csv
 import math
+import tempfile
 import threading
 import time
 from collections import deque
 from datetime import datetime, timezone
 from io import BytesIO
 from pathlib import Path
+import cv2
+import numpy as np
 from PIL import Image, UnidentifiedImageError
-from meta_sam_parser import CompletedOutcome, decode_mask_to_raster, image_segmentation_format
+from meta_sam_parser import CompletedOutcome, decode_mask_to_raster, image_segmentation_format, video_segmentation_format
 from openai import APIConnectionError, APIStatusError, APITimeoutError, OpenAI
 from .assistant import settings
 from .masks import SegmentationError, outline
 from .video import MAX_JPEG_BYTES, decode_mask, encode_mask, validate_prompt
 
 DEFAULT_TIMEOUT_MS = 3000
+MIN_VIDEO_TIMEOUT = 6.0
+VIDEO_FPS = 4
 PRICE_PER_IMAGE = 2.50/1000
 MAX_OUTPUT = 16*1024*1024
 MAX_OBJECTS = 32
@@ -49,11 +54,10 @@ def frame_size(jpeg):
         raise SegmentationError('Meta SAM needs a readable camera JPEG.', 400) from None
 
 
-def parse_objects(text, width, height):
-    """Meta's segmentation text to the local worker's object rows, with full-frame masks."""
+def mask_records(text, output_format):
     if len(text) > MAX_OUTPUT:
         raise SegmentationError('Meta segmentation output is too large.')
-    parser = image_segmentation_format().create_parser()
+    parser = output_format.create_parser()
     parser.push(text)
     result = parser.finish(CompletedOutcome()).result
     if any(item.severity == 'error' for item in result.diagnostics):
@@ -61,27 +65,69 @@ def parse_objects(text, width, height):
     records = [record for record in result.records if record.kind == 'mask']
     if text.strip() and not records:
         raise SegmentationError('Meta returned text without usable masks.')
+    return records
+
+
+def object_row(record, width, height):
+    """One Meta mask record to the local worker's object row, with a full-frame mask."""
+    left, top, right, bottom = (int(value) for value in (record.bounds.left, record.bounds.top,
+                                                         record.bounds.right, record.bounds.bottom))
+    if not (0 <= left < right <= width and 0 <= top < bottom <= height):
+        raise SegmentationError('Meta mask bounds do not match the camera frame.')
+    score = record.confidence
+    if score is not None and not math.isfinite(score):
+        raise SegmentationError('Meta returned a nonfinite score.')
+    raster = bytes(decode_mask_to_raster(record.mask))
+    patch = Image.frombytes('L', (record.mask.width, record.mask.height), raster).point(lambda v: 255 if v else 0)
+    if patch.size != (right-left, bottom-top):
+        patch = patch.resize((right-left, bottom-top), Image.Resampling.NEAREST)
+    mask = Image.new('L', (width, height))
+    mask.paste(patch, (left, top))
+    return {'object_id': int(record.object_id), 'track_id': f'meta:{record.object_id}',
+            'bbox_xywh': [left/width, top/height, (right-left)/width, (bottom-top)/height],
+            'score': score, 'mask': encode_mask(mask)}
+
+
+def parse_objects(text, width, height):
+    """An image answer: the object rows of its one frame."""
+    records = mask_records(text, image_segmentation_format())
     if len(records) > MAX_OBJECTS:
         raise SegmentationError('Too many objects. Narrow the phrase.')
-    objects = []
+    return [object_row(record, width, height) for record in records]
+
+
+def parse_video(text, width, height, frame_count):
+    """A video answer: object rows per frame. A frame with no objects has no line and an empty list."""
+    records = mask_records(text, video_segmentation_format())
+    if len(records) > MAX_OBJECTS*frame_count:
+        raise SegmentationError('Too many objects. Narrow the phrase.')
+    frames = [[] for _ in range(frame_count)]
     for record in records:
-        left, top, right, bottom = (int(value) for value in (record.bounds.left, record.bounds.top,
-                                                             record.bounds.right, record.bounds.bottom))
-        if not (0 <= left < right <= width and 0 <= top < bottom <= height):
-            raise SegmentationError('Meta mask bounds do not match the camera frame.')
-        score = record.confidence
-        if score is not None and not math.isfinite(score):
-            raise SegmentationError('Meta returned a nonfinite score.')
-        raster = bytes(decode_mask_to_raster(record.mask))
-        patch = Image.frombytes('L', (record.mask.width, record.mask.height), raster).point(lambda v: 255 if v else 0)
-        if patch.size != (right-left, bottom-top):
-            patch = patch.resize((right-left, bottom-top), Image.Resampling.NEAREST)
-        mask = Image.new('L', (width, height))
-        mask.paste(patch, (left, top))
-        objects.append({'object_id': int(record.object_id), 'track_id': f'meta:{record.object_id}',
-                        'bbox_xywh': [left/width, top/height, (right-left)/width, (bottom-top)/height],
-                        'score': score, 'mask': encode_mask(mask)})
-    return objects
+        index = record.frame.frame_index
+        if not 0 <= index < frame_count:
+            raise SegmentationError('Meta returned a frame outside the camera window.')
+        frames[index].append(object_row(record, width, height))
+    return frames
+
+
+def encode_window(frames):
+    """Camera JPEGs to one short MP4, the form the Meta video request accepts. Returns (mp4, width, height)."""
+    images = [cv2.imdecode(np.frombuffer(frame['jpeg'], np.uint8), cv2.IMREAD_COLOR) for frame in frames]
+    if any(image is None for image in images) or len({image.shape for image in images}) != 1:
+        raise SegmentationError('Meta SAM needs readable camera JPEGs of one size.', 400)
+    height, width = images[0].shape[:2]
+    with tempfile.TemporaryDirectory() as folder:
+        path = Path(folder)/'window.mp4'
+        writer = cv2.VideoWriter(str(path), cv2.VideoWriter_fourcc(*'mp4v'), VIDEO_FPS, (width, height))
+        if not writer.isOpened():
+            raise SegmentationError('Could not prepare the camera video for Meta SAM.')
+        for image in images:
+            writer.write(image)
+        writer.release()
+        data = path.read_bytes()
+    if not data:
+        raise SegmentationError('Could not prepare the camera video for Meta SAM.')
+    return data, width, height
 
 
 class MetaSam:
@@ -89,6 +135,7 @@ class MetaSam:
     backend_name = 'meta_api'
     window_frames = 1
     min_check_seconds = 1.0
+    price_per_request = PRICE_PER_IMAGE
     unavailable_reason = 'Meta SAM unavailable. Check the internet connection and the API key.'
     start_message = 'SAM 3.1: Meta Model API. Camera frames are sent to Meta and each request is billed.'
 
@@ -124,16 +171,19 @@ class MetaSam:
     def segment(self, jpeg, prompt):
         """One request for one frame and one phrase. Returns (objects, width, height)."""
         width, height = frame_size(jpeg)
+        image = {'type': 'input_image', 'image_url': 'data:image/jpeg;base64,'+base64.b64encode(jpeg).decode('ascii')}
+        return self.request(prompt, image, lambda text: parse_objects(text, width, height), lambda objects: objects), width, height
+
+    def request(self, prompt, media, parse, flatten):
+        """One paid request with no retry. Any failure raises; the caller's monitor reports Unknown."""
         values = self.config()
         client, timeout = self.connection(values)
         began = self.clock()
         status, objects = 'error', []
-        image = 'data:image/jpeg;base64,'+base64.b64encode(jpeg).decode('ascii')
         try:
             response = client.responses.create(
                 model=values.get('META_SAM_MODEL') or 'sam-3.1',
-                input=[{'role': 'user', 'content': [{'type': 'input_text', 'text': prompt},
-                                                    {'type': 'input_image', 'image_url': image}]}],
+                input=[{'role': 'user', 'content': [{'type': 'input_text', 'text': prompt}, media]}],
                 metadata={'mask_encoding': 'one_bit', 'include_confidence': 'true'})
             # The client's timeout covers each network step; this one covers the whole answer.
             if self.clock()-began > timeout:
@@ -141,9 +191,10 @@ class MetaSam:
                 raise SegmentationError('Meta SAM answered after the timeout.', 504)
             if response.status != 'completed':
                 raise SegmentationError('Meta returned an incomplete segmentation.')
-            objects = parse_objects(response.output_text or '', width, height)
+            parsed = parse(response.output_text or '')
+            objects = flatten(parsed)
             status = 'ok'
-            return objects, width, height
+            return parsed
         except APITimeoutError:
             status = 'timeout'
             raise SegmentationError('Meta SAM timed out.', 504) from None
@@ -177,7 +228,7 @@ class MetaSam:
                     writer = csv.writer(handle)
                     if new:
                         writer.writerow(LOG_COLUMNS)
-                    writer.writerow([datetime.now(timezone.utc).isoformat(timespec='milliseconds'), 'meta_api', phrase,
+                    writer.writerow([datetime.now(timezone.utc).isoformat(timespec='milliseconds'), self.backend_name, phrase,
                                      round(milliseconds), len(objects), round(max(scores), 4) if scores else '', status])
             except OSError:
                 pass  # A locked log never changes a result.
@@ -207,14 +258,14 @@ class MetaSam:
         """Ready means a key is set. Whether Meta answers shows in the zone's result, not here."""
         values = self.config()
         if not (values.get('META_API_KEY') or values.get('MODEL_API_KEY') or '').strip():
-            return dict(state='failed', message='Add META_API_KEY to the project .env to use Meta SAM.',
-                        owned=False, backend='meta_api')
+            return dict(state='failed', message='Add META_API_KEY on the Setup page to use Meta SAM.',
+                        owned=False, backend=self.backend_name)
         with self.lock:
             now = self.clock()
             calls = sum(1 for moment in self.calls if now-moment <= 3600)
-        return dict(state='ready', owned=False, backend='meta_api', calls_last_hour=calls,
+        return dict(state='ready', owned=False, backend=self.backend_name, calls_last_hour=calls,
                     message=f'SAM 3.1 through the Meta Model API. {calls} requests in the last hour, '
-                            f'about ${calls*PRICE_PER_IMAGE:.2f}.')
+                            f'about ${calls*self.price_per_request:.2f}.')
 
     def start(self):
         pass
@@ -227,3 +278,33 @@ class MetaSam:
             if self.client is not None:
                 self.client.close()
             self.client = self.client_key = None
+
+
+class MetaSamVideo(MetaSam):
+    """One video request per object over a four-frame camera window, tracking like the local worker.
+
+    Each request is billed for Meta's minimum of 50 frames, so about $0.01 however short the clip is.
+    """
+    backend_name = 'meta_api_video'
+    window_frames = 4
+    min_check_seconds = 0
+    price_per_request = 0.20/1000*50
+    start_message = ('SAM 3.1: Meta Model API, video. Camera frames are sent to Meta and each request is billed '
+                     'for at least 50 frames.')
+
+    @staticmethod
+    def timeout_seconds(values):
+        # Measured at 1.6-2.9 s per request: an image limit would fail healthy requests.
+        return max(MetaSam.timeout_seconds(values), MIN_VIDEO_TIMEOUT)
+
+    def __call__(self, frames, prompt, revision):
+        prompt = validate_prompt(prompt)
+        data, width, height = encode_window(frames)
+        video = {'type': 'input_video', 'video_url': 'data:video/mp4;base64,'+base64.b64encode(data).decode('ascii')}
+        rows = self.request(prompt, video, lambda text: parse_video(text, width, height, len(frames)),
+                            lambda parsed: max(parsed, key=len))
+        for index, (frame, objects) in enumerate(zip(frames, rows)):
+            yield dict(type='frame', session_id='meta', prompt=prompt, prompt_revision=revision,
+                       frame_index=index, frame_sequence=frame['sequence'], width=width, height=height,
+                       box_coordinates='normalized_xywh', objects=objects, count=len(objects),
+                       id_scope='session', window_frames=len(frames))

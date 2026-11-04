@@ -12,7 +12,7 @@ from dotenv import dotenv_values
 from openai import APIConnectionError, APIStatusError, APITimeoutError, OpenAI
 from services.vlock.transports import MINIMUM_PASSWORD
 
-BACKENDS = ('local', 'meta_api')
+BACKENDS = ('local', 'meta_api', 'meta_api_video')
 TOKEN = re.compile(r'[A-Za-z0-9_.:|+/=-]+')
 OPC_USERNAME = re.compile(r'[A-Za-z0-9_.@-]{1,64}')
 PASSWORD = re.compile(r'[^\s\'"\\$`]+')

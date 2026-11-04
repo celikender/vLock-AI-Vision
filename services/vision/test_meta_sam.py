@@ -7,11 +7,12 @@ from io import BytesIO
 from pathlib import Path
 from types import SimpleNamespace
 
+import cv2
 from openai import APIConnectionError, APIStatusError, APITimeoutError
 from PIL import Image
 
 from services.vision.masks import SegmentationError
-from services.vision.meta_sam import MetaSam, meta_client, parse_objects
+from services.vision.meta_sam import MetaSam, MetaSamVideo, encode_window, meta_client, parse_objects, parse_video
 from services.vision.monitoring import Monitoring
 from services.vision.test_monitoring import config
 from services.vision.video import decode_mask
@@ -147,6 +148,85 @@ class MetaSamTests(unittest.TestCase):
         regions = self.backend(FakeClient()).segment_regions(camera_jpeg(), 'storage drawers')
         self.assertEqual(len(regions), 1)
         self.assertTrue(3 <= len(regions[0]['polygon']) <= 12)
+
+
+class MetaSamVideoTests(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.frames = [dict(jpeg=camera_jpeg(), sequence=str(number)) for number in range(4)]
+
+    def backend(self, client):
+        return MetaSamVideo(Path(self.directory.name)/'latency.csv', config=lambda: VALUES,
+                            client_factory=lambda key, base_url, timeout: client)
+
+    def test_frames_without_a_line_are_empty_and_outside_frames_fail(self):
+        line = ANSWER.split('>', 1)[1]
+        frames = parse_video(f'<0f>{line}<2f>{line}', 640, 480, 4)
+        self.assertEqual([len(objects) for objects in frames], [1, 0, 1, 0])
+        with self.assertRaises(SegmentationError):
+            parse_video(f'<9f>{line}', 640, 480, 4)
+
+    def test_window_becomes_a_real_four_frame_video(self):
+        data, width, height = encode_window(self.frames)
+        self.assertEqual((width, height), (640, 480))
+        path = Path(self.directory.name)/'window.mp4'
+        path.write_bytes(data)
+        video = cv2.VideoCapture(str(path))
+        self.assertEqual(int(video.get(cv2.CAP_PROP_FRAME_COUNT)), 4)
+        video.release()
+        with self.assertRaises(SegmentationError):
+            encode_window([dict(jpeg=b'not a jpeg', sequence='1')])
+
+    def test_every_frame_gets_a_row_and_one_request_is_made(self):
+        line = ANSWER.split('>', 1)[1]
+        client = FakeClient(answer=f'<0f>{line}<1f>{line}<3f>{line}')
+        rows = list(self.backend(client)(self.frames, 'person', 2))
+        self.assertEqual([(row['frame_index'], row['frame_sequence'], row['count']) for row in rows],
+                         [(0, '0', 1), (1, '1', 1), (2, '2', 0), (3, '3', 1)])
+        self.assertEqual(len(client.requests), 1)
+        media = client.requests[0]['input'][0]['content'][1]
+        self.assertEqual(media['type'], 'input_video')
+        self.assertTrue(media['video_url'].startswith('data:video/mp4;base64,'))
+        with (Path(self.directory.name)/'latency.csv').open(encoding='utf-8') as handle:
+            logged = list(csv.DictReader(handle))[0]
+        self.assertEqual((logged['backend'], logged['matches'], logged['status']), ('meta_api_video', '1', 'ok'))
+
+    def test_no_match_is_zero_on_every_frame_and_failure_raises(self):
+        self.assertEqual([row['count'] for row in self.backend(FakeClient(answer=''))(self.frames, 'person', 2)], [0, 0, 0, 0])
+        with self.assertRaises(SegmentationError):
+            list(self.backend(FakeClient(error=bare(APITimeoutError)))(self.frames, 'person', 2))
+
+    def test_limit_is_at_least_six_seconds_and_cost_is_the_billed_minimum(self):
+        self.assertEqual(MetaSamVideo.timeout_seconds({'VLOCK_SAM_TIMEOUT_MS': '3000'}), 6.0)
+        self.assertEqual(MetaSamVideo.timeout_seconds({'VLOCK_SAM_TIMEOUT_MS': '9000'}), 9.0)
+        self.assertAlmostEqual(MetaSamVideo.price_per_request, 0.01)
+
+    def test_monitor_uses_a_four_frame_window_and_goes_unknown_on_failure(self):
+        client = FakeClient(answer=''.join(f'<{index}f>'+ANSWER.split('>', 1)[1] for index in range(4)))
+        counter = [0]
+
+        def fetch(camera):
+            counter[0] += 1
+            return camera_jpeg(), {'X-Frame-Sequence': str(counter[0]), 'X-Frame-Age-Ms': '0'}
+        monitor = Monitoring(fetch=fetch, infer=self.backend(client), path=Path(self.directory.name)/'configuration.json')
+        value = config()
+        value['camera']['frame_size'] = [640, 480]
+        value['zone'].update(polygon=[[0, 0], [639, 0], [639, 479], [0, 479]], frame_size=[640, 480])
+        monitor.connect({'camera': value['camera']})
+        monitor.save(value)
+        self.addCleanup(lambda: (monitor.stop(), monitor.thread and monitor.thread.join(3)))
+        monitor.start()
+        deadline = time.monotonic()+6
+        while time.monotonic() < deadline and monitor.status()['state'] == 'Unknown':
+            time.sleep(.02)
+        self.assertNotEqual(monitor.status()['state'], 'Unknown', 'One four-frame clip is enough to confirm.')
+        self.assertLessEqual(len(client.requests), 3)
+        client.error = bare(APITimeoutError)
+        deadline = time.monotonic()+6
+        while time.monotonic() < deadline and monitor.status()['state'] != 'Unknown':
+            time.sleep(.02)
+        self.assertEqual(monitor.status()['reason'], MetaSam.unavailable_reason)
 
 
 class MetaSamMonitoringTests(unittest.TestCase):

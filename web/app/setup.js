@@ -1,7 +1,7 @@
 'use strict';
 // Setup page. Secrets are sent to the local server once and never come back: the page only learns "saved" or "not set".
 let setupData=null;
-const SAM_ENGINES={local:'Local GPU (NVIDIA, 8 GB or more)',meta_api:'Meta Model API (no GPU, one image per check)'};
+const SAM_ENGINES={local:'Local GPU (NVIDIA, 8 GB or more)',meta_api:'Meta Model API, image (no GPU, one frame per check)',meta_api_video:'Meta Model API, video (no GPU, four frames per check, tracks objects)'};
 function secretField(label,name,hint){
  const f=setupData.fields[name];
  const state=f.overridden?'Set outside .env':f.set?'Saved':'Not set';
@@ -14,7 +14,7 @@ function setupForm(){
  const options=Object.entries(SAM_ENGINES).map(([value,label])=>`<option value="${value}" ${value===backend.value?'selected':''}>${esc(label)}</option>`).join('');
  const docker=setupData.writable?'':'<p class="helper"><b>Docker:</b> edit <code>.env</code> on the host, then run <code>docker compose up -d</code>. This page is read-only here.</p>';
  const restart=setupData.restartNeeded?`<p class="setup-restart"><b>Restart needed.</b> This app is running with ${esc(SAM_ENGINES[setupData.activeBackend]||setupData.activeBackend)}. Close its window and start it again to switch.</p>`:'';
- const hint=backend.value==='meta_api'?'Camera frames are sent to Meta. Each frame and object is one billed request: up to about $9 an hour per object while monitoring runs.':'Runs on this PC and camera frames stay here. Needs the local SAM runtime and approved Hugging Face access: see the install guide.';
+ const hint=backend.value==='meta_api'?'Camera frames are sent to Meta. Each frame and object is one billed request: up to about $9 an hour per object while monitoring runs.':backend.value==='meta_api_video'?'Camera frames are sent to Meta. Each check and object is billed for at least 50 frames, about $0.01. The request limit is at least 6 seconds.':'Runs on this PC and camera frames stay here. Needs the local SAM runtime and approved Hugging Face access: see the install guide.';
  return docker+restart
  +panel('SAM 3.1 engine',`<label>Engine<select data-setup="VLOCK_SAM_BACKEND" ${backend.overridden?'disabled':''} ${disabled}>${options}</select><small>${hint}</small></label>
  <label>Request limit, ms<input data-setup="VLOCK_SAM_TIMEOUT_MS" type="number" min="500" max="30000" value="${esc(f.VLOCK_SAM_TIMEOUT_MS.value)}" ${disabled}><small>Meta Model API only. A slower answer makes the zone Unknown.</small></label>`)
