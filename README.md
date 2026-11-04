@@ -59,7 +59,7 @@ See [the plan](docs/project/PLAN.md), [integration guide](docs/development/INTEG
 - `services/vlock/`: observation store, heartbeat, REST output and OPC UA/MQTT adapters.
 - `ignition/`: Ignition package: tag export, tag contract ([INTEGRATION.md](ignition/INTEGRATION.md)) and an example stop latch.
 - `demo_site/`: not part of the product. The Pi camera, printer and Ignition project that stand in for a plant in the demo.
-- `docs/`: [overview and roadmap, install, test results and edge cases, development records](docs/README.md).
+- `docs/`: [overview, install, test results and edge cases, development records](docs/README.md).
 - `playground/`: retired experiments; the application does not use it.
 
 ## Existing work and new contributions
