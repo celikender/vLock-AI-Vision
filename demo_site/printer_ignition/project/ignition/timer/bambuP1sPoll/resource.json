@@ -8,7 +8,7 @@
   ],
   "attributes": {
     "sharedThread": false,
-    "delay": 2000,
+    "delay": 1000,
     "fixedDelay": true,
     "enabled": true
   }

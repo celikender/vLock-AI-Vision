@@ -14,6 +14,20 @@
               "valueSource": "memory",
               "dataType": "String",
               "value": "http://127.0.0.1:8876"
+            },
+            {
+              "name": "VisionZonePath",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "String",
+              "value": "[default]vLock/A-101"
+            },
+            {
+              "name": "ControlRequestsEnabled",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Boolean",
+              "value": true
             }
           ]
         },
@@ -76,6 +90,13 @@
               "value": ""
             },
             {
+              "name": "FileName",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "String",
+              "value": ""
+            },
+            {
               "name": "NozzleTemp",
               "tagType": "AtomicTag",
               "valueSource": "memory",
@@ -90,11 +111,56 @@
               "value": 0
             },
             {
+              "name": "Progress",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Float8",
+              "value": 0
+            },
+            {
+              "name": "RemainingSeconds",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Int4",
+              "value": 0
+            },
+            {
+              "name": "FilamentRemaining",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Float8",
+              "value": 0
+            },
+            {
               "name": "AgeSeconds",
               "tagType": "AtomicTag",
               "valueSource": "memory",
               "dataType": "Float8",
               "value": 0
+            },
+            {
+              "name": "Fault",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Boolean",
+              "value": false,
+              "alarms": [
+                {
+                  "name": "PrinterFault",
+                  "mode": "Equality",
+                  "setpointA": 1,
+                  "priority": "High",
+                  "ackMode": "Unused",
+                  "label": "Bambu P1S machine fault"
+                }
+              ]
+            },
+            {
+              "name": "FaultMessage",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "String",
+              "value": ""
             },
             {
               "name": "NozzleValid",
@@ -105,6 +171,27 @@
             },
             {
               "name": "BedValid",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Boolean",
+              "value": false
+            },
+            {
+              "name": "ProgressValid",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Boolean",
+              "value": false
+            },
+            {
+              "name": "RemainingValid",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Boolean",
+              "value": false
+            },
+            {
+              "name": "FilamentValid",
               "tagType": "AtomicTag",
               "valueSource": "memory",
               "dataType": "Boolean",
@@ -158,6 +245,20 @@
           "tagType": "Folder",
           "tags": [
             {
+              "name": "Message",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "String",
+              "value": "Reset, then System Start required"
+            },
+            {
+              "name": "Events",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "String",
+              "value": "[]"
+            },
+            {
               "name": "Enabled",
               "tagType": "AtomicTag",
               "valueSource": "memory",
@@ -165,11 +266,149 @@
               "value": false
             },
             {
+              "name": "StopLatched",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Boolean",
+              "value": false,
+              "valuePersistence": "Database"
+            },
+            {
+              "name": "ResetValid",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Boolean",
+              "value": false
+            },
+            {
+              "name": "CanReset",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Boolean",
+              "value": false
+            },
+            {
+              "name": "ResumeAllowed",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Boolean",
+              "value": false
+            },
+            {
+              "name": "HeartbeatMoving",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Boolean",
+              "value": false
+            },
+            {
+              "name": "StopReason",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "String",
+              "value": ""
+            }
+          ]
+        },
+        {
+          "name": "Vision",
+          "tagType": "Folder",
+          "tags": [
+            {
+              "name": "TagsGood",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Boolean",
+              "value": false
+            },
+            {
+              "name": "State",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "String",
+              "value": "Unavailable"
+            },
+            {
+              "name": "Quality",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "String",
+              "value": "Unknown"
+            },
+            {
+              "name": "Reason",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "String",
+              "value": "Map the imported zone"
+            },
+            {
+              "name": "BridgeOnline",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Boolean",
+              "value": false
+            },
+            {
+              "name": "HeartbeatCounter",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Int8",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "name": "Controls",
+          "tagType": "Folder",
+          "tags": [
+            {
+              "name": "Request",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "String",
+              "value": "{\"schema_version\": 1, \"session_id\": \"\", \"sequence\": 0, \"request_id\": \"\", \"action\": \"\", \"target\": \"farm\", \"requested_at\": \"\", \"counts\": {\"Start\": 0, \"Stop\": 0, \"Reset\": 0}}"
+            },
+            {
               "name": "Message",
               "tagType": "AtomicTag",
               "valueSource": "memory",
               "dataType": "String",
-              "value": "Stopped; vLock pending"
+              "value": "No request; machine action mapping belongs to SCADA"
+            },
+            {
+              "name": "HeartbeatCounter",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Int8",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "name": "Camera",
+          "tagType": "Folder",
+          "tags": [
+            {
+              "name": "Available",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "Boolean",
+              "value": false
+            },
+            {
+              "name": "Source",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "String",
+              "value": ""
+            },
+            {
+              "name": "Message",
+              "tagType": "AtomicTag",
+              "valueSource": "memory",
+              "dataType": "String",
+              "value": "No fresh camera frame"
             }
           ]
         }

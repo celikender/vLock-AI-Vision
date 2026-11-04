@@ -2,11 +2,11 @@
   "pages": {
     "/": {
       "viewPath": "PrinterFarm/Dashboard",
-      "title": "Bambu P1S | Control"
+      "title": "Printer Farm | Operations"
     },
     "/printer-farm": {
       "viewPath": "PrinterFarm/Dashboard",
-      "title": "Bambu P1S | Control"
+      "title": "Printer Farm | Operations"
     }
   },
   "sharedDocks": {

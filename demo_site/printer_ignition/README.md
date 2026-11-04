@@ -1,5 +1,31 @@
 # Single-printer Perspective project
 
+## Current package - November 4, 2026
+
+The clean deployment download is `output/printer-farm.zip`: one current Ignition
+import archive, one connector folder and one standalone setup guide. It replaces
+the old complete archive's duplicated SOURCE/connector trees. The installed
+connector's methods match the current source, including Resume; no reinstall is
+needed on this PC. See [the bundle guide](PACKAGE_README.md).
+
+Latest site update: `printerSite` is the customer's Gateway-only controller.
+It latches Active immediately, Unknown/Bad for 2 seconds and a frozen heartbeat
+for over 5 seconds. It requests Pause once, validates Reset, gates Start/Resume
+and disables the legacy PauseOnDetection event in the import. Import the two
+libraries, both timers, the disabled old event and Dashboard; follow
+[DEMO_SETUP.md](DEMO_SETUP.md). No app or connector code is changed by the site logic.
+The camera keeps its larger frame, per-view On/Off and one-second refresh.
+
+```powershell
+.\.venv\Scripts\python.exe demo_site/printer_ignition/build_bundle.py
+.\.venv\Scripts\python.exe -m unittest discover -s demo_site/printer_ignition -p "test_*.py"
+```
+
+Updated tags are in `output/bambu-p1s-tags.json`; the poller adds only missing tags.
+The original ZIP is preserved. New Gateway import/rendering, camera and physical
+behavior remain untested in this session. See [ENDPOINTS.md](ENDPOINTS.md) for
+vLock, connector and Bambu interfaces. Sections below are historical milestones.
+
 ## Live detection-to-Pause checkpoint - October 31, 2026
 
 The owner confirmed camera -> SAM 3.1 -> vLock Bridge -> OPC UA -> Ignition

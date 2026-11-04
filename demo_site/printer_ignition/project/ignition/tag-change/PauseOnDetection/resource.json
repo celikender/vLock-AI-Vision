@@ -1,0 +1,19 @@
+{
+  "scope": "G",
+  "version": 1,
+  "restricted": false,
+  "overridable": true,
+  "files": [
+    "onTagChange.py"
+  ],
+  "attributes": {
+    "enabled": false,
+    "changeTypes": [
+      "ValueChange",
+      "QualityChange"
+    ],
+    "paths": [
+      "[default]vLockBridge/vLock/conveyor_01/Active"
+    ]
+  }
+}

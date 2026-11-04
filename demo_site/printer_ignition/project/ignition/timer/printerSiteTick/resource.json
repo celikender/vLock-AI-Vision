@@ -1,0 +1,15 @@
+{
+  "scope": "G",
+  "version": 1,
+  "restricted": false,
+  "overridable": true,
+  "files": [
+    "handleTimerEvent.py"
+  ],
+  "attributes": {
+    "enabled": true,
+    "delay": 250,
+    "fixedDelay": true,
+    "sharedThread": false
+  }
+}

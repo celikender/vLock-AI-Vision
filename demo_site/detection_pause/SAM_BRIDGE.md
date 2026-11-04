@@ -1,5 +1,14 @@
 # SAM observation to Ignition Pause experiment
 
+## Current replacement - November 4, 2026
+
+This page preserves the older experiment. The current customer-side demo uses
+[printerSite Gateway logic](../printer_ignition/DEMO_SETUP.md) with fixed A-101
+State/Quality/Reason and heartbeat checks. The current import includes
+`PauseOnDetection` disabled with a no-op handler. Do not run this old event alongside
+`printerSiteTick`; import/save the disabled replacement and verify the event in
+Gateway Events. All machine actions remain owned by SCADA.
+
 ## Confirmed checkpoint — October 31, 2026
 
 The owner confirmed this live path in Ignition 8.3 Maker Edition / Perspective:

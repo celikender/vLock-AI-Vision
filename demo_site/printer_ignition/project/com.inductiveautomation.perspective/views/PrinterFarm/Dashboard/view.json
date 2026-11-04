@@ -1,12 +1,14 @@
 {
   "custom": {
-    "feedback": ""
+    "feedback": "",
+    "cameraEnabled": true,
+    "cameraMessage": "Waiting for camera"
   },
   "params": {},
   "props": {
     "defaultSize": {
-      "width": 1000,
-      "height": 900
+      "width": 1440,
+      "height": 1000
     }
   },
   "root": {
@@ -22,9 +24,10 @@
       "style": {
         "boxSizing": "border-box",
         "gap": "12px",
-        "padding": "20px",
-        "backgroundColor": "#ffffff",
-        "color": "#20252b",
+        "minWidth": "0",
+        "padding": "22px",
+        "backgroundColor": "#f2f5f8",
+        "color": "#243448",
         "fontFamily": "Segoe UI, Arial, sans-serif",
         "overflow": "auto"
       }
@@ -36,16 +39,17 @@
           "name": "Title"
         },
         "position": {
-          "basis": "44px",
+          "basis": "40px",
           "grow": 0,
           "shrink": 0
         },
         "props": {
-          "text": "Single printer control",
+          "text": "Printer farm | Operations",
           "style": {
             "fontSize": "26px",
             "whiteSpace": "normal",
-            "color": "#20252b"
+            "color": "#243448",
+            "overflow": "hidden"
           }
         }
       },
@@ -66,32 +70,15 @@
           "alignItems": "stretch",
           "style": {
             "boxSizing": "border-box",
-            "gap": "12px",
-            "border": "1px solid #b9c0c7",
-            "padding": "16px",
-            "backgroundColor": "#f5f6f7"
+            "gap": "8px",
+            "minWidth": "0",
+            "padding": "10px 14px",
+            "backgroundColor": "#ffffff",
+            "border": "1px solid #ccd8e3",
+            "borderRadius": "8px"
           }
         },
         "children": [
-          {
-            "type": "ia.display.label",
-            "meta": {
-              "name": "Heading"
-            },
-            "position": {
-              "basis": "32px",
-              "grow": 0,
-              "shrink": 0
-            },
-            "props": {
-              "text": "System control",
-              "style": {
-                "fontSize": "20px",
-                "whiteSpace": "normal",
-                "color": "#20252b"
-              }
-            }
-          },
           {
             "type": "ia.container.flex",
             "meta": {
@@ -104,12 +91,15 @@
             },
             "props": {
               "direction": "row",
-              "wrap": "wrap",
+              "wrap": "nowrap",
               "justify": "flex-start",
               "alignItems": "stretch",
               "style": {
                 "boxSizing": "border-box",
-                "gap": "12px"
+                "gap": "8px",
+                "minWidth": "0",
+                "maxWidth": "490px",
+                "height": "36px"
               }
             },
             "children": [
@@ -119,21 +109,22 @@
                   "name": "SystemStart"
                 },
                 "position": {
-                  "basis": "130px",
-                  "grow": 0,
+                  "basis": "88px",
+                  "grow": 1,
                   "shrink": 0
                 },
                 "props": {
                   "text": "System Start",
-                  "enabled": true,
+                  "enabled": false,
                   "primary": false,
                   "style": {
-                    "backgroundColor": "#e8f1e9",
-                    "color": "#20252b",
-                    "border": "1px solid #929ba4",
-                    "borderRadius": "3px",
-                    "height": "42px",
-                    "fontSize": "15px"
+                    "backgroundColor": "#e5f3ed",
+                    "color": "#243448",
+                    "border": "1px solid #c6d0da",
+                    "borderRadius": "5px",
+                    "height": "36px",
+                    "fontSize": "13px",
+                    "fontWeight": "600"
                   }
                 },
                 "events": {
@@ -146,6 +137,16 @@
                       }
                     }
                   }
+                },
+                "propConfig": {
+                  "props.enabled": {
+                    "binding": {
+                      "type": "expr",
+                      "config": {
+                        "expression": "{[default]BambuP1S/Config/ControlRequestsEnabled}"
+                      }
+                    }
+                  }
                 }
               },
               {
@@ -154,21 +155,22 @@
                   "name": "SystemStop"
                 },
                 "position": {
-                  "basis": "130px",
-                  "grow": 0,
+                  "basis": "88px",
+                  "grow": 1,
                   "shrink": 0
                 },
                 "props": {
                   "text": "System Stop",
-                  "enabled": true,
+                  "enabled": false,
                   "primary": false,
                   "style": {
-                    "backgroundColor": "#f6e8e8",
-                    "color": "#20252b",
-                    "border": "1px solid #929ba4",
-                    "borderRadius": "3px",
-                    "height": "42px",
-                    "fontSize": "15px"
+                    "backgroundColor": "#fae9e9",
+                    "color": "#243448",
+                    "border": "1px solid #c6d0da",
+                    "borderRadius": "5px",
+                    "height": "36px",
+                    "fontSize": "13px",
+                    "fontWeight": "600"
                   }
                 },
                 "events": {
@@ -181,6 +183,16 @@
                       }
                     }
                   }
+                },
+                "propConfig": {
+                  "props.enabled": {
+                    "binding": {
+                      "type": "expr",
+                      "config": {
+                        "expression": "{[default]BambuP1S/Config/ControlRequestsEnabled}"
+                      }
+                    }
+                  }
                 }
               },
               {
@@ -189,21 +201,22 @@
                   "name": "SystemReset"
                 },
                 "position": {
-                  "basis": "130px",
-                  "grow": 0,
+                  "basis": "88px",
+                  "grow": 1,
                   "shrink": 0
                 },
                 "props": {
                   "text": "System Reset",
-                  "enabled": true,
+                  "enabled": false,
                   "primary": false,
                   "style": {
                     "backgroundColor": "#ffffff",
-                    "color": "#20252b",
-                    "border": "1px solid #929ba4",
-                    "borderRadius": "3px",
-                    "height": "42px",
-                    "fontSize": "15px"
+                    "color": "#243448",
+                    "border": "1px solid #c6d0da",
+                    "borderRadius": "5px",
+                    "height": "36px",
+                    "fontSize": "13px",
+                    "fontWeight": "600"
                   }
                 },
                 "events": {
@@ -216,6 +229,16 @@
                       }
                     }
                   }
+                },
+                "propConfig": {
+                  "props.enabled": {
+                    "binding": {
+                      "type": "expr",
+                      "config": {
+                        "expression": "{[default]BambuP1S/Config/ControlRequestsEnabled}"
+                      }
+                    }
+                  }
                 }
               }
             ]
@@ -223,19 +246,20 @@
           {
             "type": "ia.display.label",
             "meta": {
-              "name": "SystemState"
+              "name": "SiteState"
             },
             "position": {
-              "basis": "32px",
+              "basis": "26px",
               "grow": 0,
               "shrink": 0
             },
             "props": {
-              "text": "Stopped; vLock pending",
+              "text": "Reset, then System Start required",
               "style": {
-                "fontSize": "16px",
+                "fontSize": "12px",
                 "whiteSpace": "normal",
-                "color": "#20252b"
+                "color": "#243448",
+                "overflow": "hidden"
               }
             },
             "propConfig": {
@@ -243,28 +267,9 @@
                 "binding": {
                   "type": "expr",
                   "config": {
-                    "expression": "if((!isNull({[default]BambuP1S/Connection/LastPoll}) && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) >= 0 && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) < 10), {[default]BambuP1S/System/Message}, \"System status unavailable\")"
+                    "expression": "{[default]BambuP1S/System/Message}"
                   }
                 }
-              }
-            }
-          },
-          {
-            "type": "ia.display.label",
-            "meta": {
-              "name": "SystemMeaning"
-            },
-            "position": {
-              "basis": "32px",
-              "grow": 0,
-              "shrink": 0
-            },
-            "props": {
-              "text": "Supervisory enable only. Printer operation is separate. vLock is not connected.",
-              "style": {
-                "fontSize": "13px",
-                "whiteSpace": "normal",
-                "color": "#20252b"
               }
             }
           }
@@ -273,7 +278,7 @@
       {
         "type": "ia.container.flex",
         "meta": {
-          "name": "PrinterPanel"
+          "name": "PrinterCards"
         },
         "position": {
           "basis": "auto",
@@ -281,93 +286,122 @@
           "shrink": 0
         },
         "props": {
-          "direction": "column",
-          "wrap": "nowrap",
+          "direction": "row",
+          "wrap": "wrap",
           "justify": "flex-start",
           "alignItems": "stretch",
           "style": {
             "boxSizing": "border-box",
-            "gap": "12px",
-            "border": "1px solid #b9c0c7",
-            "padding": "16px"
+            "gap": "18px",
+            "minWidth": "0"
           }
         },
         "children": [
           {
-            "type": "ia.display.label",
-            "meta": {
-              "name": "PrinterTitle"
-            },
-            "position": {
-              "basis": "40px",
-              "grow": 0,
-              "shrink": 0
-            },
-            "props": {
-              "text": "Bambu Lab P1S",
-              "style": {
-                "fontSize": "24px",
-                "whiteSpace": "normal",
-                "color": "#20252b"
-              }
-            }
-          },
-          {
             "type": "ia.container.flex",
             "meta": {
-              "name": "MachineAndData"
+              "name": "Printer01"
             },
             "position": {
-              "basis": "auto",
-              "grow": 0,
+              "basis": "390px",
+              "grow": 1,
               "shrink": 0
             },
             "props": {
-              "direction": "row",
-              "wrap": "wrap",
+              "direction": "column",
+              "wrap": "nowrap",
               "justify": "flex-start",
               "alignItems": "stretch",
               "style": {
                 "boxSizing": "border-box",
-                "gap": "12px"
+                "gap": "8px",
+                "minWidth": "0",
+                "padding": "16px",
+                "backgroundColor": "#ffffff",
+                "border": "1px solid #ccd8e3",
+                "borderRadius": "8px",
+                "boxShadow": "0 2px 5px #2434480a",
+                "opacity": "1"
               }
             },
             "children": [
               {
                 "type": "ia.container.flex",
                 "meta": {
-                  "name": "Schematic"
+                  "name": "Header"
                 },
                 "position": {
-                  "basis": "280px",
+                  "basis": "auto",
                   "grow": 0,
                   "shrink": 0
                 },
                 "props": {
-                  "direction": "column",
+                  "direction": "row",
                   "wrap": "nowrap",
                   "justify": "flex-start",
                   "alignItems": "stretch",
                   "style": {
                     "boxSizing": "border-box",
-                    "gap": "12px"
+                    "gap": "8px",
+                    "minWidth": "0",
+                    "height": "36px",
+                    "alignItems": "center",
+                    "borderBottom": "1px solid #dce4ec",
+                    "paddingBottom": "6px"
                   }
                 },
                 "children": [
                   {
-                    "type": "ia.display.image",
+                    "type": "ia.display.label",
                     "meta": {
-                      "name": "Printer"
+                      "name": "PrinterName"
                     },
                     "position": {
-                      "basis": "240px",
-                      "grow": 0,
-                      "shrink": 0
+                      "basis": "0px",
+                      "grow": 1,
+                      "shrink": 1
                     },
                     "props": {
-                      "source": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyODAiIGhlaWdodD0iMjQwIiB2aWV3Qm94PSIwIDAgMjgwIDI0MCI+PHJlY3QgeD0iMzUiIHk9IjEyIiB3aWR0aD0iMjEwIiBoZWlnaHQ9IjIwNyIgcng9IjQiIGZpbGw9IiNmNWY2ZjciIHN0cm9rZT0iIzM5NDI0YyIgc3Ryb2tlLXdpZHRoPSI1Ii8+PHJlY3QgeD0iNTIiIHk9IjM3IiB3aWR0aD0iMTc2IiBoZWlnaHQ9IjE1MSIgZmlsbD0id2hpdGUiIHN0cm9rZT0iIzlkYTVhZCIgc3Ryb2tlLXdpZHRoPSIyIi8+PHBhdGggZD0iTTYwIDY3SDIyMCBNMTQwIDY4VjEwMiBNMTMyIDEwMkgxNDhMMTQwIDExNlogTTY1IDE2M0gyMTUgTTc4IDE3MUgyMDIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzM5NDI0YyIgc3Ryb2tlLXdpZHRoPSI1Ii8+PHBhdGggZD0iTTEwNSAxNTlWMTM3SDE3MVYxNTkiIGZpbGw9IiNlNWU5ZWMiIHN0cm9rZT0iIzc4ODM4ZSIgc3Ryb2tlLXdpZHRoPSIyIi8+PHJlY3QgeD0iNDgiIHk9IjIyMCIgd2lkdGg9IjM1IiBoZWlnaHQ9IjgiIGZpbGw9IiMzOTQyNGMiLz48cmVjdCB4PSIxOTciIHk9IjIyMCIgd2lkdGg9IjM1IiBoZWlnaHQ9IjgiIGZpbGw9IiMzOTQyNGMiLz48dGV4dCB4PSIxNDAiIHk9IjIwOCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEyIiBmaWxsPSIjMzk0MjRjIj5CQU1CVSBMQUIgUDFTPC90ZXh0Pjwvc3ZnPg==",
-                      "fit": {
-                        "mode": "contain"
+                      "text": "P1S-01",
+                      "style": {
+                        "fontSize": "20px",
+                        "whiteSpace": "nowrap",
+                        "color": "#243448",
+                        "overflow": "hidden",
+                        "minWidth": "0",
+                        "textOverflow": "ellipsis"
+                      }
+                    }
+                  },
+                  {
+                    "type": "ia.display.label",
+                    "meta": {
+                      "name": "ConnectionBadge"
+                    },
+                    "position": {
+                      "basis": "112px",
+                      "grow": 0,
+                      "shrink": 1
+                    },
+                    "props": {
+                      "text": "Awaiting connection",
+                      "style": {
+                        "fontSize": "12px",
+                        "whiteSpace": "nowrap",
+                        "color": "#243448",
+                        "overflow": "hidden",
+                        "minWidth": "0",
+                        "textOverflow": "ellipsis"
+                      }
+                    },
+                    "propConfig": {
+                      "props.text": {
+                        "binding": {
+                          "type": "expr",
+                          "config": {
+                            "expression": "if(((!isNull({[default]BambuP1S/Connection/LastPoll}) && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) >= 0 && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) < 6) && {[default]BambuP1S/Readings/Online}), \"LIVE \u00b7 MQTT\", \"OFFLINE\")"
+                          }
+                        }
                       }
                     }
                   }
@@ -376,21 +410,24 @@
               {
                 "type": "ia.container.flex",
                 "meta": {
-                  "name": "Readings"
+                  "name": "StatusLine"
                 },
                 "position": {
-                  "basis": "300px",
-                  "grow": 1,
+                  "basis": "auto",
+                  "grow": 0,
                   "shrink": 0
                 },
                 "props": {
-                  "direction": "column",
+                  "direction": "row",
                   "wrap": "nowrap",
                   "justify": "flex-start",
                   "alignItems": "stretch",
                   "style": {
                     "boxSizing": "border-box",
-                    "gap": "6px"
+                    "gap": "8px",
+                    "minWidth": "0",
+                    "height": "28px",
+                    "alignItems": "center"
                   }
                 },
                 "children": [
@@ -400,103 +437,19 @@
                       "name": "MachineStatus"
                     },
                     "position": {
-                      "basis": "40px",
+                      "basis": "98px",
                       "grow": 0,
-                      "shrink": 0
+                      "shrink": 1
                     },
                     "props": {
-                      "text": "Machine: Offline",
-                      "style": {
-                        "fontSize": "20px",
-                        "whiteSpace": "normal",
-                        "color": "#20252b"
-                      }
-                    },
-                    "propConfig": {
-                      "props.text": {
-                        "binding": {
-                          "type": "expr",
-                          "config": {
-                            "expression": "\"Machine: \" + if(((!isNull({[default]BambuP1S/Connection/LastPoll}) && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) >= 0 && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) < 10) && {[default]BambuP1S/Readings/Online}), {[default]BambuP1S/Readings/State}, \"Offline / unknown\")"
-                          }
-                        }
-                      }
-                    }
-                  },
-                  {
-                    "type": "ia.display.label",
-                    "meta": {
-                      "name": "NozzleTemp"
-                    },
-                    "position": {
-                      "basis": "40px",
-                      "grow": 0,
-                      "shrink": 0
-                    },
-                    "props": {
-                      "text": "Nozzle: --",
-                      "style": {
-                        "fontSize": "23px",
-                        "whiteSpace": "normal",
-                        "color": "#20252b"
-                      }
-                    },
-                    "propConfig": {
-                      "props.text": {
-                        "binding": {
-                          "type": "expr",
-                          "config": {
-                            "expression": "if(((!isNull({[default]BambuP1S/Connection/LastPoll}) && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) >= 0 && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) < 10) && {[default]BambuP1S/Readings/Online}) && {[default]BambuP1S/Readings/NozzleValid}, \"Nozzle: \" + numberFormat({[default]BambuP1S/Readings/NozzleTemp}, \"0.0\") + \" deg C\", \"Nozzle: --\")"
-                          }
-                        }
-                      }
-                    }
-                  },
-                  {
-                    "type": "ia.display.label",
-                    "meta": {
-                      "name": "BedTemp"
-                    },
-                    "position": {
-                      "basis": "40px",
-                      "grow": 0,
-                      "shrink": 0
-                    },
-                    "props": {
-                      "text": "Bed: --",
-                      "style": {
-                        "fontSize": "23px",
-                        "whiteSpace": "normal",
-                        "color": "#20252b"
-                      }
-                    },
-                    "propConfig": {
-                      "props.text": {
-                        "binding": {
-                          "type": "expr",
-                          "config": {
-                            "expression": "if(((!isNull({[default]BambuP1S/Connection/LastPoll}) && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) >= 0 && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) < 10) && {[default]BambuP1S/Readings/Online}) && {[default]BambuP1S/Readings/BedValid}, \"Bed: \" + numberFormat({[default]BambuP1S/Readings/BedTemp}, \"0.0\") + \" deg C\", \"Bed: --\")"
-                          }
-                        }
-                      }
-                    }
-                  },
-                  {
-                    "type": "ia.display.label",
-                    "meta": {
-                      "name": "Connector"
-                    },
-                    "position": {
-                      "basis": "26px",
-                      "grow": 0,
-                      "shrink": 0
-                    },
-                    "props": {
-                      "text": "Connector: unavailable",
+                      "text": "Awaiting telemetry",
                       "style": {
                         "fontSize": "16px",
-                        "whiteSpace": "normal",
-                        "color": "#20252b"
+                        "whiteSpace": "nowrap",
+                        "color": "#243448",
+                        "overflow": "hidden",
+                        "minWidth": "0",
+                        "textOverflow": "ellipsis"
                       }
                     },
                     "propConfig": {
@@ -504,7 +457,15 @@
                         "binding": {
                           "type": "expr",
                           "config": {
-                            "expression": "\"Connector: \" + if((!isNull({[default]BambuP1S/Connection/LastPoll}) && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) >= 0 && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) < 10) && {[default]BambuP1S/Connection/ServiceOnline}, \"Connected\", \"Disconnected / stale\")"
+                            "expression": "if(((!isNull({[default]BambuP1S/Connection/LastPoll}) && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) >= 0 && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) < 6) && {[default]BambuP1S/Readings/Online}), {[default]BambuP1S/Readings/State}, \"Offline / unknown\")"
+                          }
+                        }
+                      },
+                      "props.style.color": {
+                        "binding": {
+                          "type": "expr",
+                          "config": {
+                            "expression": "if(((!isNull({[default]BambuP1S/Connection/LastPoll}) && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) >= 0 && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) < 6) && {[default]BambuP1S/Readings/Online}), \"#146b58\", \"#7b8795\")"
                           }
                         }
                       }
@@ -513,19 +474,22 @@
                   {
                     "type": "ia.display.label",
                     "meta": {
-                      "name": "MQTT"
+                      "name": "VisionState"
                     },
                     "position": {
-                      "basis": "26px",
-                      "grow": 0,
-                      "shrink": 0
+                      "basis": "0px",
+                      "grow": 1,
+                      "shrink": 1
                     },
                     "props": {
-                      "text": "MQTT: unavailable",
+                      "text": "Vision: not assigned",
                       "style": {
-                        "fontSize": "16px",
-                        "whiteSpace": "normal",
-                        "color": "#20252b"
+                        "fontSize": "12px",
+                        "whiteSpace": "nowrap",
+                        "color": "#243448",
+                        "overflow": "hidden",
+                        "minWidth": "0",
+                        "textOverflow": "ellipsis"
                       }
                     },
                     "propConfig": {
@@ -533,68 +497,930 @@
                         "binding": {
                           "type": "expr",
                           "config": {
-                            "expression": "\"MQTT: \" + if((!isNull({[default]BambuP1S/Connection/LastPoll}) && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) >= 0 && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) < 10) && {[default]BambuP1S/Connection/MqttConnected}, \"Connected\", \"Disconnected / stale\")"
+                            "expression": "if((!isNull({[default]BambuP1S/Connection/LastPoll}) && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) >= 0 && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) < 6) && {[default]BambuP1S/Vision/TagsGood}, \"Vision: \" + {[default]BambuP1S/Vision/State} + \" \u00b7 \" + {[default]BambuP1S/Vision/Quality}, \"Vision: endpoint unavailable\")"
                           }
                         }
                       }
                     }
-                  },
+                  }
+                ]
+              },
+              {
+                "type": "ia.container.flex",
+                "meta": {
+                  "name": "PrinterBody"
+                },
+                "position": {
+                  "basis": "auto",
+                  "grow": 0,
+                  "shrink": 0
+                },
+                "props": {
+                  "direction": "row",
+                  "wrap": "nowrap",
+                  "justify": "flex-start",
+                  "alignItems": "stretch",
+                  "style": {
+                    "boxSizing": "border-box",
+                    "gap": "12px",
+                    "minWidth": "0"
+                  }
+                },
+                "children": [
                   {
-                    "type": "ia.display.label",
+                    "type": "ia.container.flex",
                     "meta": {
-                      "name": "Printerreports"
+                      "name": "PrinterDetails"
                     },
                     "position": {
-                      "basis": "26px",
-                      "grow": 0,
-                      "shrink": 0
+                      "basis": "42%",
+                      "grow": 1,
+                      "shrink": 1
                     },
                     "props": {
-                      "text": "Printer reports: unavailable",
+                      "direction": "column",
+                      "wrap": "nowrap",
+                      "justify": "flex-start",
+                      "alignItems": "stretch",
                       "style": {
-                        "fontSize": "16px",
-                        "whiteSpace": "normal",
-                        "color": "#20252b"
+                        "boxSizing": "border-box",
+                        "gap": "10px",
+                        "minWidth": "0"
                       }
                     },
-                    "propConfig": {
-                      "props.text": {
-                        "binding": {
-                          "type": "expr",
-                          "config": {
-                            "expression": "\"Printer reports: \" + if((!isNull({[default]BambuP1S/Connection/LastPoll}) && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) >= 0 && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) < 10) && {[default]BambuP1S/Readings/Online}, \"Connected\", \"Disconnected / stale\")"
+                    "children": [
+                      {
+                        "type": "ia.container.flex",
+                        "meta": {
+                          "name": "MachineAndData"
+                        },
+                        "position": {
+                          "basis": "auto",
+                          "grow": 0,
+                          "shrink": 0
+                        },
+                        "props": {
+                          "direction": "row",
+                          "wrap": "nowrap",
+                          "justify": "flex-start",
+                          "alignItems": "stretch",
+                          "style": {
+                            "boxSizing": "border-box",
+                            "gap": "8px",
+                            "minWidth": "0"
+                          }
+                        },
+                        "children": [
+                          {
+                            "type": "ia.display.image",
+                            "meta": {
+                              "name": "Printer"
+                            },
+                            "position": {
+                              "basis": "62px",
+                              "grow": 0,
+                              "shrink": 0
+                            },
+                            "props": {
+                              "source": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjIwIiB2aWV3Qm94PSIwIDAgMjAwIDIyMCI+PHJlY3QgeD0iMjMiIHk9IjEyIiB3aWR0aD0iMTU0IiBoZWlnaHQ9IjE4NCIgcng9IjciIGZpbGw9IiNlZGYyZjYiIHN0cm9rZT0iIzQ1NTY2YSIgc3Ryb2tlLXdpZHRoPSI0Ii8+PHJlY3QgeD0iMzYiIHk9IjMyIiB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEzOSIgZmlsbD0id2hpdGUiIHN0cm9rZT0iI2FlYmNjOSIgc3Ryb2tlLXdpZHRoPSIyIi8+PHBhdGggZD0iTTQyIDU4SDE1OCBNMTAwIDU4VjkxIE05MyA5MUgxMDdMMTAwIDEwM1ogTTQzIDE0OEgxNTcgTTUyIDE1NUgxNDgiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzQ1NTY2YSIgc3Ryb2tlLXdpZHRoPSI0Ii8+PHBhdGggZD0iTTc2IDE0NlYxMjdIMTIyVjE0NiIgZmlsbD0iI2Q4ZTVlZiIgc3Ryb2tlPSIjOGRhNWI4Ii8+PHJlY3QgeD0iMzQiIHk9IjE5OCIgd2lkdGg9IjI1IiBoZWlnaHQ9IjciIGZpbGw9IiM0NTU2NmEiLz48cmVjdCB4PSIxNDEiIHk9IjE5OCIgd2lkdGg9IjI1IiBoZWlnaHQ9IjciIGZpbGw9IiM0NTU2NmEiLz48dGV4dCB4PSIxMDAiIHk9IjE4NyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEwIiBmaWxsPSIjNDU1NjZhIj5CQU1CVSBMQUIgUDFTPC90ZXh0Pjwvc3ZnPg==",
+                              "fit": {
+                                "mode": "contain"
+                              },
+                              "style": {
+                                "height": "150px"
+                              }
+                            }
+                          },
+                          {
+                            "type": "ia.container.flex",
+                            "meta": {
+                              "name": "Readings"
+                            },
+                            "position": {
+                              "basis": "0px",
+                              "grow": 1,
+                              "shrink": 1
+                            },
+                            "props": {
+                              "direction": "column",
+                              "wrap": "nowrap",
+                              "justify": "flex-start",
+                              "alignItems": "stretch",
+                              "style": {
+                                "boxSizing": "border-box",
+                                "gap": "4px",
+                                "minWidth": "0"
+                              }
+                            },
+                            "children": [
+                              {
+                                "type": "ia.display.label",
+                                "meta": {
+                                  "name": "Program"
+                                },
+                                "position": {
+                                  "basis": "36px",
+                                  "grow": 0,
+                                  "shrink": 0
+                                },
+                                "props": {
+                                  "text": "Program: --",
+                                  "style": {
+                                    "fontSize": "12px",
+                                    "whiteSpace": "normal",
+                                    "color": "#243448",
+                                    "overflow": "hidden",
+                                    "overflowWrap": "anywhere"
+                                  }
+                                },
+                                "propConfig": {
+                                  "props.text": {
+                                    "binding": {
+                                      "type": "expr",
+                                      "config": {
+                                        "expression": "\"Program: \" + if(((!isNull({[default]BambuP1S/Connection/LastPoll}) && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) >= 0 && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) < 6) && {[default]BambuP1S/Readings/Online}) && len({[default]BambuP1S/Readings/FileName}) > 0, {[default]BambuP1S/Readings/FileName}, \"--\")"
+                                      }
+                                    }
+                                  }
+                                }
+                              },
+                              {
+                                "type": "ia.display.label",
+                                "meta": {
+                                  "name": "NozzleTemp"
+                                },
+                                "position": {
+                                  "basis": "26px",
+                                  "grow": 0,
+                                  "shrink": 0
+                                },
+                                "props": {
+                                  "text": "Nozzle: --",
+                                  "style": {
+                                    "fontSize": "15px",
+                                    "whiteSpace": "normal",
+                                    "color": "#243448",
+                                    "overflow": "hidden"
+                                  }
+                                },
+                                "propConfig": {
+                                  "props.text": {
+                                    "binding": {
+                                      "type": "expr",
+                                      "config": {
+                                        "expression": "if(((!isNull({[default]BambuP1S/Connection/LastPoll}) && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) >= 0 && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) < 6) && {[default]BambuP1S/Readings/Online}) && {[default]BambuP1S/Readings/NozzleValid}, \"Nozzle: \" + numberFormat({[default]BambuP1S/Readings/NozzleTemp}, \"0.0\") + \" \u00b0C\", \"Nozzle: --\")"
+                                      }
+                                    }
+                                  }
+                                }
+                              },
+                              {
+                                "type": "ia.display.label",
+                                "meta": {
+                                  "name": "BedTemp"
+                                },
+                                "position": {
+                                  "basis": "26px",
+                                  "grow": 0,
+                                  "shrink": 0
+                                },
+                                "props": {
+                                  "text": "Bed: --",
+                                  "style": {
+                                    "fontSize": "15px",
+                                    "whiteSpace": "normal",
+                                    "color": "#243448",
+                                    "overflow": "hidden"
+                                  }
+                                },
+                                "propConfig": {
+                                  "props.text": {
+                                    "binding": {
+                                      "type": "expr",
+                                      "config": {
+                                        "expression": "if(((!isNull({[default]BambuP1S/Connection/LastPoll}) && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) >= 0 && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) < 6) && {[default]BambuP1S/Readings/Online}) && {[default]BambuP1S/Readings/BedValid}, \"Bed: \" + numberFormat({[default]BambuP1S/Readings/BedTemp}, \"0.0\") + \" \u00b0C\", \"Bed: --\")"
+                                      }
+                                    }
+                                  }
+                                }
+                              },
+                              {
+                                "type": "ia.display.label",
+                                "meta": {
+                                  "name": "Progress"
+                                },
+                                "position": {
+                                  "basis": "24px",
+                                  "grow": 0,
+                                  "shrink": 0
+                                },
+                                "props": {
+                                  "text": "Progress: --",
+                                  "style": {
+                                    "fontSize": "13px",
+                                    "whiteSpace": "normal",
+                                    "color": "#243448",
+                                    "overflow": "hidden"
+                                  }
+                                },
+                                "propConfig": {
+                                  "props.text": {
+                                    "binding": {
+                                      "type": "expr",
+                                      "config": {
+                                        "expression": "if(((!isNull({[default]BambuP1S/Connection/LastPoll}) && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) >= 0 && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) < 6) && {[default]BambuP1S/Readings/Online}) && {[default]BambuP1S/Readings/ProgressValid}, \"Progress: \" + numberFormat({[default]BambuP1S/Readings/Progress}, \"0\") + \"%\", \"Progress: --\")"
+                                      }
+                                    }
+                                  }
+                                }
+                              },
+                              {
+                                "type": "ia.display.label",
+                                "meta": {
+                                  "name": "TimeLeft"
+                                },
+                                "position": {
+                                  "basis": "24px",
+                                  "grow": 0,
+                                  "shrink": 0
+                                },
+                                "props": {
+                                  "text": "Time left: --",
+                                  "style": {
+                                    "fontSize": "13px",
+                                    "whiteSpace": "normal",
+                                    "color": "#243448",
+                                    "overflow": "hidden"
+                                  }
+                                },
+                                "propConfig": {
+                                  "props.text": {
+                                    "binding": {
+                                      "type": "expr",
+                                      "config": {
+                                        "expression": "if(((!isNull({[default]BambuP1S/Connection/LastPoll}) && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) >= 0 && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) < 6) && {[default]BambuP1S/Readings/Online}) && {[default]BambuP1S/Readings/RemainingValid}, \"Time left: \" + numberFormat(ceil({[default]BambuP1S/Readings/RemainingSeconds}/60.0), \"0\") + \" min\", \"Time left: --\")"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "ia.container.flex",
+                        "meta": {
+                          "name": "PrinterButtons"
+                        },
+                        "position": {
+                          "basis": "auto",
+                          "grow": 0,
+                          "shrink": 0
+                        },
+                        "props": {
+                          "direction": "column",
+                          "wrap": "nowrap",
+                          "justify": "flex-start",
+                          "alignItems": "stretch",
+                          "style": {
+                            "boxSizing": "border-box",
+                            "gap": "6px",
+                            "minWidth": "0"
+                          }
+                        },
+                        "children": [
+                          {
+                            "type": "ia.container.flex",
+                            "meta": {
+                              "name": "PauseResume"
+                            },
+                            "position": {
+                              "basis": "auto",
+                              "grow": 0,
+                              "shrink": 0
+                            },
+                            "props": {
+                              "direction": "row",
+                              "wrap": "nowrap",
+                              "justify": "flex-start",
+                              "alignItems": "stretch",
+                              "style": {
+                                "boxSizing": "border-box",
+                                "gap": "6px",
+                                "minWidth": "0",
+                                "height": "36px"
+                              }
+                            },
+                            "children": [
+                              {
+                                "type": "ia.input.button",
+                                "meta": {
+                                  "name": "Pause"
+                                },
+                                "position": {
+                                  "basis": "0px",
+                                  "grow": 1,
+                                  "shrink": 1
+                                },
+                                "props": {
+                                  "text": "Pause",
+                                  "enabled": false,
+                                  "primary": false,
+                                  "style": {
+                                    "backgroundColor": "#fff4d9",
+                                    "color": "#243448",
+                                    "border": "1px solid #c6d0da",
+                                    "borderRadius": "5px",
+                                    "height": "36px",
+                                    "fontSize": "13px",
+                                    "fontWeight": "600"
+                                  }
+                                },
+                                "events": {
+                                  "component": {
+                                    "onActionPerformed": {
+                                      "type": "script",
+                                      "scope": "G",
+                                      "config": {
+                                        "script": "\ttry:\n\t    bambuP1s.command('Pause')\n\t    self.view.custom.feedback = \"\"\n\texcept Exception as exc:\n\t    self.view.custom.feedback = str(exc)"
+                                      }
+                                    }
+                                  }
+                                },
+                                "propConfig": {
+                                  "props.enabled": {
+                                    "binding": {
+                                      "type": "expr",
+                                      "config": {
+                                        "expression": "((!isNull({[default]BambuP1S/Connection/LastPoll}) && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) >= 0 && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) < 6) && {[default]BambuP1S/Readings/Online}) && {[default]BambuP1S/Readings/State} = \"Running\" && !{[default]BambuP1S/Commands/Busy}"
+                                      }
+                                    }
+                                  }
+                                }
+                              },
+                              {
+                                "type": "ia.input.button",
+                                "meta": {
+                                  "name": "Resume"
+                                },
+                                "position": {
+                                  "basis": "0px",
+                                  "grow": 1,
+                                  "shrink": 1
+                                },
+                                "props": {
+                                  "text": "Resume",
+                                  "enabled": false,
+                                  "primary": false,
+                                  "style": {
+                                    "backgroundColor": "#e5f3ed",
+                                    "color": "#243448",
+                                    "border": "1px solid #c6d0da",
+                                    "borderRadius": "5px",
+                                    "height": "36px",
+                                    "fontSize": "13px",
+                                    "fontWeight": "600"
+                                  }
+                                },
+                                "events": {
+                                  "component": {
+                                    "onActionPerformed": {
+                                      "type": "script",
+                                      "scope": "G",
+                                      "config": {
+                                        "script": "\ttry:\n\t    bambuP1s.command('Resume')\n\t    self.view.custom.feedback = \"\"\n\texcept Exception as exc:\n\t    self.view.custom.feedback = str(exc)"
+                                      }
+                                    }
+                                  }
+                                },
+                                "propConfig": {
+                                  "props.enabled": {
+                                    "binding": {
+                                      "type": "expr",
+                                      "config": {
+                                        "expression": "((!isNull({[default]BambuP1S/Connection/LastPoll}) && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) >= 0 && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) < 6) && {[default]BambuP1S/Readings/Online}) && {[default]BambuP1S/Readings/State} = \"Paused\" && {[default]BambuP1S/System/ResumeAllowed} && !{[default]BambuP1S/Commands/Busy}"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "type": "ia.container.flex",
+                            "meta": {
+                              "name": "CancelReset"
+                            },
+                            "position": {
+                              "basis": "auto",
+                              "grow": 0,
+                              "shrink": 0
+                            },
+                            "props": {
+                              "direction": "row",
+                              "wrap": "nowrap",
+                              "justify": "flex-start",
+                              "alignItems": "stretch",
+                              "style": {
+                                "boxSizing": "border-box",
+                                "gap": "6px",
+                                "minWidth": "0",
+                                "height": "36px"
+                              }
+                            },
+                            "children": [
+                              {
+                                "type": "ia.input.button",
+                                "meta": {
+                                  "name": "Stop"
+                                },
+                                "position": {
+                                  "basis": "0px",
+                                  "grow": 1,
+                                  "shrink": 1
+                                },
+                                "props": {
+                                  "text": "Cancel job",
+                                  "enabled": false,
+                                  "primary": false,
+                                  "style": {
+                                    "backgroundColor": "#fae9e9",
+                                    "color": "#243448",
+                                    "border": "1px solid #c6d0da",
+                                    "borderRadius": "5px",
+                                    "height": "36px",
+                                    "fontSize": "13px",
+                                    "fontWeight": "600"
+                                  }
+                                },
+                                "events": {
+                                  "component": {
+                                    "onActionPerformed": {
+                                      "type": "script",
+                                      "scope": "G",
+                                      "config": {
+                                        "script": "\ttry:\n\t    bambuP1s.command('Stop')\n\t    self.view.custom.feedback = \"\"\n\texcept Exception as exc:\n\t    self.view.custom.feedback = str(exc)"
+                                      }
+                                    }
+                                  }
+                                },
+                                "propConfig": {
+                                  "props.enabled": {
+                                    "binding": {
+                                      "type": "expr",
+                                      "config": {
+                                        "expression": "((!isNull({[default]BambuP1S/Connection/LastPoll}) && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) >= 0 && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) < 6) && {[default]BambuP1S/Readings/Online}) && ({[default]BambuP1S/Readings/State} = \"Running\" || {[default]BambuP1S/Readings/State} = \"Paused\")"
+                                      }
+                                    }
+                                  }
+                                }
+                              },
+                              {
+                                "type": "ia.input.button",
+                                "meta": {
+                                  "name": "PrinterReset"
+                                },
+                                "position": {
+                                  "basis": "0px",
+                                  "grow": 1,
+                                  "shrink": 1
+                                },
+                                "props": {
+                                  "text": "Reset",
+                                  "enabled": false,
+                                  "primary": false,
+                                  "style": {
+                                    "backgroundColor": "#ffffff",
+                                    "color": "#243448",
+                                    "border": "1px solid #c6d0da",
+                                    "borderRadius": "5px",
+                                    "height": "36px",
+                                    "fontSize": "13px",
+                                    "fontWeight": "600"
+                                  }
+                                },
+                                "events": {
+                                  "component": {
+                                    "onActionPerformed": {
+                                      "type": "script",
+                                      "scope": "G",
+                                      "config": {
+                                        "script": "\ttry:\n\t    bambuP1s.system_command('Reset', 'P1S-01')\n\t    self.view.custom.feedback = \"\"\n\texcept Exception as exc:\n\t    self.view.custom.feedback = str(exc)"
+                                      }
+                                    }
+                                  }
+                                },
+                                "propConfig": {
+                                  "props.enabled": {
+                                    "binding": {
+                                      "type": "expr",
+                                      "config": {
+                                        "expression": "{[default]BambuP1S/Config/ControlRequestsEnabled}"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "ia.display.label",
+                        "meta": {
+                          "name": "CommandResult"
+                        },
+                        "position": {
+                          "basis": "40px",
+                          "grow": 0,
+                          "shrink": 0
+                        },
+                        "props": {
+                          "text": "No command requested",
+                          "style": {
+                            "fontSize": "12px",
+                            "whiteSpace": "normal",
+                            "color": "#243448",
+                            "overflow": "hidden"
+                          }
+                        },
+                        "propConfig": {
+                          "props.text": {
+                            "binding": {
+                              "type": "expr",
+                              "config": {
+                                "expression": "\"Command: \" + {[default]BambuP1S/Commands/Result}"
+                              }
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "type": "ia.container.flex",
+                        "meta": {
+                          "name": "ConnectionDetails"
+                        },
+                        "position": {
+                          "basis": "auto",
+                          "grow": 0,
+                          "shrink": 0
+                        },
+                        "props": {
+                          "direction": "column",
+                          "wrap": "nowrap",
+                          "justify": "flex-start",
+                          "alignItems": "stretch",
+                          "style": {
+                            "boxSizing": "border-box",
+                            "gap": "2px",
+                            "minWidth": "0",
+                            "borderTop": "1px solid #dce4ec",
+                            "paddingTop": "8px"
+                          }
+                        },
+                        "children": [
+                          {
+                            "type": "ia.container.flex",
+                            "meta": {
+                              "name": "ConnectionRow"
+                            },
+                            "position": {
+                              "basis": "auto",
+                              "grow": 0,
+                              "shrink": 0
+                            },
+                            "props": {
+                              "direction": "row",
+                              "wrap": "nowrap",
+                              "justify": "flex-start",
+                              "alignItems": "stretch",
+                              "style": {
+                                "boxSizing": "border-box",
+                                "gap": "10px",
+                                "minWidth": "0",
+                                "height": "23px"
+                              }
+                            },
+                            "children": [
+                              {
+                                "type": "ia.display.label",
+                                "meta": {
+                                  "name": "Connector"
+                                },
+                                "position": {
+                                  "basis": "0px",
+                                  "grow": 1,
+                                  "shrink": 1
+                                },
+                                "props": {
+                                  "text": "Connector: offline",
+                                  "style": {
+                                    "fontSize": "11px",
+                                    "whiteSpace": "nowrap",
+                                    "color": "#243448",
+                                    "overflow": "hidden",
+                                    "minWidth": "0",
+                                    "textOverflow": "ellipsis"
+                                  }
+                                },
+                                "propConfig": {
+                                  "props.text": {
+                                    "binding": {
+                                      "type": "expr",
+                                      "config": {
+                                        "expression": "\"Connector: \" + if((!isNull({[default]BambuP1S/Connection/LastPoll}) && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) >= 0 && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) < 6) && {[default]BambuP1S/Connection/ServiceOnline}, \"Connected\", \"Offline / stale\")"
+                                      }
+                                    }
+                                  }
+                                }
+                              },
+                              {
+                                "type": "ia.display.label",
+                                "meta": {
+                                  "name": "MQTT"
+                                },
+                                "position": {
+                                  "basis": "0px",
+                                  "grow": 1,
+                                  "shrink": 1
+                                },
+                                "props": {
+                                  "text": "MQTT: offline",
+                                  "style": {
+                                    "fontSize": "11px",
+                                    "whiteSpace": "nowrap",
+                                    "color": "#243448",
+                                    "overflow": "hidden",
+                                    "minWidth": "0",
+                                    "textOverflow": "ellipsis"
+                                  }
+                                },
+                                "propConfig": {
+                                  "props.text": {
+                                    "binding": {
+                                      "type": "expr",
+                                      "config": {
+                                        "expression": "\"MQTT: \" + if((!isNull({[default]BambuP1S/Connection/LastPoll}) && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) >= 0 && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) < 6) && {[default]BambuP1S/Connection/MqttConnected}, \"Connected\", \"Offline / stale\")"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "type": "ia.container.flex",
+                            "meta": {
+                              "name": "ReportRow"
+                            },
+                            "position": {
+                              "basis": "auto",
+                              "grow": 0,
+                              "shrink": 0
+                            },
+                            "props": {
+                              "direction": "row",
+                              "wrap": "nowrap",
+                              "justify": "flex-start",
+                              "alignItems": "stretch",
+                              "style": {
+                                "boxSizing": "border-box",
+                                "gap": "10px",
+                                "minWidth": "0",
+                                "height": "23px"
+                              }
+                            },
+                            "children": [
+                              {
+                                "type": "ia.display.label",
+                                "meta": {
+                                  "name": "Reports"
+                                },
+                                "position": {
+                                  "basis": "0px",
+                                  "grow": 1,
+                                  "shrink": 1
+                                },
+                                "props": {
+                                  "text": "Reports: offline",
+                                  "style": {
+                                    "fontSize": "11px",
+                                    "whiteSpace": "nowrap",
+                                    "color": "#243448",
+                                    "overflow": "hidden",
+                                    "minWidth": "0",
+                                    "textOverflow": "ellipsis"
+                                  }
+                                },
+                                "propConfig": {
+                                  "props.text": {
+                                    "binding": {
+                                      "type": "expr",
+                                      "config": {
+                                        "expression": "\"Reports: \" + if((!isNull({[default]BambuP1S/Connection/LastPoll}) && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) >= 0 && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) < 6) && {[default]BambuP1S/Readings/Online}, \"Connected\", \"Offline / stale\")"
+                                      }
+                                    }
+                                  }
+                                }
+                              },
+                              {
+                                "type": "ia.display.label",
+                                "meta": {
+                                  "name": "ReportAge"
+                                },
+                                "position": {
+                                  "basis": "0px",
+                                  "grow": 1,
+                                  "shrink": 1
+                                },
+                                "props": {
+                                  "text": "Report age: --",
+                                  "style": {
+                                    "fontSize": "11px",
+                                    "whiteSpace": "nowrap",
+                                    "color": "#243448",
+                                    "overflow": "hidden",
+                                    "minWidth": "0",
+                                    "textOverflow": "ellipsis"
+                                  }
+                                },
+                                "propConfig": {
+                                  "props.text": {
+                                    "binding": {
+                                      "type": "expr",
+                                      "config": {
+                                        "expression": "if(((!isNull({[default]BambuP1S/Connection/LastPoll}) && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) >= 0 && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) < 6) && {[default]BambuP1S/Readings/Online}), \"Report age: \" + numberFormat({[default]BambuP1S/Readings/AgeSeconds}, \"0.0\") + \" s\", \"Report age: --\")"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "ia.container.flex",
+                    "meta": {
+                      "name": "CameraPanel"
+                    },
+                    "position": {
+                      "basis": "56%",
+                      "grow": 1,
+                      "shrink": 1
+                    },
+                    "props": {
+                      "direction": "column",
+                      "wrap": "nowrap",
+                      "justify": "flex-start",
+                      "alignItems": "stretch",
+                      "style": {
+                        "boxSizing": "border-box",
+                        "gap": "4px",
+                        "minWidth": "0",
+                        "height": "360px",
+                        "minHeight": "360px",
+                        "maxHeight": "360px",
+                        "padding": "6px",
+                        "backgroundColor": "#f5f8fb",
+                        "border": "1px solid #dce4ec",
+                        "borderRadius": "6px",
+                        "overflow": "hidden"
+                      }
+                    },
+                    "children": [
+                      {
+                        "type": "ia.input.button",
+                        "meta": {
+                          "name": "CameraToggle"
+                        },
+                        "position": {
+                          "basis": "36px",
+                          "grow": 0,
+                          "shrink": 0
+                        },
+                        "props": {
+                          "text": "Camera Off",
+                          "enabled": true,
+                          "primary": false,
+                          "style": {
+                            "backgroundColor": "#ffffff",
+                            "color": "#243448",
+                            "border": "1px solid #c6d0da",
+                            "borderRadius": "5px",
+                            "height": "36px",
+                            "fontSize": "13px",
+                            "fontWeight": "600"
+                          }
+                        },
+                        "events": {
+                          "component": {
+                            "onActionPerformed": {
+                              "type": "script",
+                              "scope": "G",
+                              "config": {
+                                "script": "\ttry:\n\t    self.view.custom.cameraEnabled = not self.view.custom.cameraEnabled\n\t    self.view.custom.feedback = \"\"\n\texcept Exception as exc:\n\t    self.view.custom.feedback = str(exc)"
+                              }
+                            }
+                          }
+                        },
+                        "propConfig": {
+                          "props.text": {
+                            "binding": {
+                              "type": "expr",
+                              "config": {
+                                "expression": "if({view.custom.cameraEnabled}, \"Camera Off\", \"Camera On\")"
+                              }
+                            }
+                          },
+                          "props.style.backgroundColor": {
+                            "binding": {
+                              "type": "expr",
+                              "config": {
+                                "expression": "if({view.custom.cameraEnabled}, \"#e5f3ed\", \"#edf1f5\")"
+                              }
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "type": "ia.display.image",
+                        "meta": {
+                          "name": "CameraImage"
+                        },
+                        "position": {
+                          "basis": "276px",
+                          "grow": 0,
+                          "shrink": 0
+                        },
+                        "props": {
+                          "source": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NDAiIGhlaWdodD0iMzYwIiB2aWV3Qm94PSIwIDAgNjQwIDM2MCI+PHJlY3Qgd2lkdGg9IjY0MCIgaGVpZ2h0PSIzNjAiIGZpbGw9IiMxNzI1MzgiLz48ZyBmaWxsPSJub25lIiBzdHJva2U9IiM3MDg0OWIiIHN0cm9rZS13aWR0aD0iNSI+PHJlY3QgeD0iMjY1IiB5PSIxMTgiIHdpZHRoPSIxMTAiIGhlaWdodD0iODAiIHJ4PSIxMCIvPjxjaXJjbGUgY3g9IjMyMCIgY3k9IjE1OCIgcj0iMjMiLz48cGF0aCBkPSJNMjg1IDExOGwxMC0xNmg1MGwxMCAxNiIvPjwvZz48dGV4dCB4PSIzMjAiIHk9IjI0MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjIwIiBmaWxsPSIjYThiN2M4Ij5DYW1lcmEgdW5hdmFpbGFibGU8L3RleHQ+PC9zdmc+",
+                          "altText": "Printer camera",
+                          "fit": {
+                            "mode": "contain"
+                          },
+                          "style": {
+                            "height": "276px",
+                            "minHeight": "276px",
+                            "maxHeight": "276px",
+                            "width": "100%",
+                            "backgroundColor": "#172538"
+                          }
+                        },
+                        "propConfig": {
+                          "props.source": {
+                            "binding": {
+                              "type": "expr",
+                              "config": {
+                                "expression": "if({view.custom.cameraEnabled}, toMillis(now(1000)), 0)"
+                              },
+                              "transforms": [
+                                {
+                                  "type": "script",
+                                  "code": "\tif not self.view.custom.cameraEnabled:\n\t    self.view.custom.cameraMessage = \"Camera off\"\n\t    return self.parent.custom.offPlaceholder\n\tframe = bambuP1s.camera_snapshot()\n\tif not self.view.custom.cameraEnabled:\n\t    self.view.custom.cameraMessage = \"Camera off\"\n\t    return self.parent.custom.offPlaceholder\n\tself.view.custom.cameraMessage = frame[\"message\"]\n\treturn frame[\"source\"] or self.parent.custom.placeholder"
+                                }
+                              ]
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "type": "ia.display.label",
+                        "meta": {
+                          "name": "CameraMessage"
+                        },
+                        "position": {
+                          "basis": "26px",
+                          "grow": 0,
+                          "shrink": 0
+                        },
+                        "props": {
+                          "text": "Waiting for camera",
+                          "style": {
+                            "fontSize": "11px",
+                            "whiteSpace": "normal",
+                            "color": "#243448",
+                            "overflow": "hidden"
+                          }
+                        },
+                        "propConfig": {
+                          "props.text": {
+                            "binding": {
+                              "type": "expr",
+                              "config": {
+                                "expression": "{view.custom.cameraMessage}"
+                              }
+                            }
                           }
                         }
                       }
-                    }
-                  },
-                  {
-                    "type": "ia.display.label",
-                    "meta": {
-                      "name": "ReportAge"
-                    },
-                    "position": {
-                      "basis": "32px",
-                      "grow": 0,
-                      "shrink": 0
-                    },
-                    "props": {
-                      "text": "Report age: --",
-                      "style": {
-                        "fontSize": "16px",
-                        "whiteSpace": "normal",
-                        "color": "#20252b"
-                      }
-                    },
-                    "propConfig": {
-                      "props.text": {
-                        "binding": {
-                          "type": "expr",
-                          "config": {
-                            "expression": "if(((!isNull({[default]BambuP1S/Connection/LastPoll}) && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) >= 0 && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) < 10) && {[default]BambuP1S/Readings/Online}), \"Report age: \" + numberFormat({[default]BambuP1S/Readings/AgeSeconds}, \"0.0\") + \" s\", \"Report age: --\")"
-                          }
-                        }
-                      }
+                    ],
+                    "custom": {
+                      "placeholder": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NDAiIGhlaWdodD0iMzYwIiB2aWV3Qm94PSIwIDAgNjQwIDM2MCI+PHJlY3Qgd2lkdGg9IjY0MCIgaGVpZ2h0PSIzNjAiIGZpbGw9IiMxNzI1MzgiLz48ZyBmaWxsPSJub25lIiBzdHJva2U9IiM3MDg0OWIiIHN0cm9rZS13aWR0aD0iNSI+PHJlY3QgeD0iMjY1IiB5PSIxMTgiIHdpZHRoPSIxMTAiIGhlaWdodD0iODAiIHJ4PSIxMCIvPjxjaXJjbGUgY3g9IjMyMCIgY3k9IjE1OCIgcj0iMjMiLz48cGF0aCBkPSJNMjg1IDExOGwxMC0xNmg1MGwxMCAxNiIvPjwvZz48dGV4dCB4PSIzMjAiIHk9IjI0MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjIwIiBmaWxsPSIjYThiN2M4Ij5DYW1lcmEgdW5hdmFpbGFibGU8L3RleHQ+PC9zdmc+",
+                      "offPlaceholder": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NDAiIGhlaWdodD0iMzYwIiB2aWV3Qm94PSIwIDAgNjQwIDM2MCI+PHJlY3Qgd2lkdGg9IjY0MCIgaGVpZ2h0PSIzNjAiIGZpbGw9IiMxNzI1MzgiLz48ZyBmaWxsPSJub25lIiBzdHJva2U9IiM3MDg0OWIiIHN0cm9rZS13aWR0aD0iNSI+PHJlY3QgeD0iMjY1IiB5PSIxMTgiIHdpZHRoPSIxMTAiIGhlaWdodD0iODAiIHJ4PSIxMCIvPjxjaXJjbGUgY3g9IjMyMCIgY3k9IjE1OCIgcj0iMjMiLz48cGF0aCBkPSJNMjg1IDExOGwxMC0xNmg1MGwxMCAxNiIvPjwvZz48dGV4dCB4PSIzMjAiIHk9IjI0MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjIwIiBmaWxsPSIjYThiN2M4Ij5DYW1lcmEgb2ZmPC90ZXh0Pjwvc3ZnPg=="
                     }
                   }
                 ]
@@ -604,229 +1430,1702 @@
           {
             "type": "ia.container.flex",
             "meta": {
-              "name": "PrinterButtons"
+              "name": "Printer02"
             },
             "position": {
-              "basis": "auto",
-              "grow": 0,
+              "basis": "390px",
+              "grow": 1,
               "shrink": 0
             },
             "props": {
-              "direction": "row",
-              "wrap": "wrap",
+              "direction": "column",
+              "wrap": "nowrap",
               "justify": "flex-start",
               "alignItems": "stretch",
               "style": {
                 "boxSizing": "border-box",
-                "gap": "12px"
+                "gap": "8px",
+                "minWidth": "0",
+                "padding": "16px",
+                "backgroundColor": "#ffffff",
+                "border": "1px solid #ccd8e3",
+                "borderRadius": "8px",
+                "boxShadow": "0 2px 5px #2434480a",
+                "opacity": "0.65"
               }
             },
             "children": [
               {
-                "type": "ia.input.button",
+                "type": "ia.container.flex",
                 "meta": {
-                  "name": "Pause"
+                  "name": "Header"
                 },
                 "position": {
-                  "basis": "130px",
+                  "basis": "auto",
                   "grow": 0,
                   "shrink": 0
                 },
                 "props": {
-                  "text": "Pause",
-                  "enabled": false,
-                  "primary": false,
+                  "direction": "row",
+                  "wrap": "nowrap",
+                  "justify": "flex-start",
+                  "alignItems": "stretch",
                   "style": {
-                    "backgroundColor": "#fff3d6",
-                    "color": "#20252b",
-                    "border": "1px solid #929ba4",
-                    "borderRadius": "3px",
-                    "height": "42px",
-                    "fontSize": "15px"
+                    "boxSizing": "border-box",
+                    "gap": "8px",
+                    "minWidth": "0",
+                    "height": "36px",
+                    "alignItems": "center",
+                    "borderBottom": "1px solid #dce4ec",
+                    "paddingBottom": "6px"
                   }
                 },
-                "events": {
-                  "component": {
-                    "onActionPerformed": {
-                      "type": "script",
-                      "scope": "G",
-                      "config": {
-                        "script": "\ttry:\n\t    bambuP1s.command('Pause')\n\t    self.view.custom.feedback = \"\"\n\texcept Exception as exc:\n\t    self.view.custom.feedback = str(exc)"
+                "children": [
+                  {
+                    "type": "ia.display.label",
+                    "meta": {
+                      "name": "PrinterName"
+                    },
+                    "position": {
+                      "basis": "0px",
+                      "grow": 1,
+                      "shrink": 1
+                    },
+                    "props": {
+                      "text": "P1S-02",
+                      "style": {
+                        "fontSize": "20px",
+                        "whiteSpace": "nowrap",
+                        "color": "#243448",
+                        "overflow": "hidden",
+                        "minWidth": "0",
+                        "textOverflow": "ellipsis"
+                      }
+                    }
+                  },
+                  {
+                    "type": "ia.display.label",
+                    "meta": {
+                      "name": "ConnectionBadge"
+                    },
+                    "position": {
+                      "basis": "112px",
+                      "grow": 0,
+                      "shrink": 1
+                    },
+                    "props": {
+                      "text": "OFFLINE",
+                      "style": {
+                        "fontSize": "12px",
+                        "whiteSpace": "nowrap",
+                        "color": "#243448",
+                        "overflow": "hidden",
+                        "minWidth": "0",
+                        "textOverflow": "ellipsis"
                       }
                     }
                   }
-                },
-                "propConfig": {
-                  "props.enabled": {
-                    "binding": {
-                      "type": "expr",
-                      "config": {
-                        "expression": "((!isNull({[default]BambuP1S/Connection/LastPoll}) && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) >= 0 && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) < 10) && {[default]BambuP1S/Readings/Online}) && {[default]BambuP1S/Readings/State} = \"Running\" && !{[default]BambuP1S/Commands/Busy}"
-                      }
-                    }
-                  }
-                }
+                ]
               },
               {
-                "type": "ia.input.button",
+                "type": "ia.container.flex",
                 "meta": {
-                  "name": "Resume"
+                  "name": "StatusLine"
                 },
                 "position": {
-                  "basis": "130px",
+                  "basis": "auto",
                   "grow": 0,
                   "shrink": 0
                 },
                 "props": {
-                  "text": "Resume",
-                  "enabled": false,
-                  "primary": false,
+                  "direction": "row",
+                  "wrap": "nowrap",
+                  "justify": "flex-start",
+                  "alignItems": "stretch",
                   "style": {
-                    "backgroundColor": "#e8f1e9",
-                    "color": "#20252b",
-                    "border": "1px solid #929ba4",
-                    "borderRadius": "3px",
-                    "height": "42px",
-                    "fontSize": "15px"
+                    "boxSizing": "border-box",
+                    "gap": "8px",
+                    "minWidth": "0",
+                    "height": "28px",
+                    "alignItems": "center"
                   }
                 },
-                "events": {
-                  "component": {
-                    "onActionPerformed": {
-                      "type": "script",
-                      "scope": "G",
-                      "config": {
-                        "script": "\ttry:\n\t    bambuP1s.command('Resume')\n\t    self.view.custom.feedback = \"\"\n\texcept Exception as exc:\n\t    self.view.custom.feedback = str(exc)"
+                "children": [
+                  {
+                    "type": "ia.display.label",
+                    "meta": {
+                      "name": "MachineStatus"
+                    },
+                    "position": {
+                      "basis": "98px",
+                      "grow": 0,
+                      "shrink": 1
+                    },
+                    "props": {
+                      "text": "OFFLINE",
+                      "style": {
+                        "fontSize": "16px",
+                        "whiteSpace": "nowrap",
+                        "color": "#243448",
+                        "overflow": "hidden",
+                        "minWidth": "0",
+                        "textOverflow": "ellipsis"
+                      }
+                    }
+                  },
+                  {
+                    "type": "ia.display.label",
+                    "meta": {
+                      "name": "VisionState"
+                    },
+                    "position": {
+                      "basis": "0px",
+                      "grow": 1,
+                      "shrink": 1
+                    },
+                    "props": {
+                      "text": "Vision: not assigned",
+                      "style": {
+                        "fontSize": "12px",
+                        "whiteSpace": "nowrap",
+                        "color": "#243448",
+                        "overflow": "hidden",
+                        "minWidth": "0",
+                        "textOverflow": "ellipsis"
                       }
                     }
                   }
-                },
-                "propConfig": {
-                  "props.enabled": {
-                    "binding": {
-                      "type": "expr",
-                      "config": {
-                        "expression": "((!isNull({[default]BambuP1S/Connection/LastPoll}) && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) >= 0 && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) < 10) && {[default]BambuP1S/Readings/Online}) && {[default]BambuP1S/Readings/State} = \"Paused\" && {[default]BambuP1S/System/Enabled} && !{[default]BambuP1S/Commands/Busy}"
-                      }
-                    }
-                  }
-                }
+                ]
               },
               {
-                "type": "ia.input.button",
+                "type": "ia.container.flex",
                 "meta": {
-                  "name": "Stop"
+                  "name": "PrinterBody"
                 },
                 "position": {
-                  "basis": "130px",
+                  "basis": "auto",
                   "grow": 0,
                   "shrink": 0
                 },
                 "props": {
-                  "text": "Stop / cancel",
-                  "enabled": false,
-                  "primary": false,
+                  "direction": "row",
+                  "wrap": "nowrap",
+                  "justify": "flex-start",
+                  "alignItems": "stretch",
                   "style": {
-                    "backgroundColor": "#f6e8e8",
-                    "color": "#20252b",
-                    "border": "1px solid #929ba4",
-                    "borderRadius": "3px",
-                    "height": "42px",
-                    "fontSize": "15px"
+                    "boxSizing": "border-box",
+                    "gap": "12px",
+                    "minWidth": "0"
                   }
                 },
-                "events": {
-                  "component": {
-                    "onActionPerformed": {
-                      "type": "script",
-                      "scope": "G",
-                      "config": {
-                        "script": "\ttry:\n\t    bambuP1s.command('Stop')\n\t    self.view.custom.feedback = \"\"\n\texcept Exception as exc:\n\t    self.view.custom.feedback = str(exc)"
+                "children": [
+                  {
+                    "type": "ia.container.flex",
+                    "meta": {
+                      "name": "PrinterDetails"
+                    },
+                    "position": {
+                      "basis": "42%",
+                      "grow": 1,
+                      "shrink": 1
+                    },
+                    "props": {
+                      "direction": "column",
+                      "wrap": "nowrap",
+                      "justify": "flex-start",
+                      "alignItems": "stretch",
+                      "style": {
+                        "boxSizing": "border-box",
+                        "gap": "10px",
+                        "minWidth": "0"
                       }
-                    }
-                  }
-                },
-                "propConfig": {
-                  "props.enabled": {
-                    "binding": {
-                      "type": "expr",
-                      "config": {
-                        "expression": "((!isNull({[default]BambuP1S/Connection/LastPoll}) && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) >= 0 && secondsBetween({[default]BambuP1S/Connection/LastPoll}, now(1000)) < 10) && {[default]BambuP1S/Readings/Online}) && ({[default]BambuP1S/Readings/State} = \"Running\" || {[default]BambuP1S/Readings/State} = \"Paused\")"
+                    },
+                    "children": [
+                      {
+                        "type": "ia.container.flex",
+                        "meta": {
+                          "name": "MachineAndData"
+                        },
+                        "position": {
+                          "basis": "auto",
+                          "grow": 0,
+                          "shrink": 0
+                        },
+                        "props": {
+                          "direction": "row",
+                          "wrap": "nowrap",
+                          "justify": "flex-start",
+                          "alignItems": "stretch",
+                          "style": {
+                            "boxSizing": "border-box",
+                            "gap": "8px",
+                            "minWidth": "0"
+                          }
+                        },
+                        "children": [
+                          {
+                            "type": "ia.display.image",
+                            "meta": {
+                              "name": "Printer"
+                            },
+                            "position": {
+                              "basis": "62px",
+                              "grow": 0,
+                              "shrink": 0
+                            },
+                            "props": {
+                              "source": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjIwIiB2aWV3Qm94PSIwIDAgMjAwIDIyMCI+PHJlY3QgeD0iMjMiIHk9IjEyIiB3aWR0aD0iMTU0IiBoZWlnaHQ9IjE4NCIgcng9IjciIGZpbGw9IiNlZGYyZjYiIHN0cm9rZT0iIzQ1NTY2YSIgc3Ryb2tlLXdpZHRoPSI0Ii8+PHJlY3QgeD0iMzYiIHk9IjMyIiB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEzOSIgZmlsbD0id2hpdGUiIHN0cm9rZT0iI2FlYmNjOSIgc3Ryb2tlLXdpZHRoPSIyIi8+PHBhdGggZD0iTTQyIDU4SDE1OCBNMTAwIDU4VjkxIE05MyA5MUgxMDdMMTAwIDEwM1ogTTQzIDE0OEgxNTcgTTUyIDE1NUgxNDgiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzQ1NTY2YSIgc3Ryb2tlLXdpZHRoPSI0Ii8+PHBhdGggZD0iTTc2IDE0NlYxMjdIMTIyVjE0NiIgZmlsbD0iI2Q4ZTVlZiIgc3Ryb2tlPSIjOGRhNWI4Ii8+PHJlY3QgeD0iMzQiIHk9IjE5OCIgd2lkdGg9IjI1IiBoZWlnaHQ9IjciIGZpbGw9IiM0NTU2NmEiLz48cmVjdCB4PSIxNDEiIHk9IjE5OCIgd2lkdGg9IjI1IiBoZWlnaHQ9IjciIGZpbGw9IiM0NTU2NmEiLz48dGV4dCB4PSIxMDAiIHk9IjE4NyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEwIiBmaWxsPSIjNDU1NjZhIj5CQU1CVSBMQUIgUDFTPC90ZXh0Pjwvc3ZnPg==",
+                              "fit": {
+                                "mode": "contain"
+                              },
+                              "style": {
+                                "height": "150px"
+                              }
+                            }
+                          },
+                          {
+                            "type": "ia.container.flex",
+                            "meta": {
+                              "name": "Readings"
+                            },
+                            "position": {
+                              "basis": "0px",
+                              "grow": 1,
+                              "shrink": 1
+                            },
+                            "props": {
+                              "direction": "column",
+                              "wrap": "nowrap",
+                              "justify": "flex-start",
+                              "alignItems": "stretch",
+                              "style": {
+                                "boxSizing": "border-box",
+                                "gap": "4px",
+                                "minWidth": "0"
+                              }
+                            },
+                            "children": [
+                              {
+                                "type": "ia.display.label",
+                                "meta": {
+                                  "name": "Program"
+                                },
+                                "position": {
+                                  "basis": "36px",
+                                  "grow": 0,
+                                  "shrink": 0
+                                },
+                                "props": {
+                                  "text": "Program: --",
+                                  "style": {
+                                    "fontSize": "12px",
+                                    "whiteSpace": "normal",
+                                    "color": "#243448",
+                                    "overflow": "hidden",
+                                    "overflowWrap": "anywhere"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "ia.display.label",
+                                "meta": {
+                                  "name": "NozzleTemp"
+                                },
+                                "position": {
+                                  "basis": "26px",
+                                  "grow": 0,
+                                  "shrink": 0
+                                },
+                                "props": {
+                                  "text": "Nozzle: --",
+                                  "style": {
+                                    "fontSize": "15px",
+                                    "whiteSpace": "normal",
+                                    "color": "#243448",
+                                    "overflow": "hidden"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "ia.display.label",
+                                "meta": {
+                                  "name": "BedTemp"
+                                },
+                                "position": {
+                                  "basis": "26px",
+                                  "grow": 0,
+                                  "shrink": 0
+                                },
+                                "props": {
+                                  "text": "Bed: --",
+                                  "style": {
+                                    "fontSize": "15px",
+                                    "whiteSpace": "normal",
+                                    "color": "#243448",
+                                    "overflow": "hidden"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "ia.display.label",
+                                "meta": {
+                                  "name": "Progress"
+                                },
+                                "position": {
+                                  "basis": "24px",
+                                  "grow": 0,
+                                  "shrink": 0
+                                },
+                                "props": {
+                                  "text": "Progress: --",
+                                  "style": {
+                                    "fontSize": "13px",
+                                    "whiteSpace": "normal",
+                                    "color": "#243448",
+                                    "overflow": "hidden"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "ia.display.label",
+                                "meta": {
+                                  "name": "TimeLeft"
+                                },
+                                "position": {
+                                  "basis": "24px",
+                                  "grow": 0,
+                                  "shrink": 0
+                                },
+                                "props": {
+                                  "text": "Time left: --",
+                                  "style": {
+                                    "fontSize": "13px",
+                                    "whiteSpace": "normal",
+                                    "color": "#243448",
+                                    "overflow": "hidden"
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "ia.container.flex",
+                        "meta": {
+                          "name": "PrinterButtons"
+                        },
+                        "position": {
+                          "basis": "auto",
+                          "grow": 0,
+                          "shrink": 0
+                        },
+                        "props": {
+                          "direction": "column",
+                          "wrap": "nowrap",
+                          "justify": "flex-start",
+                          "alignItems": "stretch",
+                          "style": {
+                            "boxSizing": "border-box",
+                            "gap": "6px",
+                            "minWidth": "0"
+                          }
+                        },
+                        "children": [
+                          {
+                            "type": "ia.container.flex",
+                            "meta": {
+                              "name": "PauseResume"
+                            },
+                            "position": {
+                              "basis": "auto",
+                              "grow": 0,
+                              "shrink": 0
+                            },
+                            "props": {
+                              "direction": "row",
+                              "wrap": "nowrap",
+                              "justify": "flex-start",
+                              "alignItems": "stretch",
+                              "style": {
+                                "boxSizing": "border-box",
+                                "gap": "6px",
+                                "minWidth": "0",
+                                "height": "36px"
+                              }
+                            },
+                            "children": [
+                              {
+                                "type": "ia.input.button",
+                                "meta": {
+                                  "name": "Pause"
+                                },
+                                "position": {
+                                  "basis": "0px",
+                                  "grow": 1,
+                                  "shrink": 1
+                                },
+                                "props": {
+                                  "text": "Pause",
+                                  "enabled": false,
+                                  "primary": false,
+                                  "style": {
+                                    "backgroundColor": "#fff4d9",
+                                    "color": "#243448",
+                                    "border": "1px solid #c6d0da",
+                                    "borderRadius": "5px",
+                                    "height": "36px",
+                                    "fontSize": "13px",
+                                    "fontWeight": "600"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "ia.input.button",
+                                "meta": {
+                                  "name": "Resume"
+                                },
+                                "position": {
+                                  "basis": "0px",
+                                  "grow": 1,
+                                  "shrink": 1
+                                },
+                                "props": {
+                                  "text": "Resume",
+                                  "enabled": false,
+                                  "primary": false,
+                                  "style": {
+                                    "backgroundColor": "#e5f3ed",
+                                    "color": "#243448",
+                                    "border": "1px solid #c6d0da",
+                                    "borderRadius": "5px",
+                                    "height": "36px",
+                                    "fontSize": "13px",
+                                    "fontWeight": "600"
+                                  }
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "type": "ia.container.flex",
+                            "meta": {
+                              "name": "CancelReset"
+                            },
+                            "position": {
+                              "basis": "auto",
+                              "grow": 0,
+                              "shrink": 0
+                            },
+                            "props": {
+                              "direction": "row",
+                              "wrap": "nowrap",
+                              "justify": "flex-start",
+                              "alignItems": "stretch",
+                              "style": {
+                                "boxSizing": "border-box",
+                                "gap": "6px",
+                                "minWidth": "0",
+                                "height": "36px"
+                              }
+                            },
+                            "children": [
+                              {
+                                "type": "ia.input.button",
+                                "meta": {
+                                  "name": "Stop"
+                                },
+                                "position": {
+                                  "basis": "0px",
+                                  "grow": 1,
+                                  "shrink": 1
+                                },
+                                "props": {
+                                  "text": "Cancel job",
+                                  "enabled": false,
+                                  "primary": false,
+                                  "style": {
+                                    "backgroundColor": "#fae9e9",
+                                    "color": "#243448",
+                                    "border": "1px solid #c6d0da",
+                                    "borderRadius": "5px",
+                                    "height": "36px",
+                                    "fontSize": "13px",
+                                    "fontWeight": "600"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "ia.input.button",
+                                "meta": {
+                                  "name": "PrinterReset"
+                                },
+                                "position": {
+                                  "basis": "0px",
+                                  "grow": 1,
+                                  "shrink": 1
+                                },
+                                "props": {
+                                  "text": "Reset",
+                                  "enabled": false,
+                                  "primary": false,
+                                  "style": {
+                                    "backgroundColor": "#ffffff",
+                                    "color": "#243448",
+                                    "border": "1px solid #c6d0da",
+                                    "borderRadius": "5px",
+                                    "height": "36px",
+                                    "fontSize": "13px",
+                                    "fontWeight": "600"
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "ia.display.label",
+                        "meta": {
+                          "name": "CommandResult"
+                        },
+                        "position": {
+                          "basis": "40px",
+                          "grow": 0,
+                          "shrink": 0
+                        },
+                        "props": {
+                          "text": "No connection configured",
+                          "style": {
+                            "fontSize": "12px",
+                            "whiteSpace": "normal",
+                            "color": "#243448",
+                            "overflow": "hidden"
+                          }
+                        }
+                      },
+                      {
+                        "type": "ia.container.flex",
+                        "meta": {
+                          "name": "ConnectionDetails"
+                        },
+                        "position": {
+                          "basis": "auto",
+                          "grow": 0,
+                          "shrink": 0
+                        },
+                        "props": {
+                          "direction": "column",
+                          "wrap": "nowrap",
+                          "justify": "flex-start",
+                          "alignItems": "stretch",
+                          "style": {
+                            "boxSizing": "border-box",
+                            "gap": "2px",
+                            "minWidth": "0",
+                            "borderTop": "1px solid #dce4ec",
+                            "paddingTop": "8px"
+                          }
+                        },
+                        "children": [
+                          {
+                            "type": "ia.container.flex",
+                            "meta": {
+                              "name": "ConnectionRow"
+                            },
+                            "position": {
+                              "basis": "auto",
+                              "grow": 0,
+                              "shrink": 0
+                            },
+                            "props": {
+                              "direction": "row",
+                              "wrap": "nowrap",
+                              "justify": "flex-start",
+                              "alignItems": "stretch",
+                              "style": {
+                                "boxSizing": "border-box",
+                                "gap": "10px",
+                                "minWidth": "0",
+                                "height": "23px"
+                              }
+                            },
+                            "children": [
+                              {
+                                "type": "ia.display.label",
+                                "meta": {
+                                  "name": "Connector"
+                                },
+                                "position": {
+                                  "basis": "0px",
+                                  "grow": 1,
+                                  "shrink": 1
+                                },
+                                "props": {
+                                  "text": "Connector: offline",
+                                  "style": {
+                                    "fontSize": "11px",
+                                    "whiteSpace": "nowrap",
+                                    "color": "#243448",
+                                    "overflow": "hidden",
+                                    "minWidth": "0",
+                                    "textOverflow": "ellipsis"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "ia.display.label",
+                                "meta": {
+                                  "name": "MQTT"
+                                },
+                                "position": {
+                                  "basis": "0px",
+                                  "grow": 1,
+                                  "shrink": 1
+                                },
+                                "props": {
+                                  "text": "MQTT: offline",
+                                  "style": {
+                                    "fontSize": "11px",
+                                    "whiteSpace": "nowrap",
+                                    "color": "#243448",
+                                    "overflow": "hidden",
+                                    "minWidth": "0",
+                                    "textOverflow": "ellipsis"
+                                  }
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "type": "ia.container.flex",
+                            "meta": {
+                              "name": "ReportRow"
+                            },
+                            "position": {
+                              "basis": "auto",
+                              "grow": 0,
+                              "shrink": 0
+                            },
+                            "props": {
+                              "direction": "row",
+                              "wrap": "nowrap",
+                              "justify": "flex-start",
+                              "alignItems": "stretch",
+                              "style": {
+                                "boxSizing": "border-box",
+                                "gap": "10px",
+                                "minWidth": "0",
+                                "height": "23px"
+                              }
+                            },
+                            "children": [
+                              {
+                                "type": "ia.display.label",
+                                "meta": {
+                                  "name": "Reports"
+                                },
+                                "position": {
+                                  "basis": "0px",
+                                  "grow": 1,
+                                  "shrink": 1
+                                },
+                                "props": {
+                                  "text": "Reports: offline",
+                                  "style": {
+                                    "fontSize": "11px",
+                                    "whiteSpace": "nowrap",
+                                    "color": "#243448",
+                                    "overflow": "hidden",
+                                    "minWidth": "0",
+                                    "textOverflow": "ellipsis"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "ia.display.label",
+                                "meta": {
+                                  "name": "ReportAge"
+                                },
+                                "position": {
+                                  "basis": "0px",
+                                  "grow": 1,
+                                  "shrink": 1
+                                },
+                                "props": {
+                                  "text": "Report age: --",
+                                  "style": {
+                                    "fontSize": "11px",
+                                    "whiteSpace": "nowrap",
+                                    "color": "#243448",
+                                    "overflow": "hidden",
+                                    "minWidth": "0",
+                                    "textOverflow": "ellipsis"
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        ]
                       }
-                    }
+                    ]
+                  },
+                  {
+                    "type": "ia.container.flex",
+                    "meta": {
+                      "name": "CameraPanel"
+                    },
+                    "position": {
+                      "basis": "56%",
+                      "grow": 1,
+                      "shrink": 1
+                    },
+                    "props": {
+                      "direction": "column",
+                      "wrap": "nowrap",
+                      "justify": "flex-start",
+                      "alignItems": "stretch",
+                      "style": {
+                        "boxSizing": "border-box",
+                        "gap": "4px",
+                        "minWidth": "0",
+                        "height": "360px",
+                        "minHeight": "360px",
+                        "maxHeight": "360px",
+                        "padding": "6px",
+                        "backgroundColor": "#f5f8fb",
+                        "border": "1px solid #dce4ec",
+                        "borderRadius": "6px",
+                        "overflow": "hidden"
+                      }
+                    },
+                    "children": [
+                      {
+                        "type": "ia.input.button",
+                        "meta": {
+                          "name": "CameraToggle"
+                        },
+                        "position": {
+                          "basis": "36px",
+                          "grow": 0,
+                          "shrink": 0
+                        },
+                        "props": {
+                          "text": "Camera offline",
+                          "enabled": false,
+                          "primary": false,
+                          "style": {
+                            "backgroundColor": "#ffffff",
+                            "color": "#243448",
+                            "border": "1px solid #c6d0da",
+                            "borderRadius": "5px",
+                            "height": "36px",
+                            "fontSize": "13px",
+                            "fontWeight": "600"
+                          }
+                        }
+                      },
+                      {
+                        "type": "ia.display.image",
+                        "meta": {
+                          "name": "CameraImage"
+                        },
+                        "position": {
+                          "basis": "276px",
+                          "grow": 0,
+                          "shrink": 0
+                        },
+                        "props": {
+                          "source": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NDAiIGhlaWdodD0iMzYwIiB2aWV3Qm94PSIwIDAgNjQwIDM2MCI+PHJlY3Qgd2lkdGg9IjY0MCIgaGVpZ2h0PSIzNjAiIGZpbGw9IiMxNzI1MzgiLz48ZyBmaWxsPSJub25lIiBzdHJva2U9IiM3MDg0OWIiIHN0cm9rZS13aWR0aD0iNSI+PHJlY3QgeD0iMjY1IiB5PSIxMTgiIHdpZHRoPSIxMTAiIGhlaWdodD0iODAiIHJ4PSIxMCIvPjxjaXJjbGUgY3g9IjMyMCIgY3k9IjE1OCIgcj0iMjMiLz48cGF0aCBkPSJNMjg1IDExOGwxMC0xNmg1MGwxMCAxNiIvPjwvZz48dGV4dCB4PSIzMjAiIHk9IjI0MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjIwIiBmaWxsPSIjYThiN2M4Ij5QcmludGVyIG9mZmxpbmU8L3RleHQ+PC9zdmc+",
+                          "altText": "Printer camera",
+                          "fit": {
+                            "mode": "contain"
+                          },
+                          "style": {
+                            "height": "276px",
+                            "minHeight": "276px",
+                            "maxHeight": "276px",
+                            "width": "100%",
+                            "backgroundColor": "#172538"
+                          }
+                        }
+                      },
+                      {
+                        "type": "ia.display.label",
+                        "meta": {
+                          "name": "CameraMessage"
+                        },
+                        "position": {
+                          "basis": "26px",
+                          "grow": 0,
+                          "shrink": 0
+                        },
+                        "props": {
+                          "text": "Not connected",
+                          "style": {
+                            "fontSize": "11px",
+                            "whiteSpace": "normal",
+                            "color": "#243448",
+                            "overflow": "hidden"
+                          }
+                        }
+                      }
+                    ]
                   }
-                }
+                ]
               }
             ]
           },
           {
-            "type": "ia.display.label",
+            "type": "ia.container.flex",
             "meta": {
-              "name": "ControlMeaning"
+              "name": "Printer03"
             },
             "position": {
-              "basis": "40px",
-              "grow": 0,
+              "basis": "390px",
+              "grow": 1,
               "shrink": 0
             },
             "props": {
-              "text": "Resume continues a paused job. Stop cancels the job; it is not an emergency stop.",
+              "direction": "column",
+              "wrap": "nowrap",
+              "justify": "flex-start",
+              "alignItems": "stretch",
               "style": {
-                "fontSize": "13px",
-                "whiteSpace": "normal",
-                "color": "#20252b"
-              }
-            }
-          },
-          {
-            "type": "ia.display.label",
-            "meta": {
-              "name": "CommandResult"
-            },
-            "position": {
-              "basis": "60px",
-              "grow": 0,
-              "shrink": 0
-            },
-            "props": {
-              "text": "No command requested",
-              "style": {
-                "fontSize": "16px",
-                "whiteSpace": "normal",
-                "color": "#20252b"
+                "boxSizing": "border-box",
+                "gap": "8px",
+                "minWidth": "0",
+                "padding": "16px",
+                "backgroundColor": "#ffffff",
+                "border": "1px solid #ccd8e3",
+                "borderRadius": "8px",
+                "boxShadow": "0 2px 5px #2434480a",
+                "opacity": "0.65"
               }
             },
-            "propConfig": {
-              "props.text": {
-                "binding": {
-                  "type": "expr",
-                  "config": {
-                    "expression": "\"Printer command: \" + {[default]BambuP1S/Commands/Result}"
+            "children": [
+              {
+                "type": "ia.container.flex",
+                "meta": {
+                  "name": "Header"
+                },
+                "position": {
+                  "basis": "auto",
+                  "grow": 0,
+                  "shrink": 0
+                },
+                "props": {
+                  "direction": "row",
+                  "wrap": "nowrap",
+                  "justify": "flex-start",
+                  "alignItems": "stretch",
+                  "style": {
+                    "boxSizing": "border-box",
+                    "gap": "8px",
+                    "minWidth": "0",
+                    "height": "36px",
+                    "alignItems": "center",
+                    "borderBottom": "1px solid #dce4ec",
+                    "paddingBottom": "6px"
                   }
-                }
+                },
+                "children": [
+                  {
+                    "type": "ia.display.label",
+                    "meta": {
+                      "name": "PrinterName"
+                    },
+                    "position": {
+                      "basis": "0px",
+                      "grow": 1,
+                      "shrink": 1
+                    },
+                    "props": {
+                      "text": "P1S-03",
+                      "style": {
+                        "fontSize": "20px",
+                        "whiteSpace": "nowrap",
+                        "color": "#243448",
+                        "overflow": "hidden",
+                        "minWidth": "0",
+                        "textOverflow": "ellipsis"
+                      }
+                    }
+                  },
+                  {
+                    "type": "ia.display.label",
+                    "meta": {
+                      "name": "ConnectionBadge"
+                    },
+                    "position": {
+                      "basis": "112px",
+                      "grow": 0,
+                      "shrink": 1
+                    },
+                    "props": {
+                      "text": "OFFLINE",
+                      "style": {
+                        "fontSize": "12px",
+                        "whiteSpace": "nowrap",
+                        "color": "#243448",
+                        "overflow": "hidden",
+                        "minWidth": "0",
+                        "textOverflow": "ellipsis"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "ia.container.flex",
+                "meta": {
+                  "name": "StatusLine"
+                },
+                "position": {
+                  "basis": "auto",
+                  "grow": 0,
+                  "shrink": 0
+                },
+                "props": {
+                  "direction": "row",
+                  "wrap": "nowrap",
+                  "justify": "flex-start",
+                  "alignItems": "stretch",
+                  "style": {
+                    "boxSizing": "border-box",
+                    "gap": "8px",
+                    "minWidth": "0",
+                    "height": "28px",
+                    "alignItems": "center"
+                  }
+                },
+                "children": [
+                  {
+                    "type": "ia.display.label",
+                    "meta": {
+                      "name": "MachineStatus"
+                    },
+                    "position": {
+                      "basis": "98px",
+                      "grow": 0,
+                      "shrink": 1
+                    },
+                    "props": {
+                      "text": "OFFLINE",
+                      "style": {
+                        "fontSize": "16px",
+                        "whiteSpace": "nowrap",
+                        "color": "#243448",
+                        "overflow": "hidden",
+                        "minWidth": "0",
+                        "textOverflow": "ellipsis"
+                      }
+                    }
+                  },
+                  {
+                    "type": "ia.display.label",
+                    "meta": {
+                      "name": "VisionState"
+                    },
+                    "position": {
+                      "basis": "0px",
+                      "grow": 1,
+                      "shrink": 1
+                    },
+                    "props": {
+                      "text": "Vision: not assigned",
+                      "style": {
+                        "fontSize": "12px",
+                        "whiteSpace": "nowrap",
+                        "color": "#243448",
+                        "overflow": "hidden",
+                        "minWidth": "0",
+                        "textOverflow": "ellipsis"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "ia.container.flex",
+                "meta": {
+                  "name": "PrinterBody"
+                },
+                "position": {
+                  "basis": "auto",
+                  "grow": 0,
+                  "shrink": 0
+                },
+                "props": {
+                  "direction": "row",
+                  "wrap": "nowrap",
+                  "justify": "flex-start",
+                  "alignItems": "stretch",
+                  "style": {
+                    "boxSizing": "border-box",
+                    "gap": "12px",
+                    "minWidth": "0"
+                  }
+                },
+                "children": [
+                  {
+                    "type": "ia.container.flex",
+                    "meta": {
+                      "name": "PrinterDetails"
+                    },
+                    "position": {
+                      "basis": "42%",
+                      "grow": 1,
+                      "shrink": 1
+                    },
+                    "props": {
+                      "direction": "column",
+                      "wrap": "nowrap",
+                      "justify": "flex-start",
+                      "alignItems": "stretch",
+                      "style": {
+                        "boxSizing": "border-box",
+                        "gap": "10px",
+                        "minWidth": "0"
+                      }
+                    },
+                    "children": [
+                      {
+                        "type": "ia.container.flex",
+                        "meta": {
+                          "name": "MachineAndData"
+                        },
+                        "position": {
+                          "basis": "auto",
+                          "grow": 0,
+                          "shrink": 0
+                        },
+                        "props": {
+                          "direction": "row",
+                          "wrap": "nowrap",
+                          "justify": "flex-start",
+                          "alignItems": "stretch",
+                          "style": {
+                            "boxSizing": "border-box",
+                            "gap": "8px",
+                            "minWidth": "0"
+                          }
+                        },
+                        "children": [
+                          {
+                            "type": "ia.display.image",
+                            "meta": {
+                              "name": "Printer"
+                            },
+                            "position": {
+                              "basis": "62px",
+                              "grow": 0,
+                              "shrink": 0
+                            },
+                            "props": {
+                              "source": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjIwIiB2aWV3Qm94PSIwIDAgMjAwIDIyMCI+PHJlY3QgeD0iMjMiIHk9IjEyIiB3aWR0aD0iMTU0IiBoZWlnaHQ9IjE4NCIgcng9IjciIGZpbGw9IiNlZGYyZjYiIHN0cm9rZT0iIzQ1NTY2YSIgc3Ryb2tlLXdpZHRoPSI0Ii8+PHJlY3QgeD0iMzYiIHk9IjMyIiB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEzOSIgZmlsbD0id2hpdGUiIHN0cm9rZT0iI2FlYmNjOSIgc3Ryb2tlLXdpZHRoPSIyIi8+PHBhdGggZD0iTTQyIDU4SDE1OCBNMTAwIDU4VjkxIE05MyA5MUgxMDdMMTAwIDEwM1ogTTQzIDE0OEgxNTcgTTUyIDE1NUgxNDgiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzQ1NTY2YSIgc3Ryb2tlLXdpZHRoPSI0Ii8+PHBhdGggZD0iTTc2IDE0NlYxMjdIMTIyVjE0NiIgZmlsbD0iI2Q4ZTVlZiIgc3Ryb2tlPSIjOGRhNWI4Ii8+PHJlY3QgeD0iMzQiIHk9IjE5OCIgd2lkdGg9IjI1IiBoZWlnaHQ9IjciIGZpbGw9IiM0NTU2NmEiLz48cmVjdCB4PSIxNDEiIHk9IjE5OCIgd2lkdGg9IjI1IiBoZWlnaHQ9IjciIGZpbGw9IiM0NTU2NmEiLz48dGV4dCB4PSIxMDAiIHk9IjE4NyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEwIiBmaWxsPSIjNDU1NjZhIj5CQU1CVSBMQUIgUDFTPC90ZXh0Pjwvc3ZnPg==",
+                              "fit": {
+                                "mode": "contain"
+                              },
+                              "style": {
+                                "height": "150px"
+                              }
+                            }
+                          },
+                          {
+                            "type": "ia.container.flex",
+                            "meta": {
+                              "name": "Readings"
+                            },
+                            "position": {
+                              "basis": "0px",
+                              "grow": 1,
+                              "shrink": 1
+                            },
+                            "props": {
+                              "direction": "column",
+                              "wrap": "nowrap",
+                              "justify": "flex-start",
+                              "alignItems": "stretch",
+                              "style": {
+                                "boxSizing": "border-box",
+                                "gap": "4px",
+                                "minWidth": "0"
+                              }
+                            },
+                            "children": [
+                              {
+                                "type": "ia.display.label",
+                                "meta": {
+                                  "name": "Program"
+                                },
+                                "position": {
+                                  "basis": "36px",
+                                  "grow": 0,
+                                  "shrink": 0
+                                },
+                                "props": {
+                                  "text": "Program: --",
+                                  "style": {
+                                    "fontSize": "12px",
+                                    "whiteSpace": "normal",
+                                    "color": "#243448",
+                                    "overflow": "hidden",
+                                    "overflowWrap": "anywhere"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "ia.display.label",
+                                "meta": {
+                                  "name": "NozzleTemp"
+                                },
+                                "position": {
+                                  "basis": "26px",
+                                  "grow": 0,
+                                  "shrink": 0
+                                },
+                                "props": {
+                                  "text": "Nozzle: --",
+                                  "style": {
+                                    "fontSize": "15px",
+                                    "whiteSpace": "normal",
+                                    "color": "#243448",
+                                    "overflow": "hidden"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "ia.display.label",
+                                "meta": {
+                                  "name": "BedTemp"
+                                },
+                                "position": {
+                                  "basis": "26px",
+                                  "grow": 0,
+                                  "shrink": 0
+                                },
+                                "props": {
+                                  "text": "Bed: --",
+                                  "style": {
+                                    "fontSize": "15px",
+                                    "whiteSpace": "normal",
+                                    "color": "#243448",
+                                    "overflow": "hidden"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "ia.display.label",
+                                "meta": {
+                                  "name": "Progress"
+                                },
+                                "position": {
+                                  "basis": "24px",
+                                  "grow": 0,
+                                  "shrink": 0
+                                },
+                                "props": {
+                                  "text": "Progress: --",
+                                  "style": {
+                                    "fontSize": "13px",
+                                    "whiteSpace": "normal",
+                                    "color": "#243448",
+                                    "overflow": "hidden"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "ia.display.label",
+                                "meta": {
+                                  "name": "TimeLeft"
+                                },
+                                "position": {
+                                  "basis": "24px",
+                                  "grow": 0,
+                                  "shrink": 0
+                                },
+                                "props": {
+                                  "text": "Time left: --",
+                                  "style": {
+                                    "fontSize": "13px",
+                                    "whiteSpace": "normal",
+                                    "color": "#243448",
+                                    "overflow": "hidden"
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "ia.container.flex",
+                        "meta": {
+                          "name": "PrinterButtons"
+                        },
+                        "position": {
+                          "basis": "auto",
+                          "grow": 0,
+                          "shrink": 0
+                        },
+                        "props": {
+                          "direction": "column",
+                          "wrap": "nowrap",
+                          "justify": "flex-start",
+                          "alignItems": "stretch",
+                          "style": {
+                            "boxSizing": "border-box",
+                            "gap": "6px",
+                            "minWidth": "0"
+                          }
+                        },
+                        "children": [
+                          {
+                            "type": "ia.container.flex",
+                            "meta": {
+                              "name": "PauseResume"
+                            },
+                            "position": {
+                              "basis": "auto",
+                              "grow": 0,
+                              "shrink": 0
+                            },
+                            "props": {
+                              "direction": "row",
+                              "wrap": "nowrap",
+                              "justify": "flex-start",
+                              "alignItems": "stretch",
+                              "style": {
+                                "boxSizing": "border-box",
+                                "gap": "6px",
+                                "minWidth": "0",
+                                "height": "36px"
+                              }
+                            },
+                            "children": [
+                              {
+                                "type": "ia.input.button",
+                                "meta": {
+                                  "name": "Pause"
+                                },
+                                "position": {
+                                  "basis": "0px",
+                                  "grow": 1,
+                                  "shrink": 1
+                                },
+                                "props": {
+                                  "text": "Pause",
+                                  "enabled": false,
+                                  "primary": false,
+                                  "style": {
+                                    "backgroundColor": "#fff4d9",
+                                    "color": "#243448",
+                                    "border": "1px solid #c6d0da",
+                                    "borderRadius": "5px",
+                                    "height": "36px",
+                                    "fontSize": "13px",
+                                    "fontWeight": "600"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "ia.input.button",
+                                "meta": {
+                                  "name": "Resume"
+                                },
+                                "position": {
+                                  "basis": "0px",
+                                  "grow": 1,
+                                  "shrink": 1
+                                },
+                                "props": {
+                                  "text": "Resume",
+                                  "enabled": false,
+                                  "primary": false,
+                                  "style": {
+                                    "backgroundColor": "#e5f3ed",
+                                    "color": "#243448",
+                                    "border": "1px solid #c6d0da",
+                                    "borderRadius": "5px",
+                                    "height": "36px",
+                                    "fontSize": "13px",
+                                    "fontWeight": "600"
+                                  }
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "type": "ia.container.flex",
+                            "meta": {
+                              "name": "CancelReset"
+                            },
+                            "position": {
+                              "basis": "auto",
+                              "grow": 0,
+                              "shrink": 0
+                            },
+                            "props": {
+                              "direction": "row",
+                              "wrap": "nowrap",
+                              "justify": "flex-start",
+                              "alignItems": "stretch",
+                              "style": {
+                                "boxSizing": "border-box",
+                                "gap": "6px",
+                                "minWidth": "0",
+                                "height": "36px"
+                              }
+                            },
+                            "children": [
+                              {
+                                "type": "ia.input.button",
+                                "meta": {
+                                  "name": "Stop"
+                                },
+                                "position": {
+                                  "basis": "0px",
+                                  "grow": 1,
+                                  "shrink": 1
+                                },
+                                "props": {
+                                  "text": "Cancel job",
+                                  "enabled": false,
+                                  "primary": false,
+                                  "style": {
+                                    "backgroundColor": "#fae9e9",
+                                    "color": "#243448",
+                                    "border": "1px solid #c6d0da",
+                                    "borderRadius": "5px",
+                                    "height": "36px",
+                                    "fontSize": "13px",
+                                    "fontWeight": "600"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "ia.input.button",
+                                "meta": {
+                                  "name": "PrinterReset"
+                                },
+                                "position": {
+                                  "basis": "0px",
+                                  "grow": 1,
+                                  "shrink": 1
+                                },
+                                "props": {
+                                  "text": "Reset",
+                                  "enabled": false,
+                                  "primary": false,
+                                  "style": {
+                                    "backgroundColor": "#ffffff",
+                                    "color": "#243448",
+                                    "border": "1px solid #c6d0da",
+                                    "borderRadius": "5px",
+                                    "height": "36px",
+                                    "fontSize": "13px",
+                                    "fontWeight": "600"
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "ia.display.label",
+                        "meta": {
+                          "name": "CommandResult"
+                        },
+                        "position": {
+                          "basis": "40px",
+                          "grow": 0,
+                          "shrink": 0
+                        },
+                        "props": {
+                          "text": "No connection configured",
+                          "style": {
+                            "fontSize": "12px",
+                            "whiteSpace": "normal",
+                            "color": "#243448",
+                            "overflow": "hidden"
+                          }
+                        }
+                      },
+                      {
+                        "type": "ia.container.flex",
+                        "meta": {
+                          "name": "ConnectionDetails"
+                        },
+                        "position": {
+                          "basis": "auto",
+                          "grow": 0,
+                          "shrink": 0
+                        },
+                        "props": {
+                          "direction": "column",
+                          "wrap": "nowrap",
+                          "justify": "flex-start",
+                          "alignItems": "stretch",
+                          "style": {
+                            "boxSizing": "border-box",
+                            "gap": "2px",
+                            "minWidth": "0",
+                            "borderTop": "1px solid #dce4ec",
+                            "paddingTop": "8px"
+                          }
+                        },
+                        "children": [
+                          {
+                            "type": "ia.container.flex",
+                            "meta": {
+                              "name": "ConnectionRow"
+                            },
+                            "position": {
+                              "basis": "auto",
+                              "grow": 0,
+                              "shrink": 0
+                            },
+                            "props": {
+                              "direction": "row",
+                              "wrap": "nowrap",
+                              "justify": "flex-start",
+                              "alignItems": "stretch",
+                              "style": {
+                                "boxSizing": "border-box",
+                                "gap": "10px",
+                                "minWidth": "0",
+                                "height": "23px"
+                              }
+                            },
+                            "children": [
+                              {
+                                "type": "ia.display.label",
+                                "meta": {
+                                  "name": "Connector"
+                                },
+                                "position": {
+                                  "basis": "0px",
+                                  "grow": 1,
+                                  "shrink": 1
+                                },
+                                "props": {
+                                  "text": "Connector: offline",
+                                  "style": {
+                                    "fontSize": "11px",
+                                    "whiteSpace": "nowrap",
+                                    "color": "#243448",
+                                    "overflow": "hidden",
+                                    "minWidth": "0",
+                                    "textOverflow": "ellipsis"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "ia.display.label",
+                                "meta": {
+                                  "name": "MQTT"
+                                },
+                                "position": {
+                                  "basis": "0px",
+                                  "grow": 1,
+                                  "shrink": 1
+                                },
+                                "props": {
+                                  "text": "MQTT: offline",
+                                  "style": {
+                                    "fontSize": "11px",
+                                    "whiteSpace": "nowrap",
+                                    "color": "#243448",
+                                    "overflow": "hidden",
+                                    "minWidth": "0",
+                                    "textOverflow": "ellipsis"
+                                  }
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "type": "ia.container.flex",
+                            "meta": {
+                              "name": "ReportRow"
+                            },
+                            "position": {
+                              "basis": "auto",
+                              "grow": 0,
+                              "shrink": 0
+                            },
+                            "props": {
+                              "direction": "row",
+                              "wrap": "nowrap",
+                              "justify": "flex-start",
+                              "alignItems": "stretch",
+                              "style": {
+                                "boxSizing": "border-box",
+                                "gap": "10px",
+                                "minWidth": "0",
+                                "height": "23px"
+                              }
+                            },
+                            "children": [
+                              {
+                                "type": "ia.display.label",
+                                "meta": {
+                                  "name": "Reports"
+                                },
+                                "position": {
+                                  "basis": "0px",
+                                  "grow": 1,
+                                  "shrink": 1
+                                },
+                                "props": {
+                                  "text": "Reports: offline",
+                                  "style": {
+                                    "fontSize": "11px",
+                                    "whiteSpace": "nowrap",
+                                    "color": "#243448",
+                                    "overflow": "hidden",
+                                    "minWidth": "0",
+                                    "textOverflow": "ellipsis"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "ia.display.label",
+                                "meta": {
+                                  "name": "ReportAge"
+                                },
+                                "position": {
+                                  "basis": "0px",
+                                  "grow": 1,
+                                  "shrink": 1
+                                },
+                                "props": {
+                                  "text": "Report age: --",
+                                  "style": {
+                                    "fontSize": "11px",
+                                    "whiteSpace": "nowrap",
+                                    "color": "#243448",
+                                    "overflow": "hidden",
+                                    "minWidth": "0",
+                                    "textOverflow": "ellipsis"
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "ia.container.flex",
+                    "meta": {
+                      "name": "CameraPanel"
+                    },
+                    "position": {
+                      "basis": "56%",
+                      "grow": 1,
+                      "shrink": 1
+                    },
+                    "props": {
+                      "direction": "column",
+                      "wrap": "nowrap",
+                      "justify": "flex-start",
+                      "alignItems": "stretch",
+                      "style": {
+                        "boxSizing": "border-box",
+                        "gap": "4px",
+                        "minWidth": "0",
+                        "height": "360px",
+                        "minHeight": "360px",
+                        "maxHeight": "360px",
+                        "padding": "6px",
+                        "backgroundColor": "#f5f8fb",
+                        "border": "1px solid #dce4ec",
+                        "borderRadius": "6px",
+                        "overflow": "hidden"
+                      }
+                    },
+                    "children": [
+                      {
+                        "type": "ia.input.button",
+                        "meta": {
+                          "name": "CameraToggle"
+                        },
+                        "position": {
+                          "basis": "36px",
+                          "grow": 0,
+                          "shrink": 0
+                        },
+                        "props": {
+                          "text": "Camera offline",
+                          "enabled": false,
+                          "primary": false,
+                          "style": {
+                            "backgroundColor": "#ffffff",
+                            "color": "#243448",
+                            "border": "1px solid #c6d0da",
+                            "borderRadius": "5px",
+                            "height": "36px",
+                            "fontSize": "13px",
+                            "fontWeight": "600"
+                          }
+                        }
+                      },
+                      {
+                        "type": "ia.display.image",
+                        "meta": {
+                          "name": "CameraImage"
+                        },
+                        "position": {
+                          "basis": "276px",
+                          "grow": 0,
+                          "shrink": 0
+                        },
+                        "props": {
+                          "source": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NDAiIGhlaWdodD0iMzYwIiB2aWV3Qm94PSIwIDAgNjQwIDM2MCI+PHJlY3Qgd2lkdGg9IjY0MCIgaGVpZ2h0PSIzNjAiIGZpbGw9IiMxNzI1MzgiLz48ZyBmaWxsPSJub25lIiBzdHJva2U9IiM3MDg0OWIiIHN0cm9rZS13aWR0aD0iNSI+PHJlY3QgeD0iMjY1IiB5PSIxMTgiIHdpZHRoPSIxMTAiIGhlaWdodD0iODAiIHJ4PSIxMCIvPjxjaXJjbGUgY3g9IjMyMCIgY3k9IjE1OCIgcj0iMjMiLz48cGF0aCBkPSJNMjg1IDExOGwxMC0xNmg1MGwxMCAxNiIvPjwvZz48dGV4dCB4PSIzMjAiIHk9IjI0MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjIwIiBmaWxsPSIjYThiN2M4Ij5QcmludGVyIG9mZmxpbmU8L3RleHQ+PC9zdmc+",
+                          "altText": "Printer camera",
+                          "fit": {
+                            "mode": "contain"
+                          },
+                          "style": {
+                            "height": "276px",
+                            "minHeight": "276px",
+                            "maxHeight": "276px",
+                            "width": "100%",
+                            "backgroundColor": "#172538"
+                          }
+                        }
+                      },
+                      {
+                        "type": "ia.display.label",
+                        "meta": {
+                          "name": "CameraMessage"
+                        },
+                        "position": {
+                          "basis": "26px",
+                          "grow": 0,
+                          "shrink": 0
+                        },
+                        "props": {
+                          "text": "Not connected",
+                          "style": {
+                            "fontSize": "11px",
+                            "whiteSpace": "normal",
+                            "color": "#243448",
+                            "overflow": "hidden"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
               }
-            }
+            ]
           }
         ]
-      },
-      {
-        "type": "ia.display.label",
-        "meta": {
-          "name": "DataFlow"
-        },
-        "position": {
-          "basis": "32px",
-          "grow": 0,
-          "shrink": 0
-        },
-        "props": {
-          "text": "P1S -> MQTT connector -> Ignition tags -> this screen",
-          "style": {
-            "fontSize": "13px",
-            "whiteSpace": "normal",
-            "color": "#20252b"
-          }
-        }
       },
       {
         "type": "ia.display.label",
@@ -834,7 +3133,7 @@
           "name": "Feedback"
         },
         "position": {
-          "basis": "50px",
+          "basis": "32px",
           "grow": 0,
           "shrink": 0
         },
@@ -843,7 +3142,8 @@
           "style": {
             "fontSize": "13px",
             "whiteSpace": "normal",
-            "color": "#20252b"
+            "color": "#243448",
+            "overflow": "hidden"
           }
         },
         "propConfig": {
@@ -853,6 +3153,103 @@
               "config": {
                 "expression": "{view.custom.feedback}"
               }
+            }
+          },
+          "position.display": {
+            "binding": {
+              "type": "expr",
+              "config": {
+                "expression": "len({view.custom.feedback}) > 0"
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "ia.display.label",
+        "meta": {
+          "name": "EventsHeading"
+        },
+        "position": {
+          "basis": "28px",
+          "grow": 0,
+          "shrink": 0
+        },
+        "props": {
+          "text": "Recent events",
+          "style": {
+            "fontSize": "16px",
+            "whiteSpace": "normal",
+            "color": "#243448",
+            "overflow": "hidden"
+          }
+        }
+      },
+      {
+        "type": "ia.display.table",
+        "meta": {
+          "name": "EventFeed"
+        },
+        "position": {
+          "basis": "145px",
+          "grow": 0,
+          "shrink": 0
+        },
+        "props": {
+          "data": [],
+          "columns": [
+            {
+              "field": "time",
+              "header": {
+                "title": "Time"
+              },
+              "width": 90,
+              "strictWidth": true
+            },
+            {
+              "field": "printer",
+              "header": {
+                "title": "Station"
+              },
+              "width": 95,
+              "strictWidth": true
+            },
+            {
+              "field": "event",
+              "header": {
+                "title": "Event"
+              },
+              "width": 900,
+              "strictWidth": false
+            }
+          ],
+          "pager": {
+            "top": false,
+            "bottom": false
+          },
+          "rows": {
+            "height": 28
+          },
+          "style": {
+            "fontSize": "12px",
+            "border": "1px solid #ccd8e3",
+            "borderRadius": "6px"
+          }
+        },
+        "propConfig": {
+          "props.data": {
+            "binding": {
+              "type": "tag",
+              "config": {
+                "tagPath": "[default]BambuP1S/System/Events",
+                "mode": "direct"
+              },
+              "transforms": [
+                {
+                  "type": "script",
+                  "code": "\ttry:\n\t    return system.util.jsonDecode(str(value))\n\texcept Exception:\n\t    return []"
+                }
+              ]
             }
           }
         }

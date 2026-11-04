@@ -8,8 +8,8 @@ projects are kept here for the hackathon and move to their own repositories afte
 | Folder | What it is | How it meets vLock-AI Vision |
 |---|---|---|
 | [pi_camera](pi_camera/README.md) | Raspberry Pi 5 USB camera service and boot installer | The app reads frames from its HTTP address |
-| [printer_ignition](printer_ignition/README.md) | Bambu P1S printer in Ignition Perspective, with a local MQTT connector, because the printer has no OPC UA | Not at all: it is the "machine" |
-| [detection_pause](detection_pause/SAM_BRIDGE.md) | The earlier detection-to-Pause experiment and its Gateway script | Watches an older tag path; it does not react to the fixed zone tags or to Unknown |
+| [printer_ignition](printer_ignition/DEMO_SETUP.md) | Bambu P1S printer dashboard in Ignition Perspective, a local MQTT connector, because the printer has no OPC UA, and example customer-side stop and reset logic | Its Gateway scripts read the fixed zone tags. The app sends it no commands |
+| [detection_pause](detection_pause/SAM_BRIDGE.md) | The earlier detection-to-Pause experiment and its Gateway script | Replaced. It watches an older tag path and does not react to the fixed zone tags or to Unknown |
 
 The product's own SCADA material is in [`ignition/`](../ignition/INTEGRATION.md).
 

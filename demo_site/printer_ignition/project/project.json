@@ -1,6 +1,6 @@
 {
-  "title": "Single Printer Control",
-  "description": "One P1S: live temperatures, status, printer commands and separate supervisory controls.",
+  "title": "Printer Farm Control",
+  "description": "One connected P1S and two offline stations; customer Gateway stop latch, reset and operator Resume.",
   "enabled": true,
   "inheritable": false,
   "parent": ""
