@@ -94,6 +94,25 @@ Same thing from a terminal in the project folder:
 .\.venv\Scripts\python.exe web/application.py --open
 ```
 
+### Run with the Meta Model API (no GPU)
+
+1. Put your Meta developer key in `.env` as `META_API_KEY`.
+2. Add `VLOCK_SAM_BACKEND=meta_api` to `.env`. The default, `local`, uses the GPU worker.
+3. Start the application as above. No SAM worker starts.
+
+Monitoring then sends one camera frame per object about once a second, with a 3-second
+limit per request (`VLOCK_SAM_TIMEOUT_MS`). A timeout, Meta error or lost internet makes the
+zone Unknown, never Clear. Rules, zone tags and OPC UA do not change.
+
+- **Privacy:** camera frames leave this PC and go to Meta.
+- **Cost:** each frame and object is one request, at Meta's listed $2.50 per 1,000 images:
+  up to about $9 an hour for one object and $18 for two. Requests, latency and scores are logged in
+  `data/application/sam_latency.csv`.
+- **Phrases:** Meta advises one simple noun phrase per request, so prefer `person` and `flag` as
+  two objects. Two objects only means both are in the area, not that one is holding or wearing
+  the other.
+- **Not tested with this backend:** Docker, RTSP cameras, long runs and real plant footage.
+
 In a zone: connect the Pi camera, describe what to watch, click **Configure with Muse**,
 review the proposal and click **Use this configuration**, then **Enable monitoring**.
 For SCADA, enable the OPC UA server (or MQTT) under Integrations and click Save workspace;

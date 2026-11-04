@@ -272,7 +272,8 @@ class Monitoring:
             try:
                 frames = []
                 began = time.monotonic()
-                while len(frames)<WINDOW_FRAMES and not self.cancel.is_set():
+                window = getattr(self.infer,'window_frames',WINDOW_FRAMES)
+                while len(frames)<window and not self.cancel.is_set():
                     if revision != self.revision:
                         break
                     requested = time.monotonic()
@@ -281,10 +282,10 @@ class Monitoring:
                     if sequence != previous:
                         frames.append(dict(jpeg=jpeg,sequence=sequence,captured_at=requested-age/1000))
                         previous = sequence
-                    if len(frames)<WINDOW_FRAMES and self.cancel.wait(0.25):
+                    if len(frames)<window and self.cancel.wait(0.25):
                         return
                     if time.monotonic()-began>3:
-                        raise ValueError('Camera did not provide four fresh frames.')
+                        raise ValueError('Camera did not provide enough fresh frames.')
                 if self.cancel.is_set():
                     return
                 if revision != self.revision:
@@ -315,10 +316,15 @@ class Monitoring:
                     for index in range(len(frames)):
                         self.publish([rows[index] for rows in collected],frames[index],revision,config,
                                      render_overlay=index==len(frames)-1,check_seconds=check_seconds)
+                    # A paid backend sets a pace; the local worker runs flat out.
+                    pause = getattr(self.infer,'min_check_seconds',0)-(time.monotonic()-began)
+                    if pause>0 and self.cancel.wait(pause):
+                        return
             except Exception:
                 with self.lock:
                     if not self.cancel.is_set() and revision == self.revision:
-                        if self.rule.unavailable('Camera or SAM unavailable. Check the Pi connection and local GPU worker.'):
+                        if self.rule.unavailable(getattr(self.infer,'unavailable_reason',
+                                'Camera or SAM unavailable. Check the Pi connection and local GPU worker.')):
                             self.event('unavailable')
                         self.result = self.result_at = None
                         self.bridge_unknown()

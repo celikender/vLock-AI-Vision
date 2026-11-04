@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
 from services.application import Workspace, ApplicationError
 from services.vlock.store import BridgeError
+from services.vision.assistant import settings
 from services.vision.diagnostics import Diagnostics
 from services.vision.worker_process import SamWorker
 from services.vlock import zone_tags
@@ -350,6 +351,10 @@ def main():
     parser.add_argument('--no-sam',action='store_true',help='Do not start or manage the local SAM worker.')
     parser.add_argument('--open',action='store_true',help='Open the application in the default browser.')
     args=parser.parse_args()
+    sam_backend=(settings().get('VLOCK_SAM_BACKEND') or 'local').strip()
+    if sam_backend not in ('local','meta_api'):
+        print('VLOCK_SAM_BACKEND must be local or meta_api. Fix .env, then start again.',flush=True)
+        sys.exit(1)
     try:
         instance=SingleInstance(args.data_dir)
     except RuntimeError as error:
@@ -359,8 +364,14 @@ def main():
         sys.exit(1)
     if args.data_dir==DATA:
         migrate_data()
-    worker=None if args.no_sam else SamWorker(args.data_dir/'sam_worker.log')
-    workspace=Workspace(args.data_dir,diagnostics=Diagnostics(),worker=worker)
+    worker,backend=None,{}
+    if not args.no_sam and sam_backend=='meta_api':
+        from services.vision.meta_sam import MetaSam
+        worker=MetaSam(args.data_dir/'sam_latency.csv')
+        backend=dict(infer=worker,regions=worker.segment_regions)
+    elif not args.no_sam:
+        worker=SamWorker(args.data_dir/'sam_worker.log')
+    workspace=Workspace(args.data_dir,diagnostics=Diagnostics(),worker=worker,**backend)
     try:
         server=make_server(workspace,args.port)
     except OSError:
@@ -373,7 +384,8 @@ def main():
     if worker:
         close_handler=on_console_close(worker.stop)
         worker.start()
-        print('SAM 3.1 worker: waiting for the SAM container (Docker).' if not worker.launch else
+        print(worker.start_message if sam_backend=='meta_api' else
+              'SAM 3.1 worker: waiting for the SAM container (Docker).' if not worker.launch else
               f'SAM 3.1 worker: starting in Ubuntu/WSL; log at {worker.log_path}',flush=True)
     if args.open:
         webbrowser.open(url)

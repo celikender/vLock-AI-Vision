@@ -18,7 +18,7 @@ os.environ.setdefault('TQDM_DISABLE', '1')
 from pathlib import Path
 from flask import Flask, request, jsonify, Response
 from PIL import Image
-from .masks import prepare, render, SegmentationError
+from .masks import prepare, render, outline, SegmentationError
 from .video import track_window, validate_prompt, WINDOW_FRAMES, MAX_JPEG_BYTES
 
 app=Flask(__name__)
@@ -29,7 +29,6 @@ model_loads=0
 warmup=dict(state='idle',error=None,seconds=None)
 log=logging.getLogger('sam.video')
 GROUNDING_BATCH_SIZE=1
-MAX_AREA_VERTICES=12
 PINNED=Path(__file__).with_name('runtime')/'weights.sha256'
 verified={}
 weights_error=None
@@ -119,28 +118,6 @@ def segment_image(image, prompt):
                 return masks
             finally:
                 predictor.handle_request({'type':'close_session','session_id':session_id})
-
-
-def outline(mask):
-    """Largest outer contour of one mask as a simple polygon of at most 12 normalized vertices."""
-    import cv2
-    import numpy as np
-    pixels=(np.asarray(mask)>0).astype('uint8')
-    contours,_=cv2.findContours(pixels,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
-    if not contours:
-        return None
-    contour=max(contours,key=cv2.contourArea)
-    perimeter=cv2.arcLength(contour,True)
-    epsilon=.01*perimeter
-    polygon=cv2.approxPolyDP(contour,epsilon,True)
-    while len(polygon)>MAX_AREA_VERTICES:
-        epsilon*=1.4
-        polygon=cv2.approxPolyDP(contour,epsilon,True)
-    if len(polygon)<3:
-        x,y,w,h=cv2.boundingRect(contour)
-        polygon=np.array([[[x,y]],[[x+w,y]],[[x+w,y+h]],[[x,y+h]]])
-    width,height=mask.size
-    return [[round(float(p[0][0])/width,4),round(float(p[0][1])/height,4)] for p in polygon]
 
 
 @app.before_request

@@ -1,9 +1,10 @@
 """Connectivity and latency test for SAM 3.1 and Muse Spark on the Meta Model API.
 
 Sends one local frame to Meta. Run from the project folder:
-    .venv\\Scripts\\python.exe scripts/test_meta_sam.py [image.jpg]
+    .venv\\Scripts\\python.exe scripts/test_meta_sam.py [image.jpg] [--phrases person monitor] [--runs 5] [--no-muse]
 The key comes from .env or the environment (META_API_KEY or MODEL_API_KEY) and is never printed.
 """
+import argparse
 import base64
 import os
 import re
@@ -16,7 +17,6 @@ from openai import APIConnectionError, APIStatusError, APITimeoutError, OpenAI
 
 ROOT = Path(__file__).resolve().parents[1]
 PHRASES = ['dog', 'person']
-CONTROL_PHRASE = 'storage drawers'  # Expected to match the sample frame, so box parsing is exercised.
 RUNS = 10
 TIMEOUT_SECONDS = 60
 RAW_PREVIEW = 400
@@ -99,10 +99,10 @@ def show_boxes(text):
     return f'{len(boxes)} match(es) {boxes}' if boxes else '0 matches'
 
 
-def base64_rejected(client, model, image):
+def base64_rejected(client, model, phrase, image):
     """Try the frame inline once. Returns True only when Meta refuses the request as invalid."""
     try:
-        status, elapsed, _ = call(client, model, sam_content(CONTROL_PHRASE, image))
+        status, elapsed, _ = call(client, model, sam_content(phrase, image))
     except APIStatusError as error:
         print(f'Inline base64 check: HTTP {error.status_code} code={getattr(error, "code", None)}')
         if error.status_code in ACCESS_ERRORS:
@@ -113,7 +113,13 @@ def base64_rejected(client, model, image):
 
 
 def main():
-    path = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / 'samples' / 'frame.jpg'
+    parser = argparse.ArgumentParser(description='Measure SAM 3.1 and Muse Spark on the Meta Model API.')
+    parser.add_argument('image', nargs='?', type=Path, default=ROOT / 'samples' / 'frame.jpg')
+    parser.add_argument('--phrases', nargs='+', default=PHRASES)
+    parser.add_argument('--runs', type=int, default=RUNS)
+    parser.add_argument('--no-muse', action='store_true')
+    args = parser.parse_args()
+    path = args.image
     if not path.is_file():
         sys.exit(f'Test frame not found: {path}')
     config = {**dotenv_values(ROOT / '.env'), **os.environ}
@@ -129,17 +135,16 @@ def main():
     metadata = {'mask_encoding': 'one_bit', 'include_confidence': 'true'}
     with OpenAI(api_key=key, base_url=base_url, timeout=TIMEOUT_SECONDS, max_retries=0) as client:
         try:
-            if base64_rejected(client, sam_model, image):
+            if base64_rejected(client, sam_model, args.phrases[0], image):
                 print('Inline base64 refused: retrying through the Files API.')
                 image = {'type': 'input_image', 'file_id': upload(client, path)}
-            for phrase in PHRASES:
-                run(f'SAM "{phrase}"', RUNS, lambda p=phrase: call(client, sam_model, sam_content(p, image), metadata),
+            for phrase in args.phrases:
+                run(f'SAM "{phrase}"', args.runs, lambda p=phrase: call(client, sam_model, sam_content(p, image), metadata),
                     show_boxes)
-            run(f'SAM control "{CONTROL_PHRASE}"', 1,
-                lambda: call(client, sam_model, sam_content(CONTROL_PHRASE, image), metadata), show_boxes)
-            run('Muse Spark', RUNS,
-                lambda: call(client, muse_model, [{'type': 'input_text', 'text': MUSE_PROMPT}, image]),
-                lambda text: preview(' '.join(text.split())))
+            if not args.no_muse:
+                run('Muse Spark', args.runs,
+                    lambda: call(client, muse_model, [{'type': 'input_text', 'text': MUSE_PROMPT}, image]),
+                    lambda text: preview(' '.join(text.split())))
         except AccessError as error:
             sys.exit(f'\nSTOP: this key cannot use the model. {error}')
 

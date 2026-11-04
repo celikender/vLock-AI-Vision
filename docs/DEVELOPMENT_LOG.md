@@ -982,3 +982,20 @@ Future entries should record actual changes, verification evidence, limitations,
   stream measured about 14 FPS with zero failures and stays connected on the
   dashboard. Cold-model initialization and sensor-to-screen latency were not
   newly benchmarked. Existing experiments and unrelated user files untouched.
+
+## 2026-11-03: Meta Model API backend for SAM 3.1
+
+- Added `VLOCK_SAM_BACKEND=meta_api` (default `local`): one frame per object per request, about
+  one check a second, 3-second limit, no retries. A timeout, error or unreadable answer gives
+  Unknown. Rules, zone tags and adapters are unchanged. Muse stays out of the per-frame path.
+- Live on the Pi camera with a scratch copy of the data: 32 requests on changing frames, 375-1625 ms,
+  average 746 ms, none over the limit. A local check on the RTX 3070 Ti took 3560 ms for four frames.
+  An unreachable API address gave Unknown. The default local path still reached Active.
+- Phrase test, one frame with the flag standing in a holder and nobody holding it: `flag` matched
+  (score 0.93) and `person holding flag` found nothing in 10 runs, which is the correct answer.
+  On a second frame with the flag held in the hand, `person holding flag` matched the person in
+  5 of 5 runs (score 0.69), with `flag` at 0.75 and `person` at 0.95. Two frames only; `wearing`
+  is untested. Two separate objects means both are present, not holding or wearing.
+- Added a reference Ignition heartbeat watchdog; its logic has automated tests only.
+- Not tested: this backend with OPC UA or MQTT on, Docker, RTSP, long runs, the browser view, and
+  the watchdog in a real gateway.

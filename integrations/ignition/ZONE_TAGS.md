@@ -34,7 +34,10 @@ key and no tags yet.
 
 Unknown is never published as Clear: without a fresh result `Active`, the counts and
 the scores carry Bad quality (a null value) and `State` is `Unknown`. Also watch the
-bridge heartbeat (`Bridge/Online`, `Bridge/HeartbeatCounter`).
+bridge heartbeat (`Bridge/Online`, `Bridge/HeartbeatCounter`). The reference
+[heartbeat watchdog](heartbeat_watchdog.py) is an Ignition timer script that latches a
+`WatchdogFault` tag when the counter stops for more than 3 seconds; it sends no machine
+command and has not yet run in a real gateway.
 
 ## Where the tags are
 

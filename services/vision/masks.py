@@ -3,11 +3,35 @@ import base64
 from io import BytesIO
 from PIL import Image, ImageOps, ImageFilter, ImageChops, UnidentifiedImageError
 
+MAX_AREA_VERTICES = 12
+
 
 class SegmentationError(Exception):
     def __init__(self, message, status=502):
         super().__init__(message)
         self.status = status
+
+
+def outline(mask):
+    """Largest outer contour of one mask as a simple polygon of at most 12 normalized vertices."""
+    import cv2
+    import numpy as np
+    pixels=(np.asarray(mask)>0).astype('uint8')
+    contours,_=cv2.findContours(pixels,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
+    if not contours:
+        return None
+    contour=max(contours,key=cv2.contourArea)
+    perimeter=cv2.arcLength(contour,True)
+    epsilon=.01*perimeter
+    polygon=cv2.approxPolyDP(contour,epsilon,True)
+    while len(polygon)>MAX_AREA_VERTICES:
+        epsilon*=1.4
+        polygon=cv2.approxPolyDP(contour,epsilon,True)
+    if len(polygon)<3:
+        x,y,w,h=cv2.boundingRect(contour)
+        polygon=np.array([[[x,y]],[[x+w,y]],[[x+w,y+h]],[[x,y+h]]])
+    width,height=mask.size
+    return [[round(float(p[0][0])/width,4),round(float(p[0][1])/height,4)] for p in polygon]
 
 
 def prepare(jpeg, prompt):
