@@ -6,7 +6,7 @@ No model training and no vendor integrator: type what to watch, draw the area, a
 
 ## Demo
 
-![The zone goes Active, Ignition latches a stop and the printer pauses](docs/images/demo-stop.gif)
+![SAM 3.1 outlines the hand and the bottle, the zone goes Active, Ignition latches a stop and the printer pauses](docs/images/demo-stop.gif)
 
 [Watch the full demo video](https://youtu.be/5BJcpr42i7c)
 
@@ -166,7 +166,11 @@ The app is a read-only OPC UA server. In Ignition, add an OPC UA connection name
 opc.tcp://127.0.0.1:4845/vlock/
 ```
 
+![The vLock Bridge connection in the Ignition Gateway](docs/images/ignition-opc-connection.png)
+
 Each zone has the same tags at `nsu=urn:vlock:bridge:v1;s=Bridge/Zones/<tag key>/<tag>`.
+
+![Zone A-101 tags in the Ignition Designer Tag Browser, next to the Perspective view](docs/images/ignition-designer-tags.png)
 
 | Tag | Type | Meaning |
 |---|---|---|
@@ -224,7 +228,7 @@ The example shows some of the fields. The tag package is [`ignition/vlock-zones.
 
 ## Built for
 
-The Meta Global AI Developer Hackathon 2026, Indie Developer Track, by Ender Celik. [Gallery entry](https://cerebralvalley.ai/e/meta-ai-developer-hackathon/hackathon/gallery?q=Vlock+&project=4329).
+The Meta Global AI Developer Hackathon 2026, Indie Developer Track, by Ender Celik. [Gallery entry](https://cerebralvalley.ai/e/meta-ai-developer-hackathon/hackathon/gallery?q=vlock&project=4329).
 
 The stop latch idea comes from my earlier project, [vLock Digital LOTO](https://github.com/celikender/vLock-Digital-LOTO), an Ignition Perspective demonstration. No code was copied from it.
 
