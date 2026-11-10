@@ -81,6 +81,21 @@
             {
               "tagType": "AtomicTag",
               "valueSource": "opc",
+              "dataType": "Boolean",
+              "opcServer": {
+                "bindType": "parameter",
+                "binding": "{OpcServer}"
+              },
+              "opcItemPath": {
+                "bindType": "parameter",
+                "binding": "nsu=urn:vlock:bridge:v1;s=Bridge/Zones/{ZoneKey}/Settled"
+              },
+              "name": "Settled",
+              "documentation": "True when the latest check agrees with State. False while a different result is being confirmed. Bad quality when Unknown or for count zones."
+            },
+            {
+              "tagType": "AtomicTag",
+              "valueSource": "opc",
               "dataType": "Int4",
               "opcServer": {
                 "bindType": "parameter",

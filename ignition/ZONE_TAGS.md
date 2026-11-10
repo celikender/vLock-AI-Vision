@@ -19,6 +19,7 @@ key and no tags yet.
 | State | String | `Active`, `Clear`, `Valid` (count zones) or `Unknown`. |
 | Quality | String | `Good`, `Unknown` or `Stale`. |
 | Reason | String | Why the zone has this state. |
+| Settled | Boolean | True when the latest check agrees with State. False while a different result is being confirmed, for example the first check that sees a match while State is still `Clear`. Bad quality when Unknown, and always for count zones. Use it with `Clear` before accepting a reset. |
 | Count1 / Count2 | Int32 | Detections of Object1 / Object2 in the whole frame. Bad when Unknown or unused. |
 | Score1 / Score2 | Double | Highest SAM score per object, 0-1. Diagnostic only: not a calibrated probability, never used by the rule. |
 | ObservedAt | String | UTC time of the analysed frame. |

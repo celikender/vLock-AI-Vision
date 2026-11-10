@@ -1,0 +1,58 @@
+# Runs the automated suites that need no camera, GPU, API key or Ignition gateway.
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-test.txt
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Python packages
+        run: pip install -r requirements-test.txt
+
+      - name: Services
+        run: python -m unittest discover -s services -p "test_*.py" -t .
+
+      - name: Web
+        run: python web/test_application.py
+
+      - name: Ignition package
+        run: python -m unittest ignition/test_ignition_package.py ignition/test_heartbeat_watchdog.py
+
+      - name: Pi camera
+        run: python -m unittest discover -s demo_site/pi_camera -p "test_*.py"
+
+      - name: Printer demo
+        run: python -m unittest discover -s demo_site/printer_ignition -p "test_*.py"
+
+      - name: UI scripts
+        run: |
+          node web/test_zone_workspace.cjs
+          node web/test_camera_preview.cjs
+          node web/test_analyzed_preview.cjs

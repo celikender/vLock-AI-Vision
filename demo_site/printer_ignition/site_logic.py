@@ -33,19 +33,22 @@ def _sample():
     now = _now()
     _heartbeat.setdefault('changed', now)
     state, reason, all_good, online, counter_good, counter = 'Unknown', 'Vision tags unavailable', False, False, False, None
+    settled = False
     try:
         zone = str(bambuP1s._read('Config/VisionZonePath')).rstrip('/')
         if not zone.startswith('[default]vLock/') or '/' in zone[len('[default]vLock/'):]:
             raise ValueError('Use a fixed zone folder')
         values = system.tag.readBlocking([zone + '/State', zone + '/Quality', zone + '/Reason',
-            '[default]vLock/Bridge/Online', '[default]vLock/Bridge/HeartbeatCounter'], 1000)
-        sq, qq, rq, oq, cq = values
+            '[default]vLock/Bridge/Online', '[default]vLock/Bridge/HeartbeatCounter', zone + '/Settled'], 1000)
+        sq, qq, rq, oq, cq, tq = values
         state = str(sq.value) if sq.quality.isGood() else 'Unknown'
         reason = str(rq.value)[:250] if rq.quality.isGood() else 'Reason tag quality is Bad'
         online = oq.quality.isGood() and oq.value == True
         counter_good = cq.quality.isGood() and isinstance(cq.value, (int, long)) and not isinstance(cq.value, bool)
         counter = cq.value if counter_good else None
-        all_good = all(q.quality.isGood() for q in values) and str(qq.value) == 'Good' and counter_good
+        all_good = all(q.quality.isGood() for q in values[:5]) and str(qq.value) == 'Good' and counter_good
+        # State changes after two matching checks. Settled is False as soon as one fresh check disagrees.
+        settled = tq.quality.isGood() and tq.value == True
     except Exception:
         pass
     if counter_good and online:
@@ -57,7 +60,7 @@ def _sample():
         _heartbeat.update(seen=False, moving=False)
     frozen = now - _heartbeat['changed'] > 5000
     moving = bool(_heartbeat.get('moving') and not frozen and counter_good and online)
-    clear = all_good and online and moving and state == 'Clear'
+    clear = all_good and online and moving and state == 'Clear' and settled
     if _was_clear and not clear:
         _epoch += 1  # A transient outage must not release an old Resume when Clear returns.
     _was_clear = clear
@@ -153,7 +156,7 @@ def system_command(action):
         sample = _sample()
         if action == 'Reset':
             if not sample['clear']:
-                raise ValueError('Reset refused: require Clear, Good quality, Online and a moving heartbeat')
+                raise ValueError('Reset refused: require a settled Clear, Good quality, Online and a moving heartbeat')
             _epoch += 1
             _pause_pending = False
             bambuP1s._write({'System/StopLatched': False, 'System/ResetValid': True,

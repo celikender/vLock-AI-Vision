@@ -24,8 +24,9 @@ The view is `PrinterFarm/Dashboard`, titled "Printer farm | Operations". It has 
   Bad quality, and after the heartbeat stays unchanged for more than 5 s. It then requests Pause once if
   the printer is Running. The message line shows `Stop latched:` and the reason. This is a stop latch on
   the SCADA side, not a worker lock.
-- **Reset:** System Reset clears the latch only with `State` `Clear`, Good quality, the bridge Online and
-  a moving heartbeat. System Start then enables Resume, and Resume is a separate operator click. A zone
+- **Reset:** System Reset clears the latch only with `State` `Clear`, `Settled` true, Good quality, the
+  bridge Online and a moving heartbeat. `Settled` goes false on the first fresh check that sees a match,
+  one check before `State` turns `Active`. System Start then enables Resume, and Resume is a separate operator click. A zone
   going back to `Clear` never clears the latch or resumes the print.
 
 Setup steps are in the [demo setup guide](printer_ignition/DEMO_SETUP.md).

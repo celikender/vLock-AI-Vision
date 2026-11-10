@@ -1,0 +1,6 @@
+-r requirements.txt
+# Only for the automated tests. Without these, the tests that need them are skipped.
+# Isolated broker for the MQTT transport checks; never started by the app.
+amqtt==0.12.1
+# The SAM worker's web framework, for the weights checksum tests. No GPU or model is loaded.
+Flask==3.1.2

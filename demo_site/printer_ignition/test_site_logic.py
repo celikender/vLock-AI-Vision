@@ -110,6 +110,28 @@ class SiteTests(unittest.TestCase):
                 self.assertTrue(v['System/StopLatched'])
                 ns['command'].assert_not_called(); client.post.assert_not_called()
 
+    def test_clear_with_a_match_being_confirmed_refuses_reset_start_and_resume(self):
+        for fault in ('confirming','bad','missing'):
+            with self.subTest(fault=fault):
+                ns,system,client,v,site=self.setup_site('Paused')
+                v['System/StopLatched']=True
+                if fault=='confirming': v['[default]vLock/A-101/Settled']=False
+                elif fault=='bad': ns['_test_bad'].add('[default]vLock/A-101/Settled')
+                else: del v['[default]vLock/A-101/Settled']
+                site['tick']()
+                self.assertFalse(v['System/CanReset'])
+                with self.assertRaises(ValueError): ns['system_command']('Reset')
+                self.assertTrue(v['System/StopLatched'])
+                v['[default]vLock/A-101/Settled']=True; ns['_test_bad'].clear()
+                ns['system_command']('Reset'); ns['system_command']('Start')
+                v['[default]vLock/A-101/Settled']=False
+                with self.assertRaises(ValueError): ns['command']('Resume')
+                site['tick']()
+                self.assertFalse(v['System/ResumeAllowed'])
+                self.assertFalse(v['System/StopLatched'],'One unconfirmed match withdraws the permissive; it does not stop')
+                self.assertFalse(v['Commands/Resume']); self.assertFalse(v['Commands/Pause'])
+                client.post.assert_not_called()
+
     def test_resume_requires_click_valid_reset_and_start(self):
         ns,system,client,v,site=self.setup_site('Paused')
         with self.assertRaises(ValueError): ns['command']('Resume')

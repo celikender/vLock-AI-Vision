@@ -49,11 +49,11 @@ never change `Active` or `State`.
 
 ## Measured so far
 
-| SAM engine | Time per check | Cost while monitoring, per object |
+| SAM engine | Time per check in the running app | Cost while monitoring, per object |
 |---|---|---|
-| Local GPU (RTX 3070 Ti Laptop), 4 frames | 3.0-3.9 s | No per-use charge |
-| Meta image, 1 frame | 0.4-1.6 s, about 0.75 s on average | Up to about $9 an hour |
-| Meta video, 4 frames | 1.2-2.9 s, about 1.8 s on average | About $14 an hour |
+| Local GPU (RTX 3070 Ti Laptop), 4 frames | 4-5 s | No per-use charge |
+| Meta image, 1 frame | 2-3 s | Up to about $9 an hour |
+| Meta video, 4 frames | 8-17 s, too slow for this use today | About $14 an hour or less |
 
 These are small samples from one camera and one room. Details are in the [test results](../testing/TEST_RESULTS.md).
 

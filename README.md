@@ -15,7 +15,7 @@ A person with a water bottle in front of a 3D printer, shown in an Ignition Pers
 - **Rule, zone `A-101`:** `hand overlaps the area AND bottle overlaps the area for 1 s`.
 - **Stop:** a hand and a bottle are both in the drawn area on two fresh checks. `State` goes `Active`, Ignition latches a stop and sends the printer one Pause.
 - **Clear:** the hand and the bottle are not both in the area. `State` reads `Clear` and the print continues. After a stop, `Clear` alone restarts nothing.
-- **Reset:** System Reset is accepted only while `State` is `Clear`. It is refused while the zone reads `Active`, so it is refused while the hand and bottle are still detected in the area.
+- **Reset:** System Reset is accepted only while `State` is `Clear` and `Settled` is true. It is refused while the zone reads `Active`, and from the first fresh check that sees the hand and bottle in the area again.
 
 ## The problem
 
@@ -25,8 +25,9 @@ A person with a water bottle in front of a 3D printer, shown in an Ignition Pers
 
 ## What it does
 
-- Main use: a permissive before restart. SCADA confirms the zone is empty before it accepts a reset. A check takes seconds, so it is not a fast stop.
-- Publishes `Clear` only on a fresh, confirmed check where the rule is not met. A detected person, a lost camera or a failed check is never `Clear`.
+- Main use: a permissive before restart. SCADA accepts a reset only while the zone's rule reads `Clear`. A check takes seconds, so it is not a fast stop.
+- `Clear` is the last confirmed result of the configured rule, and it expires if no fresh check follows. It does not mean the zone is empty: with a person AND dog rule, a person alone reads `Clear`.
+- A lost camera, a failed check or a late result is `Unknown`, never `Clear`.
 - Plain status over OPC UA, MQTT or REST. No vendor integrator, no proprietary hardware.
 - Rules are prompts: name the object and draw the area. No retraining, no code changes.
 
@@ -178,11 +179,12 @@ Each zone has the same tags at `nsu=urn:vlock:bridge:v1;s=Bridge/Zones/<tag key>
 | `Active` | Boolean | Rule met. Bad quality when `Unknown` |
 | `Quality` | String | `Good`, `Unknown` or `Stale` |
 | `Reason` | String | Why the zone has this state |
+| `Settled` | Boolean | False while a fresh check disagrees with `State` and is being confirmed. Bad quality when `Unknown` |
 | `Count1`, `Count2` | Int32 | Detections of each object in the whole frame |
 | `ObservedAt`, `AgeSeconds` | String, Double | Time and age of the analysed frame |
 | `Bridge/HeartbeatCounter`, `Bridge/Online` | Int64, Boolean | App heartbeat |
 
-Read `State`, not only `Active`. Treat `Unknown` or Bad quality as stop.
+Read `State`, not only `Active`. Treat `Unknown` or Bad quality as stop. Accept a reset only while `State` is `Clear` and `Settled` is true: `State` changes after two matching checks, so for one check it can still read `Clear` after something has entered.
 
 The same status over REST and MQTT:
 
@@ -199,6 +201,7 @@ MQTT topic: <topic prefix>/zones/<tag key>/state
   "State": "Clear",
   "Active": false,
   "Quality": "Good",
+  "Settled": true,
   "Rule": "hand overlaps the area AND bottle overlaps the area for 1 s",
   "Object1": "hand",
   "Object2": "bottle",

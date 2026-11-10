@@ -47,6 +47,12 @@ The hosts-file case is not a useful outage test. The reconnect that would change
 | Two separate objects, such as `person` and `flag` | Means both are in the area, **not** that one holds or wears the other | By design |
 | Rule with a confidence cutoff | None exists. A 0.7 cutoff would have missed the match above at 0.69 | By design |
 
+## Meta video speed
+
+| Case | What happens | Checked |
+|---|---|---|
+| A video check takes longer than the freshness limit | The zone goes `Unknown` between clips, and SCADA stops. Raising the observation time from 15 to 30 s let it run | Owner-seen |
+
 ## Local GPU worker
 
 | Case | What happens | Checked |
@@ -79,6 +85,7 @@ The hosts-file case is not a useful outage test. The reconnect that would change
 | Person and a real dog with that rule | `Active`, and a real printer stopped | Owner-tested in Ignition |
 | App closed or OPC connection lost | Tags go Bad in the client. The connection showed faulted while OPC UA was off and recovered when it was turned on | Owner-seen in Ignition; the stop on this case is automated only |
 | App frozen | Last values stay in place, so SCADA must also watch the heartbeat | Watchdog logic only: automated, not in a real gateway |
+| Reset pressed after the first check that sees a new match, before the second confirms it | `State` still reads `Clear`, but `Settled` is False, so the demo's Reset, Start and Resume are refused. Before November 10, 2026 the reset was accepted in this window | Automated, outside Ignition. Not yet run in a real gateway |
 | Watchdog reset while quality is Bad | Refused, even just after the last heartbeat | Automated, outside Ignition |
 | Script that only checks `Active == True` | Misses camera and cloud loss. It must read `State` | Read from the installed demo script |
 | Restart | Old results become `Unknown`. Monitoring doesn't resume by itself | Automated |

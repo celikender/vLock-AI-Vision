@@ -13,6 +13,8 @@ TAGS = [
     ('State', 'String', 'String', 'Active, Clear, Valid (count zones) or Unknown.'),
     ('Quality', 'String', 'String', 'Good, Unknown or Stale.'),
     ('Reason', 'String', 'String', 'Why the zone has this state.'),
+    ('Settled', 'Boolean', 'Boolean', 'True when the latest check agrees with State. False while a different result '
+     'is being confirmed. Bad quality when Unknown or for count zones.'),
     ('Count1', 'Int32', 'Int4', 'Detections of Object1 in the whole frame. Bad quality when Unknown.'),
     ('Count2', 'Int32', 'Int4', 'Detections of Object2 in the whole frame. Bad quality when Unknown or unused.'),
     ('Score1', 'Double', 'Float8', 'Highest SAM score for Object1, 0-1. Diagnostic only, not a calibrated probability.'),
@@ -78,7 +80,7 @@ def seconds(stamp):
 
 
 def document(zone, signal, now):
-    doc = dict(zone, Active=None, State='Unknown', Quality='Unknown', Count1=None, Count2=None, Score1=None,
+    doc = dict(zone, Active=None, State='Unknown', Quality='Unknown', Settled=None, Count1=None, Count2=None, Score1=None,
                Score2=None, ObservedAt=None, AgeSeconds=None, CheckSeconds=None,
                Reason='No observation yet. Save the rule and enable monitoring.')
     if signal is None:
@@ -98,6 +100,10 @@ def document(zone, signal, now):
     doc['State'] = 'Valid' if doc['Active'] is None else 'Active' if doc['Active'] else 'Clear'
     doc['Quality'] = 'Good'
     doc['Reason'] = signal.get('reason') or doc['State']
+    # State changes only after two matching checks, so one fresh check can already disagree with it.
+    latest = details.get('condition_matched')
+    if doc['Active'] is not None and isinstance(latest, bool):
+        doc['Settled'] = latest == doc['Active']
     counts, scores = details.get('counts') or {}, details.get('scores') or {}
     for index, name in enumerate((zone['Object1'], zone['Object2']), 1):
         if name:

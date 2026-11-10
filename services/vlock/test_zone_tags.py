@@ -64,6 +64,29 @@ class ZoneTagTests(unittest.TestCase):
         self.assertIsNone(zone['Count1'])
         self.assertIn('No fresh result', zone['Reason'])
 
+    def test_settled_is_false_while_a_different_result_is_being_confirmed(self):
+        def details(matched):
+            return dict(observation()['details'], condition_matched=matched)
+        self.store.set_zones([zone_tags.manifest(ZONE)])
+        self.assertIsNone(self.zone()['Settled'], 'Unknown has no settled value')
+        self.store.submit(observation('clear', details=details(False)))
+        self.assertEqual((self.zone()['State'], self.zone()['Settled']), ('Clear', True))
+        self.now[0] += 1
+        # One fresh match: State is still Clear until a second check confirms it.
+        self.store.submit(observation('clear', details=details(True)))
+        self.assertEqual((self.zone()['State'], self.zone()['Settled']), ('Clear', False))
+        self.now[0] += 1
+        self.store.submit(observation('active', details=details(True)))
+        self.assertEqual((self.zone()['State'], self.zone()['Settled']), ('Active', True))
+        self.now[0] += 1
+        self.store.submit(observation('active', details=details(False)))
+        self.assertEqual((self.zone()['State'], self.zone()['Settled']), ('Active', False))
+        self.now[0] += 1
+        self.store.submit(observation('clear'))
+        self.assertIsNone(self.zone()['Settled'], 'A result without the latest match is never reported as settled')
+        self.now[0] += 16
+        self.assertIsNone(self.zone()['Settled'], 'Stale')
+
     def test_count_and_event_outputs(self):
         count = dict(ZONE, outputType='count')
         self.store.set_zones([zone_tags.manifest(count)])

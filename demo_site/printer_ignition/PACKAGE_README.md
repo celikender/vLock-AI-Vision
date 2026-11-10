@@ -34,8 +34,10 @@ pause a Running print when vision is Active or unavailable.
    existing tags/configuration; do not overwrite them with the full optional JSON.
    Keep the working connector and MQTT/OPC connections. No reinstall is needed.
 6. Confirm `Config/VisionZonePath` is **[default]vLock/A-101**. The existing imported
-   tags are used directly: State, Quality, Reason, plus Bridge/Online and
-   Bridge/HeartbeatCounter under `[default]vLock`. Every original qualified value
+   tags are used directly: State, Quality, Reason, Settled, plus Bridge/Online and
+   Bridge/HeartbeatCounter under `[default]vLock`. Settled was added to the `vLockZone`
+   UDT on November 10, 2026: re-import `vlock-zones.json` first, or Reset, Start and
+   Resume stay refused. Every original qualified value
    is checked; the Vision/ mirror is for display only.
 
 P1S-01 is the only connected station. The other two cards remain Offline with no
@@ -55,6 +57,10 @@ commands or camera requests.
 | Resume | Explicit operator click, Paused printer, current reset/start permissives and a fresh source recheck immediately before dispatch. |
 | Clearing vision / restored communications | Never clears the latch or resumes a job. |
 | Cancel job | Explicit operator action only. Calls Stop and cancels the job; site logic never uses it. |
+
+Reset, Start and Resume need a settled Clear: `Settled` is False from the first fresh
+check that disagrees with Clear, before a second check makes it Active. That
+withdraws the permissive but does not latch a stop by itself.
 
 A transient loss of Clear also invalidates any queued operator Resume, even if
 it recovers before the two-second latch debounce. Recovery never releases an old

@@ -50,6 +50,19 @@ and any failure. `Reason` says why, for people and logs. Do not build logic on i
 | `Meta SAM daily spending limit of ... reached...` | The daily limit set on the app's Setup page stopped paid requests. |
 | Other text | For example a refused key, or too many objects of one kind in a frame. |
 
+### `Settled` and reset
+
+`State` changes only after two matching checks. For one check it can still read `Clear` after
+something has entered the area. `Settled` is False from that first check until the new result is
+confirmed or dropped, so:
+
+- Accept a reset, or any restart permissive, only while `State` is `Clear` and `Settled` is True
+  with Good quality.
+- Do not stop on `Settled` alone. One unconfirmed match is not a confirmed `Active`.
+
+`Clear` means the configured rule was not met on the last confirmed check. It does not mean the
+area is empty of everything.
+
 ### Two kinds of quality
 
 - **The tag's OPC quality** is set by Ignition. Bad means the value cannot be trusted, for example
@@ -87,6 +100,8 @@ A frozen app can leave its last `State` in place, so also watch for a counter th
   stop logic stopping a real printer on `Active` and on `Unknown`, on both the local GPU and the Meta cloud engine.
 - **Checked on Windows with a separate client:** with `meta_api`, a separate OPC UA client read `State`, `Reason`
   and a moving `HeartbeatCounter`, and an unreachable API address gave `Unknown`. All 26 nodes named in the
-  export exist. The separate camera reason has automated tests.
+  export at that time exist. The separate camera reason has automated tests.
+- **Automated only:** the `Settled` tag, added on November 10, 2026, and the reset refusal built on it. It
+  has not been read in a real gateway, and the demo has not been re-imported with it.
 - **Not tested:** this folder's example latch and heartbeat watchdog in a real gateway, a real Pi unplug, a real internet
   cut, a second PC, long runs. Those two scripts have only been run outside Ignition with a stand-in for its `system` module.

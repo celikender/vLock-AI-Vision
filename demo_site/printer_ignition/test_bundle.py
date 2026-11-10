@@ -27,11 +27,14 @@ class BundleTests(unittest.TestCase):
                 self.assertEqual(json.loads(project.read('project.json'))['title'], 'Printer Farm Control')
 
     def test_shipped_sources_match_the_reviewed_files(self):
+        def text(data):
+            # The bundle is built on Windows (CRLF); a Linux checkout of the same files has LF.
+            return data.replace(b'\r\n', b'\n')
         with ZipFile(HERE / 'output/printer-farm.zip') as archive:
             for name in build_bundle.CONNECTOR_FILES:
-                self.assertEqual(archive.read('connector/' + name), (HERE / 'connector' / name).read_bytes())
+                self.assertEqual(text(archive.read('connector/' + name)), text((HERE / 'connector' / name).read_bytes()), name)
             self.assertEqual(archive.read('printer-farm-perspective.zip'), (HERE / 'output/printer-farm-perspective.zip').read_bytes())
-            self.assertEqual(archive.read('bambu-p1s-tags.json'), (HERE / 'output/bambu-p1s-tags.json').read_bytes())
+            self.assertEqual(text(archive.read('bambu-p1s-tags.json')), text((HERE / 'output/bambu-p1s-tags.json').read_bytes()))
 
 
 if __name__ == '__main__':

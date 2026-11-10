@@ -34,6 +34,20 @@ from the SCADA side, whose demo logic sends the printer a Pause.
 
 ## SAM engines
 
+**Time per check, seen by the owner in the running app on November 4, 2026.** These are the realistic figures:
+
+| Engine | Time per check |
+|---|---|
+| Meta image | 2-3 s |
+| Local GPU | 4-5 s |
+| Meta video | 8-17 s |
+
+At those times Meta video can outlast the freshness limit, so the zone went `Unknown` between clips and SCADA stopped. Raising the
+observation time from 15 to 30 s let it run. It is too slow for this use today.
+
+**Earlier measurements.** Small samples, some with nothing matched, and mostly the request time alone, so they are faster than the
+figures above:
+
 | Engine | Sample | Time | Notes |
 |---|---|---|---|
 | Local GPU, 4 frames | One check per run | 3.0-3.9 s | First model load 68-104 s |
@@ -129,15 +143,20 @@ Pi camera streaming measured about 11-16 fps in live runs. See [camera performan
 
 ## Automated suites
 
-Run from the repository root:
+Run from the repository root, after `pip install -r requirements-test.txt`. Without the two extra packages in that
+file, four tests in the Services suite are skipped.
 
 | Suite | Tests | Command |
 |---|---|---|
-| Services | 165 | `python -m unittest discover -s services -p "test_*.py" -t .` |
+| Services | 166 | `python -m unittest discover -s services -p "test_*.py" -t .` |
 | Web | 33 | `python web/test_application.py` |
-| Ignition package | 19 | `python -m unittest ignition/test_ignition_package.py ignition/test_heartbeat_watchdog.py` |
+| Ignition package | 20 | `python -m unittest ignition/test_ignition_package.py ignition/test_heartbeat_watchdog.py` |
 | Pi camera | 3 | `python -m unittest discover -s demo_site/pi_camera -p "test_*.py"` |
-| Printer demo | 78 | `test_project.py`, `test_site_logic.py`, `test_bundle.py`, `test_connector.py` in `demo_site/printer_ignition/` |
+| Printer demo | 79 | `test_project.py`, `test_site_logic.py`, `test_bundle.py`, `test_connector.py` in `demo_site/printer_ignition/` |
 | UI scripts | 3 | `node web/test_zone_workspace.cjs`, `web/test_camera_preview.cjs`, `web/test_analyzed_preview.cjs` |
 
 The Ignition scripts run outside Ignition, with a stand-in for its `system` module.
+
+None of these suites needs a camera, a GPU, an API key or an Ignition gateway. `.github/workflows/tests.yml` runs them
+on every push and pull request. On November 10, 2026 the Python suites passed in a fresh Ubuntu 24.04 copy with Python
+3.12 on this PC, and the UI scripts on Windows. The workflow itself has not run on GitHub yet.

@@ -7,7 +7,7 @@ Site notes (edit for your plant):
 - Unknown is never Clear. SCADA must also watch Bridge/Online and the heartbeat.
 
 Measured on this site (small samples, one camera):
-- SAM time: local GPU 3-3.9 s for four frames; Meta image about 0.75 s per frame; Meta video about 1.8 s for four frames.
+- SAM time per check in the running app: Meta image 2-3 s; local GPU 4-5 s; Meta video 8-17 s, which is too slow for this use today.
 - Scores: person 0.95-0.96; flag 0.75-0.93; monitor 0.64-0.72 (overexposed screens); storage drawers 0.69; hand 0.70-0.79.
 - "person holding flag" matched at 0.69 when held, and found nothing with the flag in a holder (two frames only). "wearing" phrases are untested.
 - "person" AND "dog" as two objects worked with a real dog: a person alone stayed Clear, and both went Active.

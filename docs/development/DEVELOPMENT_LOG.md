@@ -1050,3 +1050,29 @@ Future entries should record actual changes, verification evidence, limitations,
   on `event`, and the owner chose `condition` by hand; Muse needs more detailed testing. Switching from local to Meta needed an app
   restart, which is the current design and could be improved.
 
+## 2026-11-04: Submitted
+
+- Submitted to the Indie Developer Track, Push the Frontier. The demo rule watches a hand approaching a water bottle, and SCADA pauses the printer.
+- Owner-seen check times: Meta image 2-3 s, local GPU 4-5 s, Meta video 8-17 s. Meta video went Unknown between clips until the observation
+  time was raised from 15 to 30 s.
+- Rewrote the README as a project overview, with cropped screenshots in `docs/images/`.
+
+## 2026-11-10: Settled tag closes a reset gap
+
+- Found by review, then confirmed in the code: `State` changes only after two matching checks, so after the first check
+  that saw a new match the zone still published `Clear` with Good quality, and the demo's System Reset accepted it.
+- Added a `Settled` Boolean to the fixed zone tags (OPC UA, MQTT, REST and the `vLockZone` UDT). It is False while the
+  latest check disagrees with `State`, and Bad quality when `Unknown` or for count zones.
+- The demo's `printerSite` script and `ignition/stop_latch_example.py` now need `Clear` and `Settled` for Reset, and the
+  demo also for Start and Resume. One unconfirmed match withdraws the permissive and does not latch a stop.
+- Automated tests only. Not yet run in a real gateway: the UDT and the printer project must be re-imported first.
+- The README now says `Clear` is the last confirmed result of the configured rule, not that the zone is empty.
+
+## 2026-11-10: Test workflow for GitHub Actions
+
+- Added `.github/workflows/tests.yml`: Ubuntu 24.04, Python 3.12 and Node 20, running the six hardware-free suites on
+  every push and pull request. Added `requirements-test.txt` (the app's packages plus the MQTT test broker and Flask).
+- A fresh Ubuntu 24.04 copy showed two things this PC hid: four Services tests were skipped without those two packages,
+  and the bundle test compared line endings (the bundle is built on Windows). The test now ignores line endings in text files.
+- Passed in that copy: Services 166, Web 33, Ignition 20, Pi camera 3, Printer demo 79. UI scripts ran on Windows only.
+  Not yet run on GitHub.

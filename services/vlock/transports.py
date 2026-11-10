@@ -485,7 +485,7 @@ class OpcUaServer(Worker):
                     await self.variable(node, zone_tags.node_id(key, tag), tag, placeholder, variant, missing, doc['ObservedAt'])
                 else:
                     await self.variable(node, zone_tags.node_id(key, tag), tag, value, variant, None,
-                                        doc['ObservedAt'] if tag in ('Active', 'State', 'Count1', 'Count2', 'Score1', 'Score2') else None)
+                                        doc['ObservedAt'] if tag in ('Active', 'State', 'Settled', 'Count1', 'Count2', 'Score1', 'Score2') else None)
         self.zone_keys |= current
 
     async def retire(self, snapshot):

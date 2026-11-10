@@ -50,6 +50,7 @@ def bridge():
     values.update({'[default]vLock/A-101/State': 'Clear',
                    '[default]vLock/A-101/Quality': 'Good',
                    '[default]vLock/A-101/Reason': 'Zone clear',
+                   '[default]vLock/A-101/Settled': True,
                    '[default]vLock/Bridge/Online': True,
                    '[default]vLock/Bridge/HeartbeatCounter': 1})
     bad = set()

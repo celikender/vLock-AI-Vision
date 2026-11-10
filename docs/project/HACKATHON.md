@@ -1,22 +1,26 @@
 # vLock-AI Vision: Meta Global AI Developer Hackathon 2026
 
-**Theme:** Push the Frontier
+**Submitted:** Indie Developer Track, Push the Frontier, by Ender Celik.
 
-**Tell your SCADA what to watch in plain English, with no vision engineer and no model training.**
+**AI vision that supports industrial safety devices, and an easy way for SCADA developers to add SAM 3.1 to the systems they already run.**
 
-**Demo video:** link coming soon
+**Demo video:** https://youtu.be/5BJcpr42i7c
 
 **Repository:** https://github.com/celikender/vLock-AI-Vision
 
 ## The problem
 
-Factories already have cameras and SCADA systems, but connecting them usually takes custom vision work for every scene. Each new object or area goes back to a specialist. And a detector alone isn't enough for a plant: SCADA has to know when a result is old or missing, so that a broken camera is never mistaken for a clear area.
+Machines rely on protective devices such as light curtains, interlocks and presence sensors, but these don't always give the full picture. A person may remain inside a restricted area after passing through a light curtain, or a sensor may not capture everything around a machine. Plants already have cameras and SCADA systems, yet connecting them usually means a custom vision pipeline for every machine.
 
 ## The solution
 
-A person describes a rule in plain language. Muse Spark proposes it, SAM 3.1 outlines the area, and a person approves it. SAM 3.1 then watches the camera, fixed code applies the rule, and SCADA reads `Active`, `Clear` or `Unknown` through the same tags for every zone.
+vLock-AI Vision adds visual monitoring alongside existing safeguards, built for SCADA developers. They describe what to monitor in plain English. Muse Spark helps configure it, a person approves the setup, and SAM 3.1 finds the objects. Fixed rules publish `Active`, `Clear` or `Unknown` over OPC UA, MQTT or REST.
 
 **vLock tells SCADA what it sees. SCADA decides what the machine does.**
+
+## The demo
+
+A Raspberry Pi 5 with a USB camera, a Bambu Lab 3D printer and Ignition Perspective. A rule watches for a person's hand approaching a water bottle in the monitored area. When that happens, vLock reports it to SCADA, and SCADA pauses the printer.
 
 ## How it uses Meta's models
 
@@ -41,17 +45,23 @@ This worked on both the local GPU and Meta's cloud. The app only published statu
 
 ## Measured
 
-| SAM engine | Time per check | Cost while monitoring, per object |
+| SAM engine | Time per check in the running app | Cost while monitoring, per object |
 |---|---|---|
-| Local GPU (RTX 3070 Ti Laptop), 4 frames | 3.0-3.9 s | No per-use charge |
-| Meta image, 1 frame | About 0.75 s on average | Up to about $9 an hour |
-| Meta video, 4 frames | About 1.8 s on average | About $14 an hour |
+| Local GPU (RTX 3070 Ti Laptop), 4 frames | 4-5 s | No per-use charge |
+| Meta image, 1 frame | 2-3 s | Up to about $9 an hour |
+| Meta video, 4 frames | 8-17 s, too slow for this use today | About $14 an hour or less |
 
-Small samples from one camera and one room. Full details: [test results](../testing/TEST_RESULTS.md) and [edge cases](../testing/EDGE_CASES.md).
+From one camera and one room. Full details: [test results](../testing/TEST_RESULTS.md) and [edge cases](../testing/EDGE_CASES.md).
 
 ## Screenshots
 
-To be added.
+![A monitored zone](../images/zone-monitoring.png)
+
+![The printer stays paused while vision reads Clear](../images/printer-paused.png)
+
+![The vLock tags in Ignition](../images/ignition-tags.png)
+
+![The vLock Bridge connection in the Ignition Gateway](../images/opc-connections.png)
 
 ## Limits
 
@@ -63,4 +73,4 @@ The application, its SAM and Muse integration, the SCADA outputs and the tag con
 
 ## What's next
 
-More than one camera, the worker-lock lifecycle, an accuracy benchmark on plant footage, long-duration runs, edge and cloud GPU deployment, and a one-step installer.
+Edge devices such as a Jetson and a different architecture to try, faster Meta video, more than one camera, the worker-lock lifecycle, an accuracy benchmark on plant footage, long-duration runs, and a one-step installer.
