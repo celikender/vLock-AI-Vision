@@ -1,12 +1,14 @@
 # vLock-AI Vision
 
-Plain-English camera rules that give SCADA a simple state: Clear, Active or Unknown.
+Set up camera vision with a prompt. SCADA gets one simple state per zone: Clear, Active or Unknown.
 
-The main example is a restart permissive: SCADA accepts a reset only while the zone reads `Clear`. It supports existing safety devices and does not replace them.
+No model training and no vendor integrator: type what to watch, draw the area, and bind the tags over OPC UA, MQTT or REST. The main example is a restart permissive, where SCADA accepts a reset only while the zone reads `Clear`.
 
 ## Demo
 
-<!-- Demo GIF goes here -->
+![The zone goes Active, Ignition latches a stop and the printer pauses](docs/images/demo-stop.gif)
+
+[Watch the full demo video](https://youtu.be/5BJcpr42i7c)
 
 A person with a water bottle in front of a 3D printer, shown in an Ignition Perspective view. The bottle stands in for any object or person that should not be in a hazard zone.
 
@@ -25,7 +27,6 @@ A person with a water bottle in front of a 3D printer, shown in an Ignition Pers
 
 - Main use: a permissive before restart. SCADA confirms the zone is empty before it accepts a reset. A check takes seconds, so it is not a fast stop.
 - Publishes `Clear` only on a fresh, confirmed check where the rule is not met. A detected person, a lost camera or a failed check is never `Clear`.
-- Supports existing safety devices. It does not replace them.
 - Plain status over OPC UA, MQTT or REST. No vendor integrator, no proprietary hardware.
 - Rules are prompts: name the object and draw the area. No retraining, no code changes.
 
@@ -60,6 +61,8 @@ flowchart LR
 2. Fixed code compares the object outlines with the drawn area. A state change needs two matching fresh checks.
 3. `Unknown` is never `Clear`. A lost camera, a failed model call or a late result publishes `Unknown` with a `Reason`.
 
+![The rule in plain words and the drawn area on the camera view](docs/images/app-rule-and-area.png)
+
 Muse Spark can draft a rule from plain English, and a person approves it before it runs. The optional Muse frame check writes its answer to `VlmState` only. It never changes `State`.
 
 ## Demo setup
@@ -72,6 +75,8 @@ Muse Spark can draft a rule from plain English, and a person approves it before 
 | PC | Windows, RTX 3070 Ti Laptop GPU |
 
 The Perspective view shows the printer's status, the zone state, a stop latch and System Start, Stop and Reset buttons. The latch that ran in the demo is the `printerSite` Gateway script. Details: [demo site](demo_site/README.md#perspective-view).
+
+![The Perspective view with the stop latched and the printer paused](docs/images/ignition-stop-latched.png)
 
 The customer side of the demo is in [`demo_site/`](demo_site/README.md) and is not part of the product:
 
@@ -220,6 +225,8 @@ The example shows some of the fields. The tag package is [`ignition/vlock-zones.
 ## Built for
 
 The Meta Global AI Developer Hackathon 2026, Indie Developer Track, by Ender Celik. [Gallery entry](https://cerebralvalley.ai/e/meta-ai-developer-hackathon/hackathon/gallery?q=Vlock+&project=4329).
+
+The stop latch idea comes from my earlier project, [vLock Digital LOTO](https://github.com/celikender/vLock-Digital-LOTO), an Ignition Perspective demonstration. No code was copied from it.
 
 ## License
 
