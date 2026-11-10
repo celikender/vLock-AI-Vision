@@ -1,164 +1,226 @@
 # vLock-AI Vision
 
-**Tell your SCADA what to watch in plain English, with no vision engineer and no model training.**
+Plain-English camera rules that give SCADA a simple state: Clear, Active or Unknown.
 
-vLock-AI Vision connects a camera to an existing SCADA system. You describe a rule in plain language, Muse Spark proposes it, you approve it, SAM 3.1 watches the camera, and SCADA reads the result through fixed tags.
+The main example is a restart permissive: SCADA accepts a reset only while the zone reads `Clear`. It supports existing safety devices and does not replace them.
 
-Built for the [Meta Global AI Developer Hackathon 2026](docs/project/HACKATHON.md).
+## Demo
 
-**Demo video:** link coming soon.
+<!-- Demo GIF goes here -->
+
+A person with a water bottle in front of a 3D printer, shown in an Ignition Perspective view. The bottle stands in for any object or person that should not be in a hazard zone.
+
+- **Rule, zone `A-101`:** `hand overlaps the area AND bottle overlaps the area for 1 s`.
+- **Stop:** a hand and a bottle are both in the drawn area on two fresh checks. `State` goes `Active`, Ignition latches a stop and sends the printer one Pause.
+- **Clear:** the hand and the bottle are not both in the area. `State` reads `Clear` and the print continues. After a stop, `Clear` alone restarts nothing.
+- **Reset:** System Reset is accepted only while `State` is `Clear`. It is refused while the zone reads `Active`, so it is refused while the hand and bottle are still detected in the area.
 
 ## The problem
 
-Plants already have cameras and SCADA systems, but connecting one to the other usually means custom vision work for every scene. Each new object, area or rule goes back to a specialist. SCADA also needs more than a detection: it has to know when a result is old or missing, so that a broken camera is never mistaken for a clear area.
+- **Light curtains detect crossing, not presence.** A person steps inside, the curtain clears, someone resets, and the machine runs with them in it. The same applies to a person on a conveyor.
+- **Interlocks get bypassed** with jumpers and dummy wires.
+- **Vision systems are closed vendor packages.** The plant's own controls engineer can't change them.
 
 ## What it does
 
-1. **Connect a camera:** Raspberry Pi USB, HTTP or RTSP.
-2. **Describe the rule:** "Alert when a person and a dog are both in the area for one second."
-3. **Review it:** Muse Spark proposes the rule and SAM 3.1 outlines the area. Nothing runs until a person approves it.
-4. **Monitor:** SAM 3.1 checks the camera, and fixed code applies the approved rule.
-5. **Publish:** SCADA reads the same tags for every zone over OPC UA, MQTT or REST. Ignition users can download a ready-made UDT.
+- Main use: a permissive before restart. SCADA confirms the zone is empty before it accepts a reset. A check takes seconds, so it is not a fast stop.
+- Publishes `Clear` only on a fresh, confirmed check where the rule is not met. A detected person, a lost camera or a failed check is never `Clear`.
+- Supports existing safety devices. It does not replace them.
+- Plain status over OPC UA, MQTT or REST. No vendor integrator, no proprietary hardware.
+- Rules are prompts: name the object and draw the area. No retraining, no code changes.
 
-| `State` | Meaning |
-|---|---|
-| `Active` | The rule is met on a fresh, confirmed observation |
-| `Clear` | The rule is not met on a fresh, confirmed observation |
-| `Unknown` | No current result, for example a lost camera or failed model call. **It never means clear** |
-| `Valid` | Count zones only: the counts are current |
+What else it could watch, none of it tested: a stack light on a machine with no data connection, a pallet present, a bin full, a door open.
 
-**vLock tells SCADA what it sees. SCADA decides what the machine does.** The app sends no machine commands. Integrators should treat Unknown or Bad quality as stop, and latching and reset are theirs to own. See the [Ignition guide](ignition/INTEGRATION.md).
+## How it's different
 
-## Tools
+| | Light curtain / interlock | Vendor vision safety system | vLock |
+|---|---|---|---|
+| Detects presence inside the zone, not just crossing | No | Varies by product | Yes, on each check (2-5 s apart) |
+| Tells who or what is there | No | Varies by product | The objects named in the prompt, with a count |
+| Rule change | Rewire | Vendor visit | Edit a prompt |
+| Who integrates | Electrician | Vendor integrator | Your own SCADA developer |
+| Output | Safety relay | Proprietary | Open tags (OPC UA, MQTT, REST) |
+| Safety certified | Yes | Yes | **NO** |
 
-| Purpose | Tools |
-|---|---|
-| Meta models | **Muse Spark** (`muse-spark-1.3`) for rule proposals and optional advisory frame checks; **SAM 3.1** for segmentation and tracking |
-| SAM 3.1 engines | Local NVIDIA GPU with PyTorch in Ubuntu/WSL and weights from Hugging Face, or the Meta Model API for image or video |
-| Application | Python, a browser UI in plain JavaScript, SQLite, OpenCV and Pillow, `meta-sam-parser` |
-| SCADA outputs | OPC UA (`asyncua`), MQTT (`paho-mqtt`), REST |
-| Deployment | Windows launcher, or Docker with separate app and GPU containers |
-| Demo site | Inductive Automation Ignition with Perspective, Raspberry Pi 5 with a USB camera, Bambu Lab P1S printer through a local MQTT connector |
+vLock combines camera vision and fixed SCADA tags in one public repository that a controls engineer can run and modify. The stop latch stays on the SCADA side.
 
-## Architecture
+## How it works
 
-```text
- Camera (Pi USB, HTTP, RTSP)
-        |  latest frame only, no queue
-        v
-+------------------- vLock-AI Vision ------------------+        +---------------------+
-|                                                      |        |  SAM 3.1, one of:   |
-|  Web UI, logins, audit log, Setup page               |        |  - local GPU worker |
-|                                                      | frames |  - Meta image API   |
-|  Monitoring  ----------------------------------------+------->|  - Meta video API   |
-|     |                                                |<-------+                     |
-|     v                                                | masks  +---------------------+
-|  Fixed rule code <-- rule a person approved          |
-|     |                     ^                          |        +---------------------+
-|     |                     +--------------------------+<-------+  Muse Spark         |
-|     v                                                |proposal|  writes the rule    |
-|  Observation store: freshness, Unknown, history      |        +---------------------+
-|     |                                                |
-|     v                                                |
-|  Fixed tags: OPC UA, MQTT, REST, heartbeat           |
-+-----+------------------------------------------------+
-      |  status only: no machine commands
-      v
- SCADA (Ignition): latch, reset and machine logic --> machine
+```mermaid
+flowchart LR
+    CAM[Camera] --> SAM[SAM 3.1]
+    SAM --> RULE[Fixed rule code]
+    RULE --> STATE[State: Clear / Active / Unknown]
+    STATE --> SCADA[Ignition]
+    RULE -. optional .-> VLM[Muse Spark frame check]
+    VLM -. advisory .-> TAG[VlmState tag]
 ```
 
-Why it's built this way:
+1. SAM 3.1 finds the objects named in the rule on the latest camera frame. It runs on a local NVIDIA GPU or through the Meta Model API.
+2. Fixed code compares the object outlines with the drawn area. A state change needs two matching fresh checks.
+3. `Unknown` is never `Clear`. A lost camera, a failed model call or a late result publishes `Unknown` with a `Reason`.
 
-- **Muse proposes, code decides.** Models find objects and draft rules. Fixed code decides the state, so results can be explained and repeated. Muse's frame checks are advisory and never change `Active` or `State`.
-- **Failures are visible.** A check that is late, lost or unreadable publishes `Unknown` with a reason.
-- **Tags don't move.** Changing a rule, object or zone name keeps the same tag path, so a new prompt needs no SCADA changes.
-- **The engine is a choice.** All three SAM engines return the same results to the same rule code.
-- **Keys stay on the server.** The Setup page saves keys to `.env` on that PC. They are never sent back to the browser or written to the audit log.
+Muse Spark can draft a rule from plain English, and a person approves it before it runs. The optional Muse frame check writes its answer to `VlmState` only. It never changes `State`.
 
-| Folder | What it holds |
+## Demo setup
+
+| Part | Used in the demo |
 |---|---|
-| `web/` | Application server and browser UI |
-| `services/vision/` | Camera, SAM engines, Muse, monitoring and zone rules |
-| `services/vlock/` | Observation store, heartbeat and OPC UA, MQTT and REST outputs |
-| `ignition/` | SCADA package: tag export, [tag contract](ignition/INTEGRATION.md) and example scripts |
-| `skills/` | Notes Muse reads when it proposes a rule |
-| `demo_site/` | **Not part of the product:** the Pi camera, printer and Ignition project that stand in for a plant |
-| `docs/` | [Overview, install guide, test results and development records](docs/README.md) |
-| `playground/` | Retired experiments; the application does not use it |
+| SCADA | Ignition Perspective |
+| Stand-in machine | Bambu Lab P1S 3D printer |
+| Camera | Raspberry Pi 5 with a USB camera, 640x480 |
+| PC | Windows, RTX 3070 Ti Laptop GPU |
 
-## Test results
+The Perspective view shows the printer's status, the zone state, a stop latch and System Start, Stop and Reset buttons. The latch that ran in the demo is the `printerSite` Gateway script. Details: [demo site](demo_site/README.md#perspective-view).
 
-**Full chain, tested by the project owner on November 4, 2026** with a Pi camera, real Ignition and a real 3D printer. These were observed by hand, so no times were measured:
+The customer side of the demo is in [`demo_site/`](demo_site/README.md) and is not part of the product:
 
-| Test | Result |
-|---|---|
-| Person alone, with a person AND dog rule | `Clear` |
-| Person holding a real dog | `Active`: the SCADA side latched a stop and the printer stopped |
-| Camera disabled | `Unknown`: treated as a stop, and the printer stopped |
-| Local GPU and Meta cloud engines | Both worked |
+- `demo_site/printer_ignition/`: the Perspective printer project, the local MQTT connector for the printer, and the stop and reset logic.
+- `demo_site/pi_camera/`: the camera service that runs on the Pi.
 
-**Measured with a small sample, one camera and one room:**
+Not in this repo: the Ignition gateway itself, the connector's Windows service wrapper, and the printer's credentials. The app meets the demo site only through a camera address and its published tags.
 
-| SAM engine | Time per check | Cost while monitoring, per object |
+## Rules by prompt
+
+| Type | Rule that was run | Tested |
 |---|---|---|
-| Local GPU (RTX 3070 Ti Laptop), 4 frames | 3.0-3.9 s | No per-use charge |
-| Meta image, 1 frame | 0.4-1.6 s, about 0.75 s on average | Up to about $9 an hour |
-| Meta video, 4 frames | 1.2-2.9 s, about 1.8 s on average | About $14 an hour |
+| Demo rule | A hand and a water bottle are both in the area | Yes |
+| Presence | A person is in the area | Yes |
+| Non-worker | A person and a dog are both in the area, with a real dog | Yes |
 
-**Reliability checks:** crash recovery of the local worker, a daily spending limit that survives a restart, backoff after repeated Meta failures, history held at about 1.7 MB after 6,000 writes, and about 300 automated tests.
+Not yet validated:
 
-**Not verified yet:** detailed testing of Muse's proposals, a real Pi unplug and internet cut, a safety vest phrase, accuracy on plant footage, the Meta engines in Docker, a real RTSP camera, a second PC on OPC UA, Linux hosts, a separate clean PC and long runs.
+- Presence on a conveyor belt. No conveyor was used.
+- Authorization: red vest may enter, yellow vest stops the machine.
+- PPE: only people wearing a hard hat may be in the zone. The `helmet-check` skill gives an advisory answer in `VlmState` only.
+- Headcount: at most 2 people in the zone. A count zone publishes `Count1` for the whole frame, and SCADA would compare the limit.
+- Non-worker: a child in view.
 
-Details: [test results](docs/testing/TEST_RESULTS.md) · [edge cases](docs/testing/EDGE_CASES.md)
+Test every rule change before going live. The app, the model version and the API still need normal maintenance.
 
-## Limits
+## Results
 
-- One camera and one monitoring job at a time, with at most two objects per zone, and at most 8 objects of one kind in a frame (6 on Meta video).
-- Checks take a second or more and a state change needs two matching observations, so this is supervisory monitoring, not a fast safety stop.
-- **It does not replace physical lockout/tagout or safety-rated controls.** Demonstrations use isolated equipment.
-- With a Meta engine, camera frames leave your PC and are sent to Meta.
-- Switching the SAM engine needs an app restart.
-- Always review Muse's proposal. In testing it set up the rule correctly but left the output type on `event`, and `condition` had to be chosen by hand for SCADA to use it as planned. Muse needs more detailed testing.
+Owner-tested on November 4, 2026, through Ignition to a real printer. Observed by hand, not timed. Rule: person AND dog.
 
-## What's next
+| Scene | State | Printer |
+|---|---|---|
+| Person alone | `Clear` | Kept running |
+| Person holding a real dog | `Active` | Stopped |
+| Camera disabled | `Unknown` | Stopped |
 
-- More than one camera and more than one monitoring job.
-- The worker-lock lifecycle, kept separate from AI inhibits.
-- A real accuracy benchmark on plant footage, and long-duration runs.
-- Edge and cloud GPU deployment.
-- A one-step installer.
+Check times seen in the running app: 2-3 s on the Meta image API, 4-5 s on the local GPU (RTX 3070 Ti Laptop), 8-17 s on the Meta video API.
 
-## Run it
+There is no accuracy benchmark yet. Details are in the [test results](docs/testing/TEST_RESULTS.md).
 
-Follow the [install guide](docs/install/INSTALL.md). In short, with Python 3.12 on Windows:
+## Quickstart
 
-```powershell
+Docker needs an NVIDIA GPU with 8 GB or more, host networking turned on in Docker Desktop, and a Hugging Face token approved for `facebook/sam3.1`.
+
+```bash
 git clone https://github.com/celikender/vLock-AI-Vision.git
 cd vLock-AI-Vision
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+cp .env.example .env
+docker compose up -d --build
 ```
 
-Then double-click **`Start vLock.cmd`**. The browser opens http://localhost:5056.
+Set `HF_TOKEN` in `.env` before the last command. Then open http://localhost:5056 and create the admin account.
 
-1. Create your admin account.
-2. On the **Setup** page, save your Meta API key, click **Test saved key**, and choose a SAM engine. Restart the app if you changed the engine.
-3. Add a zone, connect the camera, and click **Configure with Muse**. Review the proposal and click **Use this configuration**.
-4. Click **Enable monitoring**.
-5. To connect SCADA, follow the [Ignition guide](ignition/INTEGRATION.md).
+```bash
+docker compose logs -f sam
+docker compose restart sam
+docker compose down
+```
 
-| Engine (`VLOCK_SAM_BACKEND`) | Needs | Each check, per object |
+Without a GPU, use the native start on Windows with Python 3.12 and set `VLOCK_SAM_BACKEND=meta_api`. See the [install guide](docs/install/INSTALL.md). Docker was tested with the local GPU engine only. More in the [Docker guide](docs/install/DOCKER.md).
+
+Variables in `.env`:
+
+| Variable | Default | Purpose |
 |---|---|---|
-| `local` (default) | NVIDIA GPU, 8 GB or more; approved Hugging Face access; [SAM runtime](docs/install/SAM_RUNTIME.md) | Four frames with tracking |
-| `meta_api` | Meta API key | One frame, about once a second |
-| `meta_api_video` | Meta API key | A four-frame clip with tracking |
+| `VLOCK_SAM_BACKEND` | `local` | `local` (GPU worker), `meta_api` (one image per check) or `meta_api_video` (four-frame clip) |
+| `META_API_KEY` | | Muse Spark and the Meta SAM engines |
+| `META_BASE_URL` | `https://api.meta.ai/v1` | Meta Model API address |
+| `META_SAM_MODEL` | `sam-3.1` | SAM model name |
+| `META_MUSE_MODEL` | `muse-spark-1.3` | Muse model name |
+| `VLOCK_SAM_TIMEOUT_MS` | `3000` | Limit per Meta request |
+| `VLOCK_SAM_DAILY_LIMIT_USD` | `10` | Estimated spend per UTC day at which paid requests stop |
+| `VLOCK_OPCUA_SERVER_USERNAME`, `VLOCK_OPCUA_SERVER_PASSWORD` | | OPC UA login for SCADA on another PC. Password of 12 or more characters |
+| `VLOCK_API_TOKEN` | | Optional bearer token for the REST API |
+| `HF_TOKEN` | | Docker only: downloads the SAM 3.1 weights once |
 
-Docker is also available: see [Docker](docs/install/DOCKER.md). A daily spending limit, $10 by default, stops paid requests. It's an estimate, so your Meta account shows the real bill.
+Set in the app, not in `.env`:
 
-## Existing work and new contributions
+- **Camera:** per zone. A Pi camera service at `<Pi address>:8080` on a private network, or an `rtsp://` address. RTSP has not been tested with a real camera.
+- **OPC UA and MQTT:** on the Integrations page. OPC UA defaults to port 4845. MQTT is off by default.
 
-[vLock Digital LOTO](https://github.com/celikender/vLock-Digital-LOTO) is Ender Celik's pre-existing Ignition Perspective demonstration. It is background work; no existing implementation has been copied into this repository. New work can be seen in the commits and the [development log](docs/development/DEVELOPMENT_LOG.md).
+## SCADA integration
 
-Worker-applied locks and AI-generated supervisory inhibits are separate conditions. Clearing an AI event must not release a worker lock or automatically restart equipment.
+The app is a read-only OPC UA server. In Ignition, add an OPC UA connection named `vLock Bridge`:
 
-Never commit API keys, private footage, machine credentials or model files.
+```text
+opc.tcp://127.0.0.1:4845/vlock/
+```
+
+Each zone has the same tags at `nsu=urn:vlock:bridge:v1;s=Bridge/Zones/<tag key>/<tag>`.
+
+| Tag | Type | Meaning |
+|---|---|---|
+| `State` | String | `Active`, `Clear`, `Unknown`, or `Valid` for count zones |
+| `Active` | Boolean | Rule met. Bad quality when `Unknown` |
+| `Quality` | String | `Good`, `Unknown` or `Stale` |
+| `Reason` | String | Why the zone has this state |
+| `Count1`, `Count2` | Int32 | Detections of each object in the whole frame |
+| `ObservedAt`, `AgeSeconds` | String, Double | Time and age of the analysed frame |
+| `Bridge/HeartbeatCounter`, `Bridge/Online` | Int64, Boolean | App heartbeat |
+
+Read `State`, not only `Active`. Treat `Unknown` or Bad quality as stop.
+
+The same status over REST and MQTT:
+
+```text
+GET http://localhost:5056/api/v1/zones
+GET http://localhost:5056/api/v1/zones/<tag key>
+MQTT topic: <topic prefix>/zones/<tag key>/state
+```
+
+```json
+{
+  "schema_version": 1,
+  "TagKey": "A-101",
+  "State": "Clear",
+  "Active": false,
+  "Quality": "Good",
+  "Rule": "hand overlaps the area AND bottle overlaps the area for 1 s",
+  "Object1": "hand",
+  "Object2": "bottle",
+  "Count1": 1,
+  "Count2": 0
+}
+```
+
+The example shows some of the fields. The tag package is [`ignition/vlock-zones.json`](ignition/vlock-zones.json), with the `vLockZone` UDT. Full list: [zone tags](ignition/ZONE_TAGS.md). Setup steps: [Ignition guide](ignition/INTEGRATION.md).
+
+## Scope and safety
+
+- The app publishes status only. It sends no machine commands.
+- Latch, reset and stop logic belong in SCADA. The demo ran the latch script in `demo_site/printer_ignition/`. [`ignition/stop_latch_example.py`](ignition/stop_latch_example.py) is a separate example that has not run in a real gateway.
+- It is not a certified safety device.
+- It does not replace interlocks, light curtains or lockout/tagout.
+- A check takes seconds, so this is not a fast stop.
+- One camera and one monitoring job at a time.
+- Accuracy has been sampled, not benchmarked.
+
+## Roadmap
+
+- On-demand camera check, run only when an interlock or light curtain is broken.
+- Debounce for `Unknown` in the app. Today the demo's latch script waits 2 s.
+- Log the active rule and prompt with each state change.
+- Test what is implemented but not yet run: RTSP cameras and the Muse frame-check skills.
+
+## Built for
+
+The Meta Global AI Developer Hackathon 2026, Indie Developer Track, by Ender Celik. [Gallery entry](https://cerebralvalley.ai/e/meta-ai-developer-hackathon/hackathon/gallery?q=Vlock+&project=4329).
+
+## License
+
+The code is licensed under [Apache-2.0](LICENSE). The SAM 3.1 weights stay under Meta's own license, and each user requests access on Hugging Face.

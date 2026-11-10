@@ -13,6 +13,23 @@ projects are kept here for the hackathon and move to their own repositories afte
 
 The product's own SCADA material is in [`ignition/`](../ignition/INTEGRATION.md).
 
+## Perspective view
+
+The view is `PrinterFarm/Dashboard`, titled "Printer farm | Operations". It has three printer cards.
+`P1S-01` is the connected printer, and `P1S-02` and `P1S-03` show OFFLINE.
+
+- **Status display:** machine state, a `Vision:` line with the zone state, program, nozzle and bed
+  temperature, progress, time left, connector and MQTT status, and a Recent events table.
+- **Stop latch:** the `printerSite` Gateway script latches at once on `Active`, after 2 s of `Unknown` or
+  Bad quality, and after the heartbeat stays unchanged for more than 5 s. It then requests Pause once if
+  the printer is Running. The message line shows `Stop latched:` and the reason. This is a stop latch on
+  the SCADA side, not a worker lock.
+- **Reset:** System Reset clears the latch only with `State` `Clear`, Good quality, the bridge Online and
+  a moving heartbeat. System Start then enables Resume, and Resume is a separate operator click. A zone
+  going back to `Clear` never clears the latch or resumes the print.
+
+Setup steps are in the [demo setup guide](printer_ignition/DEMO_SETUP.md).
+
 ## Moved paths
 
 These folders used to be `devices/pi_camera`, `integrations/ignition/p1s_printer` and

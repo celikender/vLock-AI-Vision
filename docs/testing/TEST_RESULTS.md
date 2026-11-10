@@ -13,6 +13,7 @@ customer-side stop logic, and a real Bambu P1S printer. These were observed by h
 |---|---|---|
 | Person alone in the area | Person AND dog | `Clear`, and the printer kept running |
 | Person holding a real dog in the area | Person AND dog | `Active`, and the printer stopped |
+| Hand and a water bottle both in the area (demo video) | Hand AND bottle | `Active`, and SCADA paused the printer. Owner-observed; recorded in the development log on November 4, 2026 |
 | Camera disabled | | `Unknown`, treated as a stop, and the printer stopped |
 | Local GPU and Meta cloud engines | | Both worked. Switching from local to Meta needed an app restart, which is the current design |
 | Muse setup | | Rule set up correctly, but the output type stayed `event`. With `condition` chosen by hand, the output worked as planned |
