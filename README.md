@@ -35,7 +35,7 @@ What else it could watch, none of it tested: a stack light on a machine with no 
 
 | | Light curtain / interlock | Vendor vision safety system | vLock |
 |---|---|---|---|
-| Detects presence inside the zone, not just crossing | No | Varies by product | Yes, on each check (2-5 s apart) |
+| Detects presence inside the zone, not just crossing | No | Varies by product | Yes, on each check (2-4 s apart) |
 | Tells who or what is there | No | Varies by product | The objects named in the prompt, with a count |
 | Rule change | Rewire | Vendor visit | Edit a prompt |
 | Who integrates | Electrician | Vendor integrator | Your own SCADA developer |
@@ -108,7 +108,7 @@ Owner-tested on November 4, 2026, through Ignition to a real printer. Observed b
 | Person holding a real dog | `Active` | Stopped |
 | Camera disabled | `Unknown` | Stopped |
 
-Check times seen in the running app: 2-3 s on the Meta image API, 4-5 s on the local GPU (RTX 3070 Ti Laptop), 8-17 s on the Meta video API.
+Check times seen by the owner in the running app so far: 2-4 s on average. Tests with more camera angles and prompts are still to be added.
 
 There is no accuracy benchmark yet. Details are in the [test results](docs/testing/TEST_RESULTS.md).
 
